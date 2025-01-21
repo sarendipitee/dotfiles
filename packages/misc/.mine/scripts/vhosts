@@ -1,0 +1,2 @@
+#!/bin/bash
+sudo mvim -O /etc/apache2/extra/httpd-vhosts.conf /etc/hosts

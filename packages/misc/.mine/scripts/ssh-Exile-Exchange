@@ -1,0 +1,3 @@
+#!/bin/bash
+# Exile Exchange (EC2)
+ssh -i ~/.ssh/jdumaine-ec2-key.pem ec2-user@54.244.250.147

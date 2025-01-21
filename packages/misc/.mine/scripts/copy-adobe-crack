@@ -1,0 +1,54 @@
+#!/bin/bash
+
+
+crackedAMTPath='/Users/JD/Dropbox/Backups/amtlib.framework'
+
+
+apps=(
+    'Adobe Acrobat X Pro'
+    'Adobe After Effects CS6'
+    'Adobe Audition CS6'
+    'Adobe Bridge CS6'
+    'Adobe Dreamweaver CS6'
+    'Adobe Encore CS6'
+    'Adobe Extension Manager CS6'
+    'Adobe Fireworks CS6'
+    'Adobe Flash Builder 4.6'
+    'Adobe Flash CS6'
+    'Adobe Illustrator CS6'
+    'Adobe InDesign CS6'
+    'Adobe Media Encoder CS6'
+    'Adobe Photoshop CS6'
+    'Adobe Prelude CS6'
+    'Adobe Premiere Pro CS6'
+    'Adobe SpeedGrade CS6'
+    )
+
+
+
+for app in "${apps[@]}"; do
+    echo '-----------'
+    echo app: $app
+
+    amtPath=$(find /Applications/"$app" -iname AMTLib.framework)
+
+    #echo amtPath: $amtPath
+    #/Applications/Adobe Premiere Pro CS6/Adobe Premiere Pro CS6.app/Contents/Frameworks/amtlib.framework
+
+    frameworkDir=$(dirname "$amtPath")
+
+    #echo frameworkDir: $frameworkDir
+
+    echo Backing up original AMTLib.framework...
+
+    mv "$amtPath" "$frameworkDir/amtlib.framework.back"
+
+    echo Copying cracked AMTPath
+
+    cp -r "$crackedAMTPath" "$frameworkDir"
+
+
+done;
+
+
+echo done.

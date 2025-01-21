@@ -1,0 +1,129 @@
+if has("gui_macvim")
+
+  "set guifont=Droid\ Sans\ Mono\ for\ Powerline:h14
+  "set guifont=Source\ Code\ Pro\ Light\ for\ Powerline:h13
+  "set guifont=Monaco\ for\ Powerline:h13
+  set guifont=HasklugNFP-Light:h14
+
+  " don't resize window when font size changes
+  set guioptions+=k
+
+  " Fullscreen takes up entire screen
+  set fuoptions=maxhorz,maxvert
+
+  set t_Co=256
+  set t_AB=^[[48;5;%dm
+  set t_AF=^[[38;5;%dm
+
+  " overwrite cmd-o to no op
+  macmenu File.Open… key=<nop>
+
+  " Command-Return for fullscreen
+  macmenu Window.Toggle\ Full\ Screen\ Mode key=<D-CR>
+
+  "Disable Cmd-P printing
+  macmenu File.Print key=<nop>
+
+  " Command-e for ConqueTerm
+  map <D-e> :call StartTerm()<CR>
+
+  " Command-][ to increase/decrease indentation
+  vmap <D-]> >gv
+  vmap <D-[> <gv
+
+  " Map Command-# to switch tabs
+  map  <D-0> 0gt
+  imap <D-0> <Esc>0gt
+  map  <D-1> 1gt
+  imap <D-1> <Esc>1gt
+  map  <D-2> 2gt
+  imap <D-2> <Esc>2gt
+  map  <D-3> 3gt
+  imap <D-3> <Esc>3gt
+  map  <D-4> 4gt
+  imap <D-4> <Esc>4gt
+  map  <D-5> 5gt
+  imap <D-5> <Esc>5gt
+  map  <D-6> 6gt
+  imap <D-6> <Esc>6gt
+  map  <D-7> 7gt
+  imap <D-7> <Esc>7gt
+  map  <D-8> 8gt
+  imap <D-8> <Esc>8gt
+  map  <D-9> 9gt
+  imap <D-9> <Esc>9gt
+
+  map  <C-Tab> gt
+  imap  <C-Tab> <Esc>gt
+
+  map  <S-C-Tab> gT
+  imap  <S-C-Tab> <Esc>gT
+
+  " Command-Option-ArrowKey to switch viewports
+  map <D-M-Up> <C-w>k
+  imap <D-M-Up> <Esc> <C-w>k
+  map <D-M-Down> <C-w>j
+  imap <D-M-Down> <Esc> <C-w>j
+  map <D-M-Right> <C-w>l
+  imap <D-M-Right> <Esc> <C-w>l
+  map <D-M-Left> <C-w>h
+  imap <D-M-Left> <C-w>h
+
+  " Adjust viewports to the same size
+  map <Leader>= <C-w>=
+  imap <Leader>= <Esc> <C-w>=
+endif
+
+" Don't beep
+set visualbell
+
+set guioptions=ce
+
+" Start without the toolbar
+set guioptions-=T
+
+" Indent Guides
+let g:indent_guides_enable_on_vim_startup = 1
+let g:indent_guides_start_level = 1
+let g:indent_guides_color_change_percent = 1
+
+set nolist
+set listchars=tab:▸\ ,trail:·
+
+" GUI Tab labels
+" " set up tab labels with tab number, buffer name, number of windows
+function! GuiTabLabel()
+  let label = ''
+  let bufnrlist = tabpagebuflist(v:lnum)
+  " Add '+' if one of the buffers in the tab page is modified
+  for bufnr in bufnrlist
+    if getbufvar(bufnr, "&modified")
+      let label = '+'
+      break
+    endif
+  endfor
+  " Append the buffer name
+  let name = bufname(bufnrlist[tabpagewinnr(v:lnum) - 1])
+  if name == ''
+    " give a name to no-name documents
+    if &buftype=='quickfix'
+      let name = '[Quickfix List]'
+    else
+      let name = '[No Name]'
+    endif
+  else
+	" use parent directory like foo/index.js
+	"if name =~ '/index.' || name =~ '/template.'
+	  let name = fnamemodify(name,":p:h:t") . '/' . fnamemodify(name,":t")
+	"else
+	  " get only the file name
+	  "let name = fnamemodify(name,":t")
+	"endif
+  endif
+  let label .= name
+  return label
+endfunction
+
+set guitablabel=%{GuiTabLabel()}
+
+

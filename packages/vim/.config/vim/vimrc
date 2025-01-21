@@ -1,0 +1,736 @@
+" TODO format shit like this guys:https://github.com/danielgatis/vim/blob/master/vimrc
+
+call plug#begin('~/.vim/plugged')
+  runtime plugins.vim
+call plug#end()
+
+
+set nocompatible
+
+set number
+set ruler
+syntax on
+
+" Remove ~ tilde at end of buffers - note empty space
+set fillchars=eob:\ 
+
+" Make smaller gutter
+set numberwidth=1
+
+" Set encoding
+set encoding=utf-8
+set nobomb " No UTF-8 BOM
+
+" Whitespace stuff
+set nowrap
+set tabstop=4
+set shiftwidth=4
+set textwidth=80
+"set softtabstop=4
+set noexpandtab
+set breakindent
+
+"indent
+set smartindent
+set autoindent
+
+" Searching
+set hlsearch
+set incsearch
+set ignorecase
+set smartcase
+
+" Tab completion
+set wildmode=list:longest,list:full
+set wildignore+=*.o,*.obj,*.rbc,
+set wildignore+=*/.git/*,*/.hg/*,*/.svn/*,*/build/*,*/temp/*,*/node_modules/*,*/bower_components/*,*/.gobble-build/*,*/tmp/*
+
+" Don't add the comment prefix when I hit enter or o/O on a comment line.
+set formatoptions-=o
+
+" Status bar
+set laststatus=2
+
+" Allow editing past last line of file
+set virtualedit=onemore
+
+" Huge history pool (default is 20)
+set history=1000
+
+let mapleader = ","
+
+" CTags
+map <Leader>rt :!ctags --extra=+f -R *<CR><CR>
+map <C-\> :tnext<CR>
+
+" Remember last location in file
+if has("autocmd")
+  au BufReadPost * if line("'\"") > 0 && line("'\"") <= line("$")
+    \| exe "normal g'\"" | endif
+endif
+
+"function! s:setupWrapping()
+  "set wrap
+  "set wrapmargin=2
+  "set textwidth=72
+"endfunction
+
+"function! s:setupMarkup()
+  "call s:setupWrapping()
+  "map <buffer> <Leader>p :Hammer<CR>
+"endfunction
+
+"persistent undo
+set undofile                    " Save undo's after file closes
+set undodir=/Users/JD/.vim/undo " where to save undo histories
+set undolevels=1000             " How many undos
+set undoreload=10000            " number of lines to save for undo
+
+" Select last pasted text with gjj
+nnoremap gp `[v`]
+
+" Command-R to paste last yanked text while in insert mode
+inoremap <D-r> <C-r>"
+
+"leave insert mode with `jk`
+"inoremap jk <Esc>
+
+" EditorConfig
+let g:EditorConfig_exec_path = '~/.vim/bundle/editorconfig-vim/plugin/editorconfig-core-py'
+
+" Polyglot
+let g:polyglot_disabled = ['typescript', 'typescriptreact']
+
+" md, markdown, and mk are markdown and define buffer-local preview
+"au BufRead,BufNewFile *.{md,markdown,mdown,mkd,mkdn} call s:setupMarkup()
+"au BufRead,BufNewFile *.txt call s:setupWrapping()
+
+" allow backspacing over everything in insert mode
+set backspace=indent,eol,start
+
+" load the plugin and indent settings for the detected filetype
+filetype plugin indent on
+
+" Opens an edit command with the path of the currently edited file filled in
+" Normal mode: <Leader>e
+map <Leader>e :e <C-R>=expand("%:p:h") . "/" <CR>
+
+" Opens a tab edit command with the path of the currently edited file filled in
+" Normal mode: <Leader>t
+"map <Leader>te :tabe <C-R>=expand("%:p:h") . "/" <CR>
+"
+
+" Easy Align mappings
+" Start interactive EasyAlign in visual mode (e.g. vipga)
+xmap ga <Plug>(EasyAlign)
+" Start interactive EasyAlign for a motion/text object (e.g. gaip)
+nmap ga <Plug>(EasyAlign)
+
+"Base64 decode
+:vnoremap <leader>64d c<c-r>=system('base64 --decode', @")<cr><esc>
+
+"Base64 encode
+:vnoremap <leader>64e c<c-r>=system('base64', @")<cr><esc>
+
+" CSS2Stylus
+:vnoremap <leader>st :!css2stylus -u -i 4<cr><esc>
+":vnoremap <leader>sy :s/{[:;]}//g<cr><esc>:s/://g:noh<cr><Esc>
+
+                     "remove ':'s and ';' in properties         "remove brackets    stop highlighting
+:vnoremap <leader>sy :s/\v([a-zA-Z-]+):\s*(.+)[;,]$/\1 \2/g<cr><esc>gv:s/[{}]//g<cr><esc>:let @/ = ""<cr><Esc>
+
+" Convert YAML to JSON
+":noremap <leader>yj :%!ruby -ryaml -rjson -e 'puts JSON.pretty_generate(YAML.load(ARGF))'<cr><Esc>
+
+" Turn off json syntax conceal 
+let g:vim_json_syntax_conceal = 0
+
+" Inserts the path of the currently edited file into a command
+" Command mode: Ctrl+P
+cmap <C-P> <C-R>=expand("%:p:h") . "/" <CR>
+
+" Unimpaired configuration
+" Bubble single lines
+nmap <C-Up> [e
+nmap <C-Down> ]e
+" Bubble multiple lines
+vmap <C-Up> [egv
+vmap <C-Down> ]egv
+
+"Ctrl-P Settings
+let g:ctrlp_map = '<D-o>'
+let g:ctrlp_cmd = 'CtrlP'
+let g:ctrlp_show_hidden = 1
+
+"let g:ctrlp_custom_ignore = '\v[\/](node_modules|bower_components|target|dist\/|build\/|temp$|packages)|(\.(DS_Store|meteor|swp|ico|git\/|svn))$'
+"let g:ctrlp_custom_ignore = {
+  "\ 'dir':  '\v[\/](\.git|\.hg|\.svn|node_modules|build|dist|temp)$',
+  "\ 'file': '\v\.(exe|so|dll)$'
+  "\ }
+
+if executable('fd')
+  let g:ctrlp_user_command = 'fd --type f --hidden --color=never "" %s'
+  let g:ctrlp_use_caching = 1
+endif
+
+"let g:ctrlp_match_func = {'match': 'cpsm#CtrlPMatch'}
+
+if executable('rg')
+  set grepprg=rg\ --color=never
+  "let g:ctrlp_user_command = 'rg %s --hidden --files --color=never --glob ""'
+  "let g:ctrlp_use_caching = 0
+endif
+
+" save folds upon leaving
+"autocmd BufWinLeave *.* mkview
+"autocmd BufWinEnter *.* silent loadview
+
+" Automatially close preview window
+autocmd CompleteDone * pclose
+
+" Enable syntastic syntax checking
+"let g:syntastic_enable_signs=1
+"let g:syntastic_enable_balloons = 1
+"let g:syntastic_quiet_messages = {'level': 'warnings'}
+"let g:syntastic_mode_map = { 'passive_filetypes': ['html'] }
+"let g:syntastic_javascript_checkers = ['eslint']
+
+" Toggle Errors
+function! ToggleErrors()
+    if empty(filter(tabpagebuflist(), 'getbufvar(v:val, "&buftype") is# "quickfix"'))
+         " No location/quickfix list shown, open syntastic error location panel
+         Errors
+    else
+        lclose
+    endif
+endfunction
+nnoremap <silent> <C-e> :<C-u>call ToggleErrors()<CR>
+
+" Define mappings
+autocmd FileType denite call s:denite_my_settings()
+function! s:denite_my_settings() abort
+  nnoremap <silent><buffer><expr> <CR>
+  \ denite#do_map('do_action')
+  nnoremap <silent><buffer><expr> d
+  \ denite#do_map('do_action', 'delete')
+  nnoremap <silent><buffer><expr> p
+  \ denite#do_map('do_action', 'preview')
+  nnoremap <silent><buffer><expr> q
+  \ denite#do_map('quit')
+  nnoremap <silent><buffer><expr> i
+  \ denite#do_map('open_filter_buffer')
+  nnoremap <silent><buffer><expr> <Space>
+  \ denite#do_map('toggle_select').'j'
+endfunction
+
+
+" Use modeline overrides
+set modeline
+set modelines=10
+
+" Directories for swp files
+set backupdir=~/.vim/backup
+set directory=~/.vim/backup
+
+" MacVIM shift+arrow-keys behavior (required in .vimrc)
+let macvim_hig_shift_movement = 1
+
+" % to bounce from do to end etc.
+runtime! macros/matchit.vim
+
+" Make ! commands in vim work with zsh setting it to interactive
+"set shell=zsh\ -i
+
+" Show (partial) command in the status line
+set showcmd
+
+
+if (has("termguicolors"))
+  set termguicolors
+endif
+
+set background=dark
+
+" Theme / Color
+"colorscheme twilight
+"colorscheme Solarized
+colorscheme OceanicNext
+"colorscheme Dracula
+"colorscheme onehalfdark
+"colorscheme palenight
+
+
+"Airline Configuration
+set noshowmode
+"let g:airline_left_sep = '▶'
+"let g:airline_right_sep = '◀'
+"let g:airline_theme='badwolf'
+"let g:airline_theme='oceanicnext'
+let g:airline_theme='onehalfdark'
+let g:airline_powerline_fonts=1
+let g:airline#extensions#whitespace#mixed_indent_algo = 2
+let airline#extensions#c_like_langs = ['c', 'cpp', 'cuda', 'javascript', 'ld', 'php', 'stylus']
+
+" syntax highlight jsx in .js files as well
+let g:jsx_ext_required = 0
+
+
+" Tagbar
+"noremap <D-e> :TagbarToggle<CR><c-w>l
+"noremap <D-E> :TagbarToggle<CR>
+
+" NERDTree configuration
+let NERDTreeIgnore=['\.pyc$', '\.rbc$', '\~$']
+map <D-d> <Esc>:NERDTreeToggle<CR>
+map <D-D> <Esc>:NERDTreeTabsToggle<CR>
+
+" nerdtree-syntax-highlight
+let g:WebDevIconsDisableDefaultFolderSymbolColorFromNERDTreeDir = 1
+let g:WebDevIconsDisableDefaultFileSymbolColorFromNERDTreeFile = 1
+let g:webdevicons_conceal_nerdtree_brackets = 1
+
+" If laggy
+"let g:NERDTreeLimitedSyntax = 1
+
+" Reveal file
+map <leader>rf <Esc>:NERDTreeFind<CR>
+autocmd StdinReadPre * let s:std_in=1
+autocmd VimEnter * if argc() == 0 && !exists("s:std_in") | NERDTree | endif
+
+let g:NERDTreeChDirMode = 2
+let g:NERDTreeMouseMode = 2
+
+ " Open NERDTree on gvim/macvim startup. (When set to 2, open only if directory was given as startup argument). (default: 1)
+let g:nerdtree_tabs_open_on_gui_startup = 1
+let g:nerdtree_tabs_focus_on_files = 0
+let g:nerdtree_tabs_autofind = 0
+
+
+" Fern.vim config
+"let g:fern#disable_default_mappings = 1
+"let g:fern#renderer = "nerdfont"
+
+"noremap <D-d> :Fern . -drawer -reveal=% -toggle -width=35<CR><C-w>=
+"noremap <leader>rf <Esc>:execute printf('FernDo FernReveal %s', fnameescape(expand('%:p')))<CR>
+
+function! s:init_fern() abort
+
+  setlocal listchars= nonumber norelativenumber
+  setlocal signcolumn=no
+
+  nmap <buffer><expr>
+      \ <Plug>(fern-my-open-expand-collapse)
+      \ fern#smart#leaf(
+      \   "\<Plug>(fern-action-open-or-expand)",
+      \   "\<Plug>(fern-action-expand)",
+      \   "\<Plug>(fern-action-collapse)",
+      \ )
+
+  nmap <buffer> <CR> <Plug>(fern-my-open-expand-collapse)
+  "nmap <buffer> <LeftMouse> <Plug>(fern-my-open-expand-collapse)
+  nmap <buffer><nowait> o <Plug>(fern-my-open-expand-collapse)
+
+
+  " Define NERDTree like mappings
+  nmap <buffer> <Space> <Plug>(fern-action-mark)
+  nmap <buffer> - <Plug>(fern-action-mark)
+  "nmap <buffer> o <Plug>(fern-action-open:edit)
+  nmap <buffer> go <Plug>(fern-action-open:edit)<C-w>p
+  nmap <buffer> t <Plug>(fern-action-open:tabedit)
+  nmap <buffer> T <Plug>(fern-action-open:tabedit)gT
+  nmap <buffer> i <Plug>(fern-action-open:split)
+  nmap <buffer> gi <Plug>(fern-action-open:split)<C-w>p
+  nmap <buffer> s <Plug>(fern-action-open:vsplit)
+  nmap <buffer> gs <Plug>(fern-action-open:vsplit)<C-w>p
+  nmap <buffer> P gg
+
+  nmap <buffer> ma <Plug>(fern-action-new-path)
+  nmap <buffer> mr <Plug>(fern-action-open:system)
+  nmap <buffer> mm <Plug>(fern-action-rename)
+  nmap <buffer> mc <Plug>(fern-action-copy)
+  nmap <buffer> md <Plug>(fern-action-remove)
+
+  nmap <buffer> C <Plug>(fern-action-enter)
+  nmap <buffer> u <Plug>(fern-action-leave)
+  nmap <buffer> r <Plug>(fern-action-reload)
+  nmap <buffer> R gg<Plug>(fern-action-reload)<C-o>
+  nmap <buffer> cd <Plug>(fern-action-cd)
+  nmap <buffer> CD gg<Plug>(fern-action-cd)<C-o>
+
+  nmap <buffer> I <Plug>(fern-action-hidden:toggle)
+
+  nmap <buffer> q :<C-u>quit<CR>
+
+endfunction
+
+
+augroup fern-custom
+  autocmd! *
+  autocmd FileType fern call s:init_fern()
+augroup END
+
+"augroup my-fern-startup
+  "autocmd! *
+  "autocmd VimEnter * ++nested Fern .
+"augroup END
+
+"function! s:OpenDrawer() abort
+  "if &modifiable && filereadable(expand('%'))
+    "execute printf('FernDo -stay FernReveal %s', fnameescape(expand('%:p')))
+  "endif
+"endfunction
+
+"autocmd BufEnter * call s:OpenDrawer()
+
+"focus on code when new window WHY WON'T THIS WORK GFLADJFLKDAJ
+"autocmd VimEnter * wincmd p
+"autocmd BufNew * wincmd p
+"autocmd BufWinEnter * wincmd p
+"autocmd BufEnter * wincmd p
+
+
+"smart indent when entering insert mode with i on empty lines
+"function! IndentWithI()
+    "if len(getline('.')) == 0
+        "return "\"_ddO"
+    "else
+        "return "i"
+    "endif
+"endfunction
+
+"nnoremap <expr> i IndentWithI()
+
+
+"NERDCommenter
+" Command-/ to toggle comments
+map <D-/> <plug>NERDCommenterToggle
+imap <D-/> <Esc><plug>NERDCommenterToggle i
+
+
+" escape stops highlight searches
+nnoremap <silent> <Esc><Esc> :noh<CR>
+" Escape to clear search highlight
+"nnoremap <silent> <Esc>:let @/ = ""<CR>
+
+" don't include new line with $ movement
+nmap $ g_
+
+" Map Esc to Terminal Normal mode
+:tnoremap <Esc> <C-\><C-n>
+
+" Map HTML Tidy to ,ti
+"map <Leader>ht <Esc>:%!tidy -mqi --doctype omit --show-body-only true --show-warnings no --wrap 0 --input-xml true<CR><CR>
+map <Leader>ht mp<Esc>:%!html-beautify --editorconfig<CR>'p
+
+" JS/TS formatting
+map <Leader>jsb mp<Esc>:%!js-beautify --e4x --editorconfig -f -<CR>'p
+map <Leader>jso mp<Esc>:%!json-align -t<CR>'p
+map <Leader>jsp mp<Esc>:%!npx prettier -- "%"<CR>'p
+
+"autocmd filetype javascript map <Leader>js mp<Esc>:%!npx prettier-eslint --stdin --parser babel<CR>'p
+"autocmd filetype javascript map <Leader>jsp mp<Esc>:%!npx prettier-eslint --single-quote --use-tabs --no-bracket-spacing --jsx-bracket-same-line --no-semi --quote-props consistent --stdin<CR>'p
+"autocmd filetype typescript map <Leader>js mp<Esc>:%!npx prettier-eslint --stdin --parser @typescript-eslint/parse<CR>'p
+"autocmd filetype typescript map <Leader>jsp mp<Esc>:%!npx prettier-eslint --single-quote --use-tabs --no-bracket-spacing --jsx-bracket-same-line --no-semi --quote-props consistent --stdin --parser @typescript-eslint/parser<CR>'p
+
+" Map svgo to ,svg
+map <Leader>svg mp<Esc>:%!svgo -i - --pretty --enable=removeTitle --enable=removeStyleElement --enable=removeDimensions<CR>'p
+
+" vim-test mappings
+let g:test#javascript#runner = 'vitest'
+let g:test#typescript#runner = 'vitest'
+let test#strategy = "vimterminal"
+let test#vim#term_position = "belowright"
+nmap <silent> <leader>tn :TestNearest<CR>
+nmap <silent> <leader>tf :TestFile<CR>
+nmap <silent> <leader>ts :TestSuite<CR>
+nmap <silent> <leader>tl :TestLast<CR>
+nmap <silent> <leader>tv :TestVisit<CR>
+nmap <silent> <leader>tc :TermClose<CR>
+
+function! DeterminedStrategy(cmd)
+  let term_position = get(g:, 'test#vim#term_position', 'botright')
+  execute term_position . ' new'
+  call term_start(['/bin/sh', '-c', a:cmd], {'curwin': 1, 'term_name': a:cmd})
+  "au bufleave <buffer> wincmd p
+  nnoremap <buffer> <Enter> :q<CR>
+  redraw
+  wincmd p
+endfunction
+
+"let g:test#custom_strategies = {'determined': function('DeterminedStrategy')}
+"let g:test#strategy = 'determined'
+
+" vim-togglelist quicklist/loclist toggle
+"nmap <script> <silent> <leader>l :call ToggleLocationList()<CR>
+"nmap <script> <silent> <leader>q :call ToggleQuickfixList()<CR>
+
+" Valloric/ListToggle
+let g:lt_location_list_toggle_map = '<leader>l'
+let g:lt_quickfix_list_toggle_map = '<leader>q'
+
+" vim-asterisk mappings
+"map *   <Plug>(asterisk-*)
+"map #   <Plug>(asterisk-#)
+"map g*  <Plug>(asterisk-g*)
+"map g#  <Plug>(asterisk-g#)
+"map z*  <Plug>(asterisk-z*)
+"map gz* <Plug>(asterisk-gz*)
+"map z#  <Plug>(asterisk-z#)
+"map gz# <Plug>(asterisk-gz#)
+
+" Set up invisible characters
+set nolist
+set listchars=tab:▸\ ,trail:·
+
+" Has to be in .vimrc or else doesn't work
+if has("gui_running")
+  let g:indent_guides_enable_on_vim_startup = 1
+endif
+
+" Removes trailing spaces
+function! TrimWhiteSpace()
+    %s/\s\+$//e
+endfunction
+nnoremap <silent> <Leader>rs :call TrimWhiteSpace()<CR>
+
+"Invisible character colors
+"highlight NonText guifg=#4a4a59
+"highlight SpecialKey guifg=#4a4a59
+
+"This allows for change paste motion cp{motion}
+nmap <silent> cp :set opfunc=ChangePaste<CR>g@
+function! ChangePaste(type, ...)
+    silent exe "normal! `[v`]\"_c"
+    silent exe "normal! p"
+endfunction
+
+function! CleanEmptyBuffers()
+  let buffers = filter(range(0, bufnr('$')), 'buflisted(v:val) && empty(bufname(v:val)) && bufwinnr(v:val)<0')
+  if !empty(buffers)
+    exe 'bw '.join(buffers, ' ')
+  endif
+endfunction
+
+nmap <leader>bd :call CleanEmptyBuffers()<cr>
+
+function! Lint()
+  setlocal makeprg=npm\ run\ lint\ --\ -f\ unix
+  make
+endfunction
+
+" CSS-colors
+" let g:cssColorVimDoNotMessMyUpdatetime = 1
+
+" Map CSS Tidy to gg=G
+ "autocmd filetype css setlocal equalprg=csstidy\ -\ --silent=true\ --template=low
+" autocmd filetype html setlocal equalprg=csstidy\ -\ --silent=true\ --template=low
+
+" =================
+"
+"  Doc Comment
+"
+" =================
+
+" jsdoc
+let g:jsdoc_enable_es6 = 1
+
+nmap <silent> <leader>d ?function<cr>:noh<cr><Plug>(jsdoc)
+
+" generate doc comment template
+"map <Leader>d :call GenerateDOCComment()<cr>
+
+"function! GenerateDOCComment()
+  "let l    = line('.')
+  "let i    = indent(l)
+  "let pre  = repeat(' ',i)
+  "let text = getline(l)
+  "let params   = matchstr(text,'([^)]*)')
+  "let paramPat = '\([$a-zA-Z_0-9]\+\)[, ]*\(.*\)'
+  "echomsg params
+  "let vars = []
+  "let m    = ' '
+  "let ml = matchlist(params,paramPat)
+  "while ml!=[]
+    "let [_,var;rest]= ml
+    "let vars += [pre.' * @param '.var]
+    "let ml = matchlist(rest,paramPat,0)
+  "endwhile
+  "let comment = [pre.'/**',pre.'* '] + vars + [pre.'*/']
+  "call append(l-1,comment)
+  "call cursor(l+1,i+3)
+"endfunction
+
+" UndoQuit
+
+let g:undoquit_mapping = '<D-T>'
+nnoremap <c-w>c :call undoquit#SaveWindowQuitHistory()<cr><c-w>c
+
+
+" Use w!! to save with sudo if you forgot to open vim with sudo
+cmap w!! %!sudo tee > /dev/null %
+
+" Make backspace delete lots of things
+set backspace=indent,eol,start
+
+" Allow manual folding of shit
+"set foldmethod=indent
+"nmap <Space> za
+
+"set foldtext=MyFoldText()
+"set fillchars=fold:_
+"function! MyFoldText()
+  "" setting fold text
+  "let indent_level = indent(v:foldstart)
+  "let indent = repeat(' ',indent_level)
+  "let nl = v:foldend - v:foldstart + 1
+  "let comment = substitute(getline(v:foldstart),"^ *\" *","",1)
+  "let linetext = substitute(getline(v:foldstart+1),"^ *","",1)
+  "let txt = '+ ' . comment . ': ' . nl .  ' ' . v:foldstart . '                                                                                                                                                                  '
+  "return txt
+"endfunction
+
+" Buffers open with all folds enabled, but open by defult
+autocmd BufWinEnter * set foldlevel=999999
+
+" This makes it so deleted text won't override yanked text
+"map p "0p
+
+" capital D to not yank whatever you are deleting
+map D "_d
+" x (cut) does not put anything in the yank register
+nnoremap x "_x
+
+
+" Shift-* to highlight text, not search to the next
+nnoremap * :let @/='\<<C-R>=expand("<cword>")<CR>\>'<CR>:set hls<CR>
+
+function! MakePattern(text)
+  let pat = escape(a:text, '\')
+  let pat = substitute(pat, '\_s\+$', '\\s\\*', '')
+  let pat = substitute(pat, '^\_s\+', '\\s\\*', '')
+  let pat = substitute(pat, '\_s\+',  '\\_s\\+', 'g')
+  return '\\V' . escape(pat, '\"')
+endfunction
+"Search for selected text
+vnoremap <silent> * :<C-U>
+  \let old_reg=getreg('"')<Bar>let old_regtype=getregtype('"')<CR>
+  \gvy/<C-R><C-R>=substitute(
+  \escape(@", '/\.*$^~['), '\_s\+', '\\_s\\+', 'g')<CR><CR>
+  \gV:call setreg('"', old_reg, old_regtype)<CR>
+"vnoremap <silent> * :<C-U>let @/="<C-R>=MakePattern(@*)<CR>"<CR>:set hls<CR>
+
+
+" Quick shortcut for 'go back' to last buffer
+map <leader>gb <c-^>
+
+" Adds a new line below current
+nnoremap <cr> A<cr><esc>
+
+" Keep more lines of context
+set scrolloff=5
+
+" Allow switching edited buffers without saving
+set hidden
+
+" Auto-backup files and .swp files don't go to pwd
+set backupdir=~/.vim-tmp,~/.tmp,~/tmp,/var/tmp,/tmp
+set directory=~/.vim-tmp,~/.tmp,~/tmp,/var/tmp,/tmp
+
+" Save shit when vim loses focus
+"autocmd FocusLost silent! wall
+
+" Make file name completion not suck
+set wildmenu
+set wildmode=longest:full
+
+" Set clipboard to use the unnamed register by default
+"set clipboard=unnamed
+
+" Execute file as node script
+" TODO use a :term properly
+nmap <leader>en :w<cr>:term node "%"<cr>
+
+" Execute file as ts script
+" TODO use a :term properly
+nmap <leader>et :w<cr>:term npx tsx -- "%"<cr>
+nmap <leader>etb :w<cr>:term bun run -- "%"<cr>
+nmap <leader>etw :w<cr>:term npx tsx watch -- "%"<cr>
+
+" Execute file
+" TODO use a :term properly
+nmap <leader>ef :w<cr>:term "%"<cr>
+
+" CtrlSF Plugin
+nmap     <D-F> <Plug>CtrlSFPrompt
+vmap     <D-F> <Plug>CtrlSFVwordPath
+"vmap     <D-F>F <Plug>CtrlSFVwordExec
+"nmap     <D-F>n <Plug>CtrlSFCwordPath
+"nmap     <D-F>p <Plug>CtrlSFPwordPath
+"nnoremap <D-F>o :CtrlSFOpen<CR>
+"nnoremap <D-F>t :CtrlSFToggle<CR>
+"inoremap <D-F>t <Esc>:CtrlSFToggle<CR>
+
+let g:ctrlsf_auto_preview = 1
+
+let g:ctrlsf_auto_focus = {
+\    'at': 'done',
+\    'duration_less_than': 1000
+\}
+
+let g:ctrlsf_mapping = {
+\    "open"    : ["<CR>", "o"],
+\    "openb"   : "O",
+\    "split"   : "i",
+\    "vsplit"  : "s",
+\    "tab"     : "t",
+\    "tabb"    : "T",
+\    "popen"   : "p",
+\    "popenf"  : "P",
+\    "quit"    : "q",
+\    "next"    : ['n', "<C-J>"],
+\    "prev"    : ['N', "<C-K>"],
+\    "pquit"   : "q",
+\    "loclist" : "",
+\    "chgmode" : "M",
+\    "stop"    : "<C-C>",
+\}
+
+
+" QFEnter
+let g:qfenter_keymap       = {}
+let g:qfenter_keymap.open  = ['<CR>', 'o']
+let g:qfenter_keymap.vopen = ['<C-v>']
+let g:qfenter_keymap.hopen = ['<C-h>', '<C-s>']
+let g:qfenter_keymap.topen = ['<C-t>']
+"let g:qfenter_enable_autoquickfix = 0
+
+" Unexpand tabs
+nmap <leader>une :%!unexpand -t 4 %<cr>
+
+" Hide ~ at empty lines
+:hi NonText guifg=bg "TODO find a working solutiong
+
+" Settings for :term windows
+"autocmd TerminalWinOpen call s:term_settings()
+"function! s:term_settings() abort
+  "echo 'hi'
+  ":IndentGuidesDisable
+  "set nonumber
+"endfunction 
+
+augroup terminal
+    autocmd!
+    " Disables number lines on terminal buffers
+    autocmd TerminalOpen * setlocal nonumber norelativenumber
+    " allows you to use Ctrl-c on terminal window
+    autocmd TerminalOpen * nnoremap <buffer> <C-c> i<C-c>
+    " Disable Indent Guides
+    autocmd TerminalOpen * :IndentGuidesDisable
+augroup END
+
+
+"Ultisnips
+"let g:UltiSnipsExpandTrigger="<CR>"
+"let g:UltiSnipsSnippetDirectories=[$HOME.'/.vim/UltiSnips']
+"let g:UltiSnipsSnippetsDir=$HOME.'/.vim/UltiSnips/'
+"

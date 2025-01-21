@@ -1,0 +1,5 @@
+#!/bin/sh
+dns-sd -P "JD-iTunes" _daap._tcp. local 3690 localhost.local. 127.0.0.1 "Arbitrary text record" &
+PID=$!
+ssh -vvvC -N -L 3690:localhost:3689 JD@dum.asuscomm.com
+kill $PID

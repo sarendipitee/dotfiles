@@ -1,0 +1,7 @@
+packages/vim/.config/vim/unused-bundle
+packages/vim/.config/vim/bundle
+packages/vim/.config/vim/plugged
+packages/vim/.config/vim/tmp
+packages/vim/.config/vim/undo
+packages/vim/.config/vim/view
+packages/vim/.config/vim/.netrwhist

@@ -1,0 +1,1 @@
+ssh root@74.100.197.216 -i ~/.ssh/id_rsa

@@ -1,0 +1,22 @@
+#!/bin/zsh
+
+source "$ZDOTDIR/colors.sh"
+
+url="$1"
+
+section_header "Downloading $url"
+
+details=$(yt-dlp -x -j "$1")
+
+filename=$(echo "$details" | jq .filename )
+
+section_header "Extracted $filename from yt-dlp"
+
+opusFile="${$(basename $filename)%.*}.opus"
+
+if [[ -f opusFile ]]; then
+	section_header "Converting to mp3"
+	opus2mp3 $opusFile
+fi
+
+	green "done\n"

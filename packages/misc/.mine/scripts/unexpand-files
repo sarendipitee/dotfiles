@@ -1,0 +1,9 @@
+#!/bin/bash
+
+SIZE=${1:-4}
+
+for a in **/*.*
+do
+	unexpand -t $SIZE "$a" > "$a".tmp
+	mv "$a".tmp "$a"
+done

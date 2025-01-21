@@ -1,0 +1,7 @@
+#!/bin/zsh
+
+if [[ -d "$1" ]]; then
+	find . -iname '*.opus' -exec bash -c 'D=$(dirname "{}"); B=$(basename "{}"); mkdir "$D/mp3/"; ffmpeg -i "{}" -ab 320k -map_metadata 0:s:a:0 -id3v2_version 3 "$D/${B%.*}.mp3"'
+else
+	ffmpeg -i $1 -ab 320k -map_metadata 0:s:a:0 -id3v2_version 3 "${$(basename $1)%.*}.mp3"
+fi

@@ -1,0 +1,64 @@
+[user]
+	name = Jonathan Dumaine
+	email = jonathan@dumstruck.com
+[color]
+	ui = auto
+	diff = always
+	status = always
+	branch = always
+	interactive = always
+[core]
+	excludesfile = /Users/JD/.gitignore
+	editor = vim -u NORC
+	ignorecase = false
+	fileMode = true
+	trustctime = false
+[difftool "Kaleidoscope"]
+        cmd = ksdiff-wrapper git \"$LOCAL\" \"$REMOTE\"
+[diff]
+	tool = Kaleidoscope
+	mnemonicprefix = true
+	renames = copies
+[alias]
+	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --
+	co = checkout
+	up = pull --rebase --autostash
+	mr = !sh -c 'git fetch $1 merge-requests/$2/head:mr-$1-$2 && git checkout mr-$1-$2' -
+	fix = !${EDITOR} -- $(git diff --name-only --relative --diff-filter=U | uniq)
+[mergetool]
+	keepBackup = true
+[branch]
+	autosetuprebase = always
+[push]
+	default = current
+[credential]
+	helper = osxkeychain
+[filter "media"]
+	clean = git-media-clean %f
+	smudge = git-media-smudge %f
+[difftool "sourcetree"]
+	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
+	path = 
+[mergetool "sourcetree"]
+	cmd = /Applications/SourceTree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
+	trustExitCode = true
+[pull]
+	rebase = true
+[rebase]
+	autoStash = true
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
+[merge]
+	commit = no
+	ff = no
+[rerere]
+	enabled = true
+;[gpg]
+	;format = ssh
+;[gpg "ssh"]
+	;program = /Applications/1Password.app/Contents/MacOS/op-ssh-sign
+;[commit]
+	;gpgsign = true

@@ -1,0 +1,8 @@
+#!/bin/bash
+
+input=$1
+output=${input%.*}.mp4
+
+echo Converting $input to $output...
+
+ffmpeg -i "$input" -c:v copy -c:a aac -q:a 4 "$output"

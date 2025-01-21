@@ -1,0 +1,4 @@
+#!/bin/bash
+
+
+echo "background url('data:image/png;base64, `base64 $1`')" | pbcopy

@@ -1,0 +1,52 @@
+#!/bin/bash
+
+
+
+#Shitty version
+#cd ~/Dropbox/Applications/lib/node_modules/
+#for file in `\ls`; do
+    #npm i -gf $file
+#done
+
+
+#Slow search
+#FILES=`grep '#!\s*/usr/bin/env node' -ls ~/Dropbox/Applications/bin/*`
+
+#Fast search
+cd ~/Dropbox/Applications/bin
+FILES=`ack --noenv -Hclw '#!\s*/usr/bin/env node' | sed 's/:1//'`
+
+echo $FILES
+
+for file in $FILES; do
+
+    fileName=`basename $file`
+    #fileMD5=`md5 $file`
+    #echo $file, MD5 = $fileMD5
+    
+    moduleFiles=`find ~/Dropbox/Applications/lib/node_modules/$fileName -type f`
+    #echo moduleFiles = $moduleFiles
+    for moduleFile in $moduleFiles; do
+        #echo $moduleFile
+        if cmp $file $moduleFile >/dev/null; then
+            echo Found matching file for $fileName: $moduleFile
+            rm $file
+            ln -s $moduleFile $fileName
+        fi
+        continue
+    done;
+
+    echo ------------------
+done
+
+
+echo '....annnd for NPM'
+
+rm npm
+ln -s ../lib/node_modules/npm/bin/npm-cli.js npm
+
+
+rm grunt
+ln -s ../lib/node_modules/grunt-cli/bin/grunt grunt
+
+

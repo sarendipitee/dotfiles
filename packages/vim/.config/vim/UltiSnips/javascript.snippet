@@ -1,0 +1,14 @@
+snippet rmob "import React...mobx, export default class"
+	import React from 'react';
+	import {observer, inject} from 'mobx-react';
+
+	@observer
+	export default class ${0} extends React.Component {
+
+		render() {
+			return ${1}
+		}
+	}
+endsnippet
+
+

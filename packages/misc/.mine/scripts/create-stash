@@ -1,0 +1,34 @@
+#!/usr/bin/env node
+
+var fs = require('fs');
+
+var wordList = ['Anteater', 'Armenian', 'Asterisk', 'Astronomy', 'Australian', 'Bagel', 'Bench', 'Bicycle', 'Bongo', 'Breath', 'Bugle', 'Clamp', 'Cactus', 'Cardboard', 'Cast', 'Cello', 'Chauffeur', 'Citizenship', 'Conga', 'Crown', 'Cupcake', 'Customer', 'Disadvantage', 'Distribution', 'Diving', 'Dream', 'Dredger', 'Dressing', 'Drizzle', 'Earthquake', 'Ease', 'Egypt', 'Elbow', 'Environment', 'Eyebrow', 'Faucet', 'Fiction', 'File', 'Flame', 'Flesh', 'Form', 'Garden', 'Gauge', 'Grain', 'Greece', 'Gym', 'Hardhat', 'Hole', 'Hot', 'Hub', 'Impulse', 'Inch', 'Iron', 'Ketchup', 'Lamb', 'Landmine', 'Lead', 'Leather', 'Light', 'Malaysia', 'Manx', 'Medicine', 'Mine', 'Missile', 'Motorcycle', 'Muscle', 'Napkin', 'Onion', 'Otter', 'Ox', 'Patient', 'Philippines', 'Pilot', 'Plough', 'Priest', 'Print', 'Processing', 'Pump', 'Puppy', 'Rake', 'Roast', 'Robin', 'Rooster', 'Rugby', 'Samurai', 'Sandwich', 'Shirt', 'Skate', 'Slip', 'Slope', 'Snake', 'Softball', 'Spring', 'Sprout', 'Star', 'Storm', 'Sugar', 'Tempo', 'Theory', 'Tile', 'Town', 'Trail', 'Transport', 'Trial', 'Tub', 'Ukrainian', 'Viola', 'Vision', 'Wing', 'Yacht'];
+
+var args = process.argv.slice(2);
+
+console.log('args');
+
+var depth = 4 || args.depth;
+
+var height = 10 || args.height;
+
+console.log('Now building a stash with depth '+depth+', and height '+height);
+
+function generateDirs(base, height, depth)
+{
+    if(depth == 0)
+        return;
+
+    for(var i = 0; i < height; i++)
+    {
+        var newFolder = i == 0 ? base+'/untitled folder' : base+'/untitled folder '+i;
+        console.log('Creating '+newFolder);
+        fs.mkdirSync(__dirname+newFolder);
+        generateDirs(newFolder, height, depth-1);
+    }
+
+}
+
+generateDirs('', height, depth)
+
+console.log('built');
