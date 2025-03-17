@@ -3,6 +3,19 @@ return {
     "nvim-lspconfig",
     opts = {
       inlay_hints = { enabled = false },
+      servers = {
+        cssls = {},
+        cssmodules_ls = {},
+        vtsls = {
+          keys = {
+            {
+              "<leader>cm",
+              LazyVim.lsp.action["source.addMissingImports.ts"],
+              desc = "Add missing imports",
+            },
+          },
+        },
+      },
     },
   },
   {

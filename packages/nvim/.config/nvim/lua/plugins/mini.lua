@@ -6,4 +6,10 @@ return {
       require("mini.align").setup()
     end,
   },
+  {
+    -- conflicts with blink-cmp
+    "echasnovski/mini.pairs",
+    version = "*",
+    enabled = false,
+  },
 }

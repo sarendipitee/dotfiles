@@ -4,8 +4,8 @@ return {
     dashboard = {
       sections = {
         { section = "header" },
-        { section = "keys", gap = 1, padding = 2 },
-        { section = "projects", title = "Projects", gap = 4, padding = { 2, 2 } },
+        { section = "keys", padding = { 2, 1 } },
+        { section = "projects", title = "Projects", padding = { 0, 1 } },
         { section = "startup" },
       },
       preset = {
