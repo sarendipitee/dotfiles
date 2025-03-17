@@ -33,7 +33,10 @@ compctl -k hosts ftp lftp ncftp ssh w3m lynx links elinks nc telnet rlogin host
 compctl -k hosts -P '@' finger
 
 # Uncomment the following line to enable command auto-correction.
-export ENABLE_CORRECTION="true"
+# export ENABLE_CORRECTION="true"
+
+# Enable changing of curosr on mode
+export VI_MODE_SET_CURSOR=true
 
 # Uncomment the following line if you want to disable marking untracked files
 # under VCS as dirty. This makes repository status check for large repositories

@@ -100,6 +100,9 @@ mov2gif() {
 # tsx
 alias tsx="npx tsx"
 
+#pnpm
+alias p="pnpm"
+
 # Read node dependencies
 alias deps='jq .dependencies < package.json'
 alias devdeps='jq .devDependencies < package.json'

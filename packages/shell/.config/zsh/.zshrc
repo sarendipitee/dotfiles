@@ -5,3 +5,4 @@ source "$ZDOTDIR/antigen.zsh"
 
 antigen init "$ZDOTDIR/antigenrc.zsh"
 
+# zprof 

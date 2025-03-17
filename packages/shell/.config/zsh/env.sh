@@ -2,7 +2,6 @@
 
 # vim:filetype=zsh syntax=zsh tabstop=2 shiftwidth=2 softtabstop=2 expandtab autoindent fileencoding=utf-8
 
-
 # execute 'FIRST_INSTALL=true zsh' to debug the load order of the custom zsh configuration files
 test -n "${FIRST_INSTALL+1}" && echo "loading ${0}"
 
@@ -28,6 +27,9 @@ export PROJECTS_BASE_DIR="${HOME}/Projects"
 
 export DOTFILES_DIR=$PROJECTS_BASE_DIR/dotfiles
 
+# uv and some other tools put things in ~/.local/bin
+export PATH="$PATH:$XDG_DATA_HOME/../bin"
+
 # Executable scripts that are not shared as part of this public repo are present here
 export PERSONAL_BIN_DIR="${HOME}/.mine/bin"
 export PERSONAL_AUTOLOAD_DIR="${HOME}/.mine/autoload"
@@ -37,9 +39,9 @@ export PERSONAL_AUTOLOAD_DIR="${HOME}/.mine/autoload"
 export ARCH="$(uname -m)"
 export ARCHFLAGS="-arch ${ARCH}"
 if [[ "${ARCH}" =~ 'arm' ]]; then
-	export HOMEBREW_PREFIX='/opt/homebrew'
+  export HOMEBREW_PREFIX='/opt/homebrew'
 else
-	export HOMEBREW_PREFIX='/usr/local'
+  export HOMEBREW_PREFIX='/usr/local'
 fi
 export HOMEBREW_BUNDLE_FILE="${XDG_CONFIG_HOME}/homebrew/Brewfile"
 export HOMEBREW_NO_ANALYTICS=1
@@ -70,20 +72,19 @@ export PATH="/usr/local/bin:/usr/bin:$PATH"
 export ANDROID_USER_HOME="$XDG_DATA_HOME"/android
 
 #Python Path
-export PATH=$PATH:$HOME/Library/Python/3.9/bin
+# export PATH=$PATH:$HOME/Library/Python/3.9/bin
 export PYTHONSTARTUP="$XDG_CONFIG_HOME"/python/pythonrc
 
 #Postgres.app
-export PATH=$PATH:/Applications/Postgres.app/Contents/Versions/9.5/bin
 export PSQL_HISTORY="$XDG_STATE_HOME/psql_history"
 
 # Android platform tools
 export PATH=$PATH:~/.mine/bin/android
 
 #Rust/Cargo
-export PATH=$PATH:~/.cargo/bin
 export CARGO_HOME="$XDG_DATA_HOME"/cargo
 export RUSTUP_HOME="$XDG_DATA_HOME"/rustup
+export PATH="$PATH:$CARGO_HOME/bin"
 
 # gnupg
 export GNUPGHOME="$XDG_DATA_HOME"/gnupg
@@ -94,6 +95,10 @@ export KERAS_HOME="${XDG_STATE_HOME}/keras"
 # Apparix (directory bookmarking)
 export APPARIX_HOME="${XDG_CONFIG_HOME}/apparix"
 
+# LM Studio
+export LM_STUDIO_API_KEY='xxx'
+export LM_STUDIO_API_BASE='http://localhost:1234/v1'
+
 # Node
 export NODE_REPL_HISTORY="$XDG_STATE_HOME"/node_repl_history
 export NPM_CONFIG_INIT_MODULE="$XDG_CONFIG_HOME"/npm/config/npm-init.js
@@ -102,6 +107,10 @@ export NPM_CONFIG_TMP="$XDG_RUNTIME_DIR"/npm
 export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME"/npm/npmrc
 export TS_NODE_HISTORY="$XDG_STATE_HOME"/ts_node_repl_history
 
+# pnpm
+export PNPM_HOME="$XDG_DATA_HOME/pnpm"
+export PATH="$PNPM_HOME:$PATH"
+
 #NVM
 export NVM_DIR="$HOME/.local/nvm"
 
@@ -109,7 +118,11 @@ export NVM_DIR="$HOME/.local/nvm"
 export NUGET_PACKAGES="$XDG_CACHE_HOME"/NuGetPackages
 
 # Go
-export PATH=$PATH:~/Projects/go/bin
+# export PATH=$PATH:~/Projects/go/bin
+export GOPATH=$HOME/golang
+export GOROOT=/opt/homebrew/opt/go/libexec
+export PATH=$PATH:$GOPATH/bin
+export PATH=$PATH:$GOROOT/bin
 
 # Java
 export JAVA_HOME=/opt/homebrew/opt/openjdk/
