@@ -5,10 +5,18 @@ OS=$(uname)
 # This script is idempotent and will restore your local setup to the same state even if run multiple times.
 # In most cases, the script will provide warning messages if skipping certain steps. Each such message will be useful to give you a hint about what to do to force rerunning of that step.
 
+is_non_zero_string() {
+	! test -z "${1}"
+}
+
+is_directory() {
+	is_non_zero_string "${1}" && test -d "${1}"
+}
+
 script_start_time=$(date +%s)
 echo "==> Script started at: $(date)"
 
-DOT_FILES_DIR="$HOME/projects/dotfiles"
+DOTFILES_DIR="$HOME/projects/dotfiles"
 
 #############################################################
 # Utility funcs used only within this script #
@@ -28,17 +36,6 @@ keep_sudo_alive() {
 	done 2>/dev/null &
 }
 
-
-######################################################################################################################
-# Set DNS of 8.8.8.8 before proceeding (in some cases, for eg Jio Wifi, github doesn't resolve at all and times out) #
-######################################################################################################################
-
-if test -n "$(curl ipinfo.io | \grep -i jio)"; then
-	echo '==> Setting DNS for WiFi'
-	sudo networksetup -setdnsservers Wi-Fi 8.8.8.8
-fi
-
-
 ###############################################################################################
 # Ask for the administrator password upfront and keep it alive until this script has finished #
 ###############################################################################################
@@ -52,48 +49,33 @@ keep_sudo_alive()
 # section_header 'Verifying rootless status'
 # [[ "$(/usr/bin/csrutil status | awk '/status/ {print $5}' | sed 's/\.$//')" == "enabled" ]] && error "csrutil ('rootless') is enabled. Please disable in boot screen and run again!"
 
-#####################
-# Turn on FileVault #
-#####################
-section_header 'Verifying FileVault status'
-[[ "$(fdesetup isactive)" != 'true' ]] && error 'FileVault is not turned on. Please encrypt your hard disk!'
-
 ##################################
 # Install command line dev tools #
 ##################################
-section_header 'Installing xcode command-line tools'
-if ! is_directory '/Library/Developer/CommandLineTools/usr/bin'; then
-	# install using the non-gui cmd-line alone
-	touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
-	sudo softwareupdate -ia --agree-to-license --force
-	rm /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
-	success 'Successfully installed xcode command-line tools'
-else
-	warn 'skipping installation of xcode command-line tools since its already present'
+if [[ $OS == Darwin ]]; then
+  section_header 'Installing xcode command-line tools'
+  if ! is_directory '/Library/Developer/CommandLineTools/usr/bin'; then
+    # install using the non-gui cmd-line alone
+    touch /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+    sudo softwareupdate -ia --agree-to-license --force
+    rm /tmp/.com.apple.dt.CommandLineTools.installondemand.in-progress
+    success 'Successfully installed xcode command-line tools'
+  else
+    warn 'skipping installation of xcode command-line tools since its already present'
+  fi
 fi
 
 ####################
 # Install dotfiles #
 ####################
 section_header "Installing dotfiles into '$(yellow "${DOTFILES_DIR}")'"
-if is_non_zero_string "${DOTFILES_DIR}" && ! is_git_repo "${DOTFILES_DIR}"; then
+if is_non_zero_string "${DOTFILES_DIR}" && ! is_directory "${DOTFILES_DIR}"; then
 	
 	# Delete the auto-generated .zshrc since that needs to be replaced by the one in the DOTFILES_DIR repo
 	rm -rf "${HOME}/.zshrc"
 
 	# Note: Cloning with https since the ssh keys will not be present at this time
 	clone_repo_into "https://github.com/jondum/dotfiles" "${DOTFILES_DIR}"
-
-	append_to_path_if_dir_exists "${DOTFILES_DIR}/scripts"
-
-	$(cd "${DOTFILES_DIR}" && git submodule update --init --recursive)
-
-	# Use the https protocol for pull, but use ssh/git for push
-	git -C "${DOTFILES_DIR}" config url.ssh://git@github.com/.pushInsteadOf https://github.com/
-
-	# Setup any sudo access password from cmd-line to also invoke the gui touchId prompt
-	approve-fingerprint-sudo.sh
-
 
 else
 	warn "skipping cloning the dotfiles repo since '${DOTFILES_DIR}' is either not defined or is already a git repo"
@@ -184,6 +166,7 @@ if [[ $OS == Linux ]]; then
     neovim \
     watchman \
     rustup \
+    zsh \
 
 fi
 
