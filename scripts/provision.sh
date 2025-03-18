@@ -13,10 +13,13 @@ is_directory() {
 	is_non_zero_string "${1}" && test -d "${1}"
 }
 
+DOTFILES_DIR="$HOME/projects/dotfiles"
+
+source "${DOTFILES_DIR}/packages/shell/.config/zsh/colors.sh"
+source "${DOTFILES_DIR}/packages/shell/.config/zsh/functions.sh"
+
 script_start_time=$(date +%s)
 echo "==> Script started at: $(date)"
-
-DOTFILES_DIR="$HOME/projects/dotfiles"
 
 #############################################################
 # Utility funcs used only within this script #
@@ -117,14 +120,13 @@ if [[ $OS == Linux ]]; then
     git-lfs \
     stow \
     ffmpeg \
-    eza \ 
+    eza \
     bat \
     fzf \
     jq \
     ripgrep \
     libpq-dev \
     httpie \
-    lua \
     llvm \
     neovim \
     watchman \
@@ -133,7 +135,7 @@ if [[ $OS == Linux ]]; then
 
 fi
 
-zsh $DOTFILES_DIR/scripts/create-links.sh
+sh "${DOTFILES_DIR}/scripts/create-links.sh"
 
 # Grab rest of env vars and config
 source "${DOTFILES_DIR}/packages/shell/.zshenv"
@@ -141,7 +143,7 @@ source "${DOTFILES_DIR}/packages/shell/.zshenv"
 #################################################################################
 # Ensure that some of the directories corresponding to the env vars are created #
 #################################################################################
-section_header 'Creating directories defined by various env vars'
+section_header 'Creating config/cache directories'
 ensure_dir_exists "${DOTFILES_DIR}"
 ensure_dir_exists "${PROJECTS_BASE_DIR}"
 ensure_dir_exists "${PERSONAL_BIN_DIR}"
@@ -150,17 +152,22 @@ ensure_dir_exists "${XDG_CONFIG_HOME}"
 ensure_dir_exists "${XDG_DATA_HOME}"
 ensure_dir_exists "${XDG_STATE_HOME}"
 
-ensure_dir_exists "${XDG_CONFIG_HOME}/zsh"
+ensure_dir_exists "${XDG_CACHE_HOME}/zsh"
+ensure_dir_exists "${XDG_STATE_HOME}/zsh"
+
+echo Creating zsh HISTFILE $HISTFILE
 touch $HISTFILE
 
-! is_non_zero_string "${HOMEBREW_PREFIX}" && error "'HOMEBREW_PREFIX' env var is not set; something is wrong. Please correct before retrying!"
 
 section_header 'Installing node'
+ensure_dir_exists $NVM_DIR
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
+source $NVM_DIR/nvm.sh
 nvm install node
 
 section_header 'Installing python'
 curl -LsSf https://astral.sh/uv/install.sh | sh
+source $
 uv python install
 
 ################################
