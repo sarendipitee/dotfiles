@@ -81,43 +81,6 @@ else
 	warn "skipping cloning the dotfiles repo since '${DOTFILES_DIR}' is either not defined or is already a git repo"
 fi
 
-# Grab rest of env vars and config
-source "${DOTFILES_DIR}/packages/shell/.zshenv"
-
-#################################################################################
-# Ensure that some of the directories corresponding to the env vars are created #
-#################################################################################
-section_header 'Creating directories defined by various env vars'
-ensure_dir_exists "${DOTFILES_DIR}"
-ensure_dir_exists "${PROJECTS_BASE_DIR}"
-ensure_dir_exists "${PERSONAL_BIN_DIR}"
-ensure_dir_exists "${XDG_CACHE_HOME}"
-ensure_dir_exists "${XDG_CONFIG_HOME}"
-ensure_dir_exists "${XDG_DATA_HOME}"
-ensure_dir_exists "${XDG_STATE_HOME}"
-
-ensure_dir_exists "${XDG_CONFIG_HOME}/zsh"
-touch $HISTFILE
-
-############################
-# Disable macos gatekeeper #
-############################
-# section_header 'Disabling macos gatekeeper'
-# sudo spectl --master-disable
-
-##############################
-# Install custom omz plugins #
-##############################
-# Note: Some of these are available via brew, but enabling them will take an additional step and the only other benefit (of keeping them up-to-date using brew can still be achieved by updating the git repos directly)
-section_header 'Installing custom omz plugins'
-# Note: These are not installed using homebrew since sourcing of the files needs to be explicit in .zshrc
-# Also, the order of these being referenced in the zsh session startup (for vanilla OS) will cause a warning to be printed though the rest of the shell startup sequence is still performed. Ultimately, until they become included by default into omz, keep them here as custom plugins
-
-! is_non_zero_string "${HOMEBREW_PREFIX}" && error "'HOMEBREW_PREFIX' env var is not set; something is wrong. Please correct before retrying!"
-
-# Load all zsh config files for PATH and other env vars to take effect
-FIRST_INSTALL=true load_zsh_configs
-
 ####################
 # Install homebrew #
 ####################
@@ -170,9 +133,27 @@ if [[ $OS == Linux ]]; then
 
 fi
 
+zsh $DOTFILES_DIR/scripts/create-links.sh
 
-# Note: Load all zsh config files for the 2nd time for PATH and other env vars to take effect (due to defensive programming)
-load_zsh_configs
+# Grab rest of env vars and config
+source "${DOTFILES_DIR}/packages/shell/.zshenv"
+
+#################################################################################
+# Ensure that some of the directories corresponding to the env vars are created #
+#################################################################################
+section_header 'Creating directories defined by various env vars'
+ensure_dir_exists "${DOTFILES_DIR}"
+ensure_dir_exists "${PROJECTS_BASE_DIR}"
+ensure_dir_exists "${PERSONAL_BIN_DIR}"
+ensure_dir_exists "${XDG_CACHE_HOME}"
+ensure_dir_exists "${XDG_CONFIG_HOME}"
+ensure_dir_exists "${XDG_DATA_HOME}"
+ensure_dir_exists "${XDG_STATE_HOME}"
+
+ensure_dir_exists "${XDG_CONFIG_HOME}/zsh"
+touch $HISTFILE
+
+! is_non_zero_string "${HOMEBREW_PREFIX}" && error "'HOMEBREW_PREFIX' env var is not set; something is wrong. Please correct before retrying!"
 
 section_header 'Installing node'
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
@@ -181,26 +162,6 @@ nvm install node
 section_header 'Installing python'
 curl -LsSf https://astral.sh/uv/install.sh | sh
 uv python install
-
-
-###################################################################
-# Restore the preferences from the older machine into the new one #
-###################################################################
-#
-# section_header 'Restore preferences'
-# if command_exists 'osx-defaults.sh'; then
-#   osx-defaults.sh -s
-#   success 'Successfully baselines preferences'
-# else
-#   warn "skipping baselining of preferences since 'osx-defaults.sh' couldn't be found in the PATH; Please baseline manually and follow it up with re-import of the backed-up preferences"
-# fi
-#
-# if command_exists 'capture-defaults.sh'; then
-#   capture-defaults.sh i
-#   success 'Successfully restored preferences from backup'
-# else
-#   warn "skipping importing of preferences since 'capture-defaults.sh' couldn't be found in the PATH; Please set it up manually"
-# fi
 
 ################################
 # Recreate the zsh completions #
