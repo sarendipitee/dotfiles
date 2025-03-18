@@ -155,6 +155,7 @@ if [[ $OS == Darwin ]]; then
   else
     warn "skipping installation of homebrew since it's already installed"
   fi
+
   # TODO: Need to investigate why this step exits on a vanilla OS's first run of this script
   # Note: Do not set the 'HOMEBREW_BASE_INSTALL' in this script - since its supposed to run idempotently. Also, don't run the cleanup of pre-installed brews/casks (for the same reason)
   brew bundle check || brew bundle || true
@@ -162,26 +163,61 @@ if [[ $OS == Darwin ]]; then
 
 fi
 
+if [[ $OS == Linux ]]; then
+
+  sudo apt install -y \
+    avahi-daemon \
+    g++ \
+    make \
+    git-lfs \
+    stow \
+    ffmpeg \
+    eza \ 
+    bat \
+    fzf \
+    jq \
+    ripgrep \
+    libpq-dev \
+    httpie \
+    lua \
+    llvm \
+    neovim \
+    watchman \
+    rustup \
+
+fi
+
+
 # Note: Load all zsh config files for the 2nd time for PATH and other env vars to take effect (due to defensive programming)
 load_zsh_configs
+
+section_header 'Installing node'
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
+nvm install node
+
+section_header 'Installing python'
+curl -LsSf https://astral.sh/uv/install.sh | sh
+uv python install
+
 
 ###################################################################
 # Restore the preferences from the older machine into the new one #
 ###################################################################
-section_header 'Restore preferences'
-if command_exists 'osx-defaults.sh'; then
-  osx-defaults.sh -s
-  success 'Successfully baselines preferences'
-else
-  warn "skipping baselining of preferences since 'osx-defaults.sh' couldn't be found in the PATH; Please baseline manually and follow it up with re-import of the backed-up preferences"
-fi
-
-if command_exists 'capture-defaults.sh'; then
-  capture-defaults.sh i
-  success 'Successfully restored preferences from backup'
-else
-  warn "skipping importing of preferences since 'capture-defaults.sh' couldn't be found in the PATH; Please set it up manually"
-fi
+#
+# section_header 'Restore preferences'
+# if command_exists 'osx-defaults.sh'; then
+#   osx-defaults.sh -s
+#   success 'Successfully baselines preferences'
+# else
+#   warn "skipping baselining of preferences since 'osx-defaults.sh' couldn't be found in the PATH; Please baseline manually and follow it up with re-import of the backed-up preferences"
+# fi
+#
+# if command_exists 'capture-defaults.sh'; then
+#   capture-defaults.sh i
+#   success 'Successfully restored preferences from backup'
+# else
+#   warn "skipping importing of preferences since 'capture-defaults.sh' couldn't be found in the PATH; Please set it up manually"
+# fi
 
 ################################
 # Recreate the zsh completions #
