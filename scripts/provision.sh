@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 
-# vim:filetype=zsh syntax=zsh tabstop=2 shiftwidth=2 softtabstop=2 expandtab autoindent fileencoding=utf-8
+OS=$(uname)
 
 # This script is idempotent and will restore your local setup to the same state even if run multiple times.
 # In most cases, the script will provide warning messages if skipping certain steps. Each such message will be useful to give you a hint about what to do to force rerunning of that step.
@@ -8,7 +8,7 @@
 script_start_time=$(date +%s)
 echo "==> Script started at: $(date)"
 
-DOT_FILES_DIR="$HOME/.mystuff/dotfiles"
+DOT_FILES_DIR="$HOME/projects/dotfiles"
 
 #############################################################
 # Utility funcs used only within this script #
@@ -16,12 +16,6 @@ DOT_FILES_DIR="$HOME/.mystuff/dotfiles"
 
 section_header() {
   echo "$(blue '==>') $(purple "${1}")"
-}
-
-# These repos can be alternatively tracked using git submodules, but by doing so, any new change in the submodule, will show up as a new 
-# commit in the main (home) repo. To avoid this "noise", I prefer to decouple them
-clone_omz_plugin_if_not_present() {
-	clone_repo_into "${1}" "${ZSH_CUSTOM}/plugins/$(extract_last_segment "${1}")"
 }
 
 keep_sudo_alive() {
@@ -78,7 +72,6 @@ else
 	warn 'skipping installation of xcode command-line tools since its already present'
 fi
 
-
 ####################
 # Install dotfiles #
 ####################
@@ -101,12 +94,13 @@ if is_non_zero_string "${DOTFILES_DIR}" && ! is_git_repo "${DOTFILES_DIR}"; then
 	# Setup any sudo access password from cmd-line to also invoke the gui touchId prompt
 	approve-fingerprint-sudo.sh
 
-	# Grab rest of env vars and config
-	source "${DOTFILES_DIR}/packages/shell/.zshrc/"
 
 else
 	warn "skipping cloning the dotfiles repo since '${DOTFILES_DIR}' is either not defined or is already a git repo"
 fi
+
+# Grab rest of env vars and config
+source "${DOTFILES_DIR}/packages/shell/.zshenv"
 
 #################################################################################
 # Ensure that some of the directories corresponding to the env vars are created #
@@ -120,22 +114,14 @@ ensure_dir_exists "${XDG_CONFIG_HOME}"
 ensure_dir_exists "${XDG_DATA_HOME}"
 ensure_dir_exists "${XDG_STATE_HOME}"
 
+ensure_dir_exists "${XDG_CONFIG_HOME}/zsh"
+touch $HISTFILE
+
 ############################
 # Disable macos gatekeeper #
 ############################
 # section_header 'Disabling macos gatekeeper'
 # sudo spectl --master-disable
-
-#####################
-# Install oh-my-zsh #
-#####################
-section_header "Installing oh-my-zsh into '$(yellow "${HOME}/.oh-my-zsh")'"
-if ! is_directory "${HOME}/.oh-my-zsh"; then
-	sh -c "$(ZSH= curl -fsSL https://install.ohmyz.sh/)" "" --unattended
-	success "Successfully installed oh-my-zsh into '$(yellow "${ZSH})'"
-else
-	warn "skipping installation of oh-my-zsh since '${ZSH}' is already present"
-fi
 
 ##############################
 # Install custom omz plugins #
@@ -144,9 +130,6 @@ fi
 section_header 'Installing custom omz plugins'
 # Note: These are not installed using homebrew since sourcing of the files needs to be explicit in .zshrc
 # Also, the order of these being referenced in the zsh session startup (for vanilla OS) will cause a warning to be printed though the rest of the shell startup sequence is still performed. Ultimately, until they become included by default into omz, keep them here as custom plugins
-clone_omz_plugin_if_not_present https://github.com/zdharma-continuum/fast-syntax-highlighting
-clone_omz_plugin_if_not_present https://github.com/zsh-users/zsh-autosuggestions
-clone_omz_plugin_if_not_present https://github.com/zsh-users/zsh-completions
 
 ! is_non_zero_string "${HOMEBREW_PREFIX}" && error "'HOMEBREW_PREFIX' env var is not set; something is wrong. Please correct before retrying!"
 
@@ -156,24 +139,28 @@ FIRST_INSTALL=true load_zsh_configs
 ####################
 # Install homebrew #
 ####################
-section_header "Installing homebrew into '$(yellow "${HOMEBREW_PREFIX}")'"
-if ! command_exists brew; then
-	# Prep for installing homebrew
-	sudo mkdir -p "${HOMEBREW_PREFIX}/tmp" "${HOMEBREW_PREFIX}/repository" "${HOMEBREW_PREFIX}/plugins" "${HOMEBREW_PREFIX}/bin"
-	sudo chown -fR "$(whoami)":admin "${HOMEBREW_PREFIX}"
-	chmod u+w "${HOMEBREW_PREFIX}"
+if [[ $OS == Darwin ]]; then
 
-	NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-	success 'Successfully installed homebrew'
+  section_header "Installing homebrew into '$(yellow "${HOMEBREW_PREFIX}")'"
+  if ! command_exists brew; then
+    # Prep for installing homebrew
+    sudo mkdir -p "${HOMEBREW_PREFIX}/tmp" "${HOMEBREW_PREFIX}/repository" "${HOMEBREW_PREFIX}/plugins" "${HOMEBREW_PREFIX}/bin"
+    sudo chown -fR "$(whoami)":admin "${HOMEBREW_PREFIX}"
+    chmod u+w "${HOMEBREW_PREFIX}"
 
-	eval "$(${HOMEBREW_PREFIX}/bin/brew shellenv)"
-else
-	warn "skipping installation of homebrew since it's already installed"
+    NONINTERACTIVE=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    success 'Successfully installed homebrew'
+
+    eval "$(${HOMEBREW_PREFIX}/bin/brew shellenv)"
+  else
+    warn "skipping installation of homebrew since it's already installed"
+  fi
+  # TODO: Need to investigate why this step exits on a vanilla OS's first run of this script
+  # Note: Do not set the 'HOMEBREW_BASE_INSTALL' in this script - since its supposed to run idempotently. Also, don't run the cleanup of pre-installed brews/casks (for the same reason)
+  brew bundle check || brew bundle || true
+  success 'Successfully installed cmd-line and gui apps using homebrew'
+
 fi
-# TODO: Need to investigate why this step exits on a vanilla OS's first run of this script
-# Note: Do not set the 'HOMEBREW_BASE_INSTALL' in this script - since its supposed to run idempotently. Also, don't run the cleanup of pre-installed brews/casks (for the same reason)
-brew bundle check || brew bundle || true
-success 'Successfully installed cmd-line and gui apps using homebrew'
 
 # Note: Load all zsh config files for the 2nd time for PATH and other env vars to take effect (due to defensive programming)
 load_zsh_configs
@@ -223,7 +210,7 @@ fi
 ###############################
 # Cleanup temp functions, etc #
 ###############################
-unfunction clone_omz_plugin_if_not_present
+# unfunction clone_omz_plugin_if_not_present
 
 echo "\n"
 success '** Finished auto installation process: MANUALLY QUIT AND RESTART iTerm2 and Terminal apps **'
