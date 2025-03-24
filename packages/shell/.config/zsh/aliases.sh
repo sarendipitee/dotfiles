@@ -102,6 +102,8 @@ alias tsx="npx tsx"
 
 #pnpm
 alias p="pnpm"
+alias px="pnpm dlx"
+alias pxe="pnpm exec"
 
 # Read node dependencies
 alias deps='jq .dependencies < package.json'

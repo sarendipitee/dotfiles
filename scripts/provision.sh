@@ -113,10 +113,16 @@ fi
 
 if [[ $OS == Linux ]]; then
 
+	section_header 'Installing basic utils'
+
+	sudo apt update
+
   sudo apt install -y \
     avahi-daemon \
     g++ \
+		clang \
     make \
+    llvm \
     git-lfs \
     stow \
     ffmpeg \
@@ -127,13 +133,44 @@ if [[ $OS == Linux ]]; then
     ripgrep \
     libpq-dev \
     httpie \
-    llvm \
     neovim \
     watchman \
     rustup \
     zsh \
 
+		section_header 'Installing ET'
+		sudo apt-get install -y software-properties-common
+		sudo add-apt-repository ppa:jgmath2000/et
+		sudo apt-get update
+		sudo apt-get install et
+
+		section_header 'Installing Docker'
+		for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+		sudo apt-get update
+		sudo apt-get install ca-certificates curl
+		sudo install -m 0755 -d /etc/apt/keyrings
+		sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+		sudo chmod a+r /etc/apt/keyrings/docker.asc
+
+		# Add the repository to Apt sources:
+		echo \
+			"deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+			$(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+			sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+		sudo apt-get update
+
+		sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+
+		# add user to docker grouup
+		sudo groupadd docker
+		sudo usermod -aG docker $USER
+		sudo chmod 666 /var/run/docker.sock
+
+		sudo service docker start
+
 fi
+
+section_header 'Creating symlinks in home folder'
 
 sh "${DOTFILES_DIR}/scripts/create-links.sh"
 
@@ -159,16 +196,17 @@ echo Creating zsh HISTFILE $HISTFILE
 touch $HISTFILE
 
 
-section_header 'Installing node'
+section_header 'Installing nvm (node)'
 ensure_dir_exists $NVM_DIR
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
 source $NVM_DIR/nvm.sh
 nvm install node
 
-section_header 'Installing python'
+section_header 'Installing uv (python)'
 curl -LsSf https://astral.sh/uv/install.sh | sh
 source $
 uv python install
+
 
 ################################
 # Recreate the zsh completions #
