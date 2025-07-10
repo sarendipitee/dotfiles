@@ -14,3 +14,11 @@ vim.opt_global.cursorline = false
 
 -- show tabline only if needed
 vim.opt.showtabline = 1
+
+vim.opt.relativenumber = false
+
+vim.diagnostic.config({
+  -- Use the default configuration
+  -- virtual_lines = true,
+  virtual_text = { current_line = true },
+})

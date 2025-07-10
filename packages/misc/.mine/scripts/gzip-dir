@@ -1,0 +1,88 @@
+#!/bin/bash
+
+#
+# A simple bash script to gzip all files in a specified directory in parallel.
+#
+# Usage:
+#   ./compress_directory_parallel.sh /path/to/your/directory [num_threads]
+#
+# Description:
+# This script finds all regular files in the directory provided as the
+# first argument and compresses them in parallel using 'gzip'. It will
+# automatically skip any files that already have a .gz extension.
+#
+# It uses the `find` command to locate files and pipes the list to `xargs`,
+# which executes multiple `gzip` processes concurrently.
+#
+# The optional [num_threads] argument specifies how many parallel jobs to run.
+# If it's not provided, the script defaults to the number of available
+# processor cores on the system.
+#
+# Important:
+# By default, gzip replaces the original file with the compressed
+# version (e.g., 'myfile.txt' becomes 'myfile.txt.gz'). The original
+# uncompressed file is removed.
+#
+
+# --- Script Start ---
+
+# 1. Check for correct number of arguments
+# The script accepts one mandatory argument (directory) and one optional (threads).
+if [ "$#" -lt 1 ] || [ "$#" -gt 2 ]; then
+	echo "Error: Incorrect number of arguments provided."
+	echo "Usage: $0 <directory_path> [num_threads]"
+	exit 1
+fi
+
+# Assign the first argument to a variable for clarity.
+TARGET_DIR="$1"
+
+# 2. Determine the number of parallel jobs
+# Default to the number of processor cores if the second argument is not provided.
+# We check if `nproc` command is available, otherwise we use a sensible fallback.
+if command -v nproc &>/dev/null; then
+	DEFAULT_JOBS=$(nproc)
+else
+	DEFAULT_JOBS=4 # A reasonable fallback if nproc isn't installed
+fi
+NUM_JOBS=${2:-$DEFAULT_JOBS}
+
+# 3. Validate arguments
+# Ensure the path provided by the user actually exists and is a directory.
+if [ ! -d "$TARGET_DIR" ]; then
+	echo "Error: The path '$TARGET_DIR' is not a valid directory."
+	exit 1
+fi
+
+# Ensure the number of jobs is a positive integer.
+if ! [[ "$NUM_JOBS" =~ ^[0-9]+$ ]] || [ "$NUM_JOBS" -eq 0 ]; then
+	echo "Error: Number of threads must be a positive integer."
+	exit 1
+fi
+
+echo "Starting compression in directory: '$TARGET_DIR'"
+echo "Using up to $NUM_JOBS parallel jobs."
+echo "-------------------------------------"
+
+# 4. Find files and process them in parallel with xargs
+#
+# - `find "$TARGET_DIR" -maxdepth 1 -type f -not -name "*.gz" -print0`
+#   - `find`: The command to find files.
+#   - `"$TARGET_DIR"`: The directory to search in.
+#   - `-maxdepth 1`: Prevents find from descending into subdirectories.
+#   - `-type f`: Looks for regular files only (not directories, links, etc.).
+#   - `-not -name "*.gz"`: Excludes any files whose names end with .gz.
+#   - `-print0`: Prints the full filename followed by a null character. This is the
+#     safest way to handle filenames that contain spaces or special characters.
+#
+# - `xargs -0 -P "$NUM_JOBS" -I {} ...`
+#   - `xargs`: Executes a command for each item from standard input.
+#   - `-0`: Reads null-terminated items from input (to match `-print0`).
+#   - `-P "$NUM_JOBS"`: Sets the maximum number of processes to run at a time.
+#   - `-I {}`: Defines a placeholder `{}` that will be replaced by the input item (the filename).
+#   - `sh -c '...'`: Runs a small shell command for each file to provide progress output.
+#
+find "$TARGET_DIR" -maxdepth 1 -type f -not -name "*.gz" -print0 | xargs -0 -P "$NUM_JOBS" -I {} sh -c 'echo "Compressing: {}"; gzip "{}"'
+
+echo "-------------------------------------"
+echo "Compression process complete."

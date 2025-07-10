@@ -1,16 +1,3 @@
-# Load this first so that we prefer homebrew installed over XCode crap
-export PATH="/opt/homebrew/bin:$PATH"
-export PATH="/opt/homebrew/sbin:$PATH"
-
-# ZSH
-export HISTFILE="$XDG_STATE_HOME"/zsh/history
-
-# remove /usr/local/bin and /usr/bin
-export PATH=$(echo ":$PATH:" | sed -e "s#:/usr/local/bin:#:#g" -e "s/^://" -e "s/:$//")
-export PATH=$(echo ":$PATH:" | sed -e "s#:/usr/bin:#:#g" -e "s/^://" -e "s/:$//")
-# add /usr/local/bin and /usr/bin in that order
-export PATH="/usr/local/bin:/usr/bin:$PATH"
-
 # Android
 export ANDROID_USER_HOME="$XDG_DATA_HOME"/android
 
@@ -62,15 +49,15 @@ export PATH=$PATH:$GOROOT/bin
 export DOCKER_CONFIG="$XDG_CONFIG_HOME"/docker
 
 # Haskell
-[ -f "/Users/jd/.local/share/ghcup/env" ] && source "/Users/jd/.local/share/ghcup/env" # ghcup-env
+[ -f "$XDG_DATA_HOME/ghcup/env" ] && source "$XDG_DATA_HOME/ghcup/env" # ghcup-env
 
 # Dotnet
-export PATH="/usr/local/share/dotnet:$PATH"
-export PATH="$HOME/.dotnet/tools:$PATH"
+# export PATH="/usr/local/share/dotnet:$PATH"
+# export PATH="$HOME/.dotnet/tools:$PATH"
 export DOTNET_CLI_HOME="$XDG_DATA_HOME"/dotnet
 
 # bun
-export BUN_INSTALL="$HOME/.local/bun"
+export BUN_INSTALL="$XDG_DATA_HOME/bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
 [ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
@@ -82,3 +69,7 @@ export ZSH="$XDG_DATA_HOME"/oh-my-zsh
 # Things I build myself go in here, overrides all other paths
 export PATH=$HOME/.mine/bin:$PATH
 export PATH=$HOME/.mine/scripts:$PATH
+
+# Load this first so that we prefer homebrew installed over XCode crap
+export PATH="/opt/homebrew/bin:$PATH"
+export PATH="/opt/homebrew/sbin:$PATH"

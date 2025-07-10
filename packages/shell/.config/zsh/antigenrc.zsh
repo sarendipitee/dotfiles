@@ -15,7 +15,6 @@ antigen bundle last-working-dir
 antigen bundle nvm
 antigen bundle npm
 antigen bundle safe-paste
-antigen bundle sudo
 antigen bundle vi-mode
 antigen bundle zbell
 antigen bundle zsh-autosuggestions

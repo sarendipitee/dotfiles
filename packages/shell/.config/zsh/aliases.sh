@@ -86,6 +86,9 @@ alias prettyjson='python -m json.tool'
 alias kube='kubectl'
 alias k='kubectl'
 
+# Talos
+alias t='talosctl'
+
 #Docker
 alias d='docker'
 alias dc='docker compose'

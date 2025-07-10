@@ -200,6 +200,10 @@ gitexport() {
 	git archive master | tar -x -C "$1"
 }
 
+zip_dir() {
+	zip -r ${1%.*} $1
+}
+
 # All the dig info
 digga() {
 	dig +nocmd "$1" any +multiline +noall +answer
@@ -217,7 +221,7 @@ dkill() {
 	docker kill $(dpg $1)
 }
 
-datti() {
+dsh() {
 	docker exec -it $(dpg $1) /bin/sh
 }
 
@@ -251,3 +255,13 @@ open_ports() {
 # on every command and echos
 # a not found string if not defined
 iterm2_print_user_vars() { }
+
+#yazi
+function y() {
+	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
+	yazi "$@" --cwd-file="$tmp"
+	if cwd="$(command cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+		builtin cd -- "$cwd"
+	fi
+	rm -f -- "$tmp"
+}

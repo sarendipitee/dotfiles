@@ -1,5 +1,6 @@
 #!/usr/bin/env zsh
 
+
 # vim:filetype=zsh syntax=zsh tabstop=2 shiftwidth=2 softtabstop=2 expandtab autoindent fileencoding=utf-8
 
 # execute 'FIRST_INSTALL=true zsh' to debug the load order of the custom zsh configuration files
@@ -28,7 +29,7 @@ export PROJECTS_BASE_DIR="${HOME}/Projects"
 export DOTFILES_DIR=$PROJECTS_BASE_DIR/dotfiles
 
 # uv and some other tools put things in ~/.local/bin
-export PATH="$PATH:$XDG_DATA_HOME/../bin"
+# export PATH="$PATH:$XDG_DATA_HOME/../bin"
 
 # Executable scripts that are not shared as part of this public repo are present here
 export PERSONAL_BIN_DIR="${HOME}/.mine/bin"

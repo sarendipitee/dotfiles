@@ -1,15 +1,16 @@
 return {
-  "numToStr/Comment.nvim",
-  opts = {
-    -- add any options here
-    toggler = {
-      line = "<D-/>",
-      block = "gcb",
-      --[[ block = "<D-/>", ]]
-    },
-    opleader = {
-      line = "<D-/>",
-      block = "<D-/>",
-    },
+  {
+    "echasnovski/mini.comment",
+    lazy = false,
+    config = function()
+      local key = "<D-/>"
+      require("mini.comment").setup({
+        mappings = {
+          comment = key,
+          comment_visual = key,
+          comment_line = key,
+        },
+      })
+    end,
   },
 }

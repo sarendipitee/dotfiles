@@ -13,7 +13,14 @@ return {
 				hi TreesitterContextLineNumberBottom gui=underline guisp=Grey
 			]])
     end,
-    --[[ keys = {
+    keys = {
+      {
+        "<leader>t",
+        function()
+          require("treesitter-context").toggle()
+        end,
+        desc = "Toggle treesitter context",
+      },
       {
         "U",
         function()
@@ -21,6 +28,6 @@ return {
         end,
         desc = "Jump <U>p to context",
       },
-    }, ]]
+    },
   },
 }

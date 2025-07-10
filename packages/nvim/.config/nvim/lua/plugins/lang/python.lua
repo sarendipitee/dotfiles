@@ -1,6 +1,22 @@
+--[[ local lspconfig = require("lspconfig")
+lspconfig.pyright.setup({
+  on_attach = on_attach,
+  settings = {
+    pyright = { autoImportCompletion = true },
+    python = {
+      analysis = {
+        autoSearchPaths = true,
+        diagnosticMode = "openFilesOnly",
+        useLibraryCodeForTypes = true,
+        typeCheckingMode = "off",
+      },
+    },
+  },
+}) ]]
 return {
   {
     "linux-cultist/venv-selector.nvim",
+    branch = "regexp",
     dependencies = { "neovim/nvim-lspconfig", "nvim-telescope/telescope.nvim", "mfussenegger/nvim-dap-python" },
     opts = {
       -- Your options go here
@@ -13,6 +29,24 @@ return {
       { "<leader>vs", "<cmd>VenvSelect<cr>" },
       -- Keymap to retrieve the venv from a cache (the one previously used for the same project directory).
       { "<leader>vc", "<cmd>VenvSelectCached<cr>" },
+    },
+  },
+  {
+    "neovim/nvim-lspconfig",
+    opts = {
+      servers = {
+        pylsp = {
+          settings = {
+            pylsp = {
+              plugins = {
+                rope_autoimport = {
+                  enabled = true,
+                },
+              },
+            },
+          },
+        },
+      },
     },
   },
   --[[ {

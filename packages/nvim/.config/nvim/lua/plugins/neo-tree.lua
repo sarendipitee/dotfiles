@@ -15,12 +15,16 @@ return {
       separator = nil,
     },
     filesystem = {
+      bind_to_cwd = true,
       follow_current_file = { enabled = false },
       filtered_items = {
         hide_dotfiles = false,
       },
       never_show = {
         ".DS_Store",
+      },
+      always_show = {
+        "data",
       },
       window = {
         mappings = {

@@ -123,6 +123,8 @@ if [[ $OS == Linux ]]; then
 		clang \
     make \
     llvm \
+		ca-certificates \
+		curl \
     git-lfs \
     stow \
     ffmpeg \
@@ -136,19 +138,18 @@ if [[ $OS == Linux ]]; then
     neovim \
     watchman \
     rustup \
+		software-properties-common \
     zsh \
 
 		section_header 'Installing ET'
-		sudo apt-get install -y software-properties-common
 		sudo add-apt-repository ppa:jgmath2000/et
 		sudo apt-get update
-		sudo apt-get install et
+		sudo apt-get install -y et
 
 		section_header 'Installing Docker'
 		for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
 		sudo apt-get update
-		sudo apt-get install ca-certificates curl
-		sudo install -m 0755 -d /etc/apt/keyrings
+		sudo install -m 0755 -d /etc/apt/keyrings -y
 		sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 		sudo chmod a+r /etc/apt/keyrings/docker.asc
 
@@ -167,6 +168,8 @@ if [[ $OS == Linux ]]; then
 		sudo chmod 666 /var/run/docker.sock
 
 		sudo service docker start
+
+		sudo chsh $USER -s $(which zsh)
 
 fi
 
@@ -201,6 +204,7 @@ ensure_dir_exists $NVM_DIR
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
 source $NVM_DIR/nvm.sh
 nvm install node
+npm i -g pnpm
 
 section_header 'Installing uv (python)'
 curl -LsSf https://astral.sh/uv/install.sh | sh

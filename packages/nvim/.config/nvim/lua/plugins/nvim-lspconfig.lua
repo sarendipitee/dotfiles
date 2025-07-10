@@ -19,7 +19,7 @@ return {
     },
   },
   {
-    "nvim-lspconfig",
+    "neovim/nvim-lspconfig",
     opts = function()
       -- "reuse_win = true" is annoying as hell
       local keys = require("lazyvim.plugins.lsp.keymaps").get()
