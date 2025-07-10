@@ -1,3 +1,7 @@
+.DS_Store
+
+packages/misc/.mine/bin
+
 packages/vim/.config/vim/unused-bundle
 packages/vim/.config/vim/bundle
 packages/vim/.config/vim/plugged
