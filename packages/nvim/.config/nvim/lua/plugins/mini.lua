@@ -1,6 +1,6 @@
 return {
   {
-    "echasnovski/mini.align",
+    "nvim-mini/mini.align",
     version = "*",
     config = function()
       require("mini.align").setup()
@@ -8,7 +8,7 @@ return {
   },
   {
     -- conflicts with blink-cmp
-    "echasnovski/mini.pairs",
+    "nvim-mini/mini.pairs",
     version = "*",
     enabled = false,
   },

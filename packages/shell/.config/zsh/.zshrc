@@ -5,8 +5,11 @@ source "$ZDOTDIR/antigen.zsh"
 
 antigen init "$ZDOTDIR/antigenrc.zsh"
 
-# Apply this after so we get last say of path
-source "$ZDOTDIR/path.sh"
+# Apply paths after everything so we get last say of $PATH
 
 # zprof 
-# /nvm.sh (prevent nvm.sh install.sh from writing to this file)
+
+# (prevent nvm.sh install.sh from writing to this file)
+# /nvm.sh 
+
+. "$HOME/.local/share/../bin/env"

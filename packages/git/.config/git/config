@@ -1,6 +1,6 @@
 [user]
-	name = Jonathan Dumaine
-	email = jonathan.dumaine@dumstruck.com
+	name = Saren
+	email = saren@dumstruck.com
 [color]
 	ui = auto
 	diff = always
@@ -9,7 +9,7 @@
 	interactive = always
 [core]
 	excludesfile = /Users/JD/.gitignore
-	editor = vim -u NORC
+	editor = nvim
 	ignorecase = false
 	fileMode = true
 	trustctime = false
