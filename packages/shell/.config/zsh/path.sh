@@ -1,75 +1,57 @@
-# Android
-export ANDROID_USER_HOME="$XDG_DATA_HOME"/android
+# Start with minimal sane path without /usr/libexec/path_helper or other crap
+PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-#Python Path
-export PATH=$PATH:$HOME/Library/Python/3.9/bin
-export PYTHONSTARTUP="$XDG_CONFIG_HOME"/python/pythonrc
-
-#Postgres
-export PSQL_HISTORY="$XDG_STATE_HOME/psql_history"
+#Python
+# export PATH=$PATH:$HOME/Library/Python/3.9/bin
 
 # Android platform tools
 export PATH=$PATH:~/.mine/bin/android
 
 #Rust/Cargo
-export PATH=$PATH:~/.cargo/bin
-export CARGO_HOME="$XDG_DATA_HOME"/cargo
-export RUSTUP_HOME="$XDG_DATA_HOME"/rustup
-
-# gnupg
-export GNUPGHOME="$XDG_DATA_HOME"/gnupg
-
-# Keras
-export KERAS_HOME="${XDG_STATE_HOME}/keras"
-
-# Node
-export NODE_REPL_HISTORY="$XDG_STATE_HOME"/node_repl_history
-export NPM_CONFIG_INIT_MODULE="$XDG_CONFIG_HOME"/npm/config/npm-init.js
-export NPM_CONFIG_CACHE="$XDG_CACHE_HOME"/npm
-export NPM_CONFIG_TMP="$XDG_RUNTIME_DIR"/npm
-export NPM_CONFIG_USERCONFIG="$XDG_CONFIG_HOME"/npm/npmrc
-export TS_NODE_HISTORY="$XDG_STATE_HOME"/ts_node_repl_history
-
-#NVM
-export NVM_DIR="$HOME/.local/nvm"
-
-# Nuget
-export NUGET_PACKAGES="$XDG_CACHE_HOME"/NuGetPackages
+export PATH="$PATH:$CARGO_HOME/bin"
 
 # Go
 export PATH=$PATH:$HOME/Projects/go/bin
 
-# Java
-export JAVA_HOME=/opt/homebrew/opt/openjdk/
+# GPG tools
+export PATH=$PATH:/usr/local/MacGPG2/bin
+
+# pnpm
+export PATH="$PNPM_HOME:$PATH"
+
+# Krew
+export PATH="$PATH:$KREW_ROOT/bin"
 
 #Go
-export GOPATH=$HOME/Projects/go
 export PATH=$PATH:$GOROOT/bin
-
-export DOCKER_CONFIG="$XDG_CONFIG_HOME"/docker
 
 # Haskell
 [ -f "$XDG_DATA_HOME/ghcup/env" ] && source "$XDG_DATA_HOME/ghcup/env" # ghcup-env
 
-# Dotnet
-# export PATH="/usr/local/share/dotnet:$PATH"
-# export PATH="$HOME/.dotnet/tools:$PATH"
-export DOTNET_CLI_HOME="$XDG_DATA_HOME"/dotnet
-
 # bun
-export BUN_INSTALL="$XDG_DATA_HOME/bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
-[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
+# [ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
-# eval $(thefuck --alias)
+# Plugin in nvim break if it's not explicitly on path
+# because they won't read antigen
+export PATH=$NVM_DIR/versions/node/v24.4.1/bin:$PATH
 
-export ZSH="$XDG_DATA_HOME"/oh-my-zsh
+# Proto
+export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
 
-#
-# Things I build myself go in here, overrides all other paths
-export PATH=$HOME/.mine/bin:$PATH
-export PATH=$HOME/.mine/scripts:$PATH
+# ----
+
+# remove /usr/local/bin and /usr/bin
+export PATH=$(echo ":$PATH:" | sed -e "s#:/usr/local/bin:#:#g" -e "s/^://" -e "s/:$//")
+export PATH=$(echo ":$PATH:" | sed -e "s#:/usr/bin:#:#g" -e "s/^://" -e "s/:$//")
+# add /usr/local/bin and /usr/bin in that order
+export PATH="/usr/local/bin:/usr/bin:$PATH"
 
 # Load this first so that we prefer homebrew installed over XCode crap
 export PATH="/opt/homebrew/bin:$PATH"
 export PATH="/opt/homebrew/sbin:$PATH"
+
+# Things I build myself go in here, overrides all other paths
+export PATH=$HOME/.local/bin:$PATH
+export PATH=$HOME/.mine/bin:$PATH
+export PATH=$HOME/.mine/scripts:$PATH

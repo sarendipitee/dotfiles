@@ -6,7 +6,6 @@ alias sudo='sudo '
 alias v="vimr -n $1"
 
 alias ls='ls -alhG'
-alias grep='rg --color=always'
 
 alias cpwd='pwd | pbcopy'
 
@@ -89,6 +88,9 @@ alias k='kubectl'
 # Talos
 alias t='talosctl'
 
+# Terraform
+alias tf='terraform'
+
 #Docker
 alias d='docker'
 alias dc='docker compose'
@@ -102,6 +104,16 @@ mov2gif() {
 
 # tsx
 alias tsx="npx tsx"
+
+# moon
+alias m="moon"
+alias mx="moonx"
+alias mc="moon check --closest"
+alias mca="moon check --all --summary detailed --log error"
+# Run moon task for the current project
+mr() {
+	moon run "~:$1" -- "${@:2}"
+}
 
 #pnpm
 alias p="pnpm"

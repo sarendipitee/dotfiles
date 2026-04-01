@@ -1,6 +1,6 @@
 return {
   {
-    "echasnovski/mini.comment",
+    "nvim-mini/mini.comment",
     lazy = false,
     config = function()
       local key = "<D-/>"

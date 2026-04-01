@@ -54,8 +54,8 @@ command_exists code && test -z "${EDITOR}" && export EDITOR="code --wait"
 command_exists vi && test -z "${EDITOR}" && export EDITOR="vi"
 
 # setup paths in the beginning so that all other conditions work correctly
-append_to_path_if_dir_exists "${PERSONAL_BIN_DIR}"
-append_to_path_if_dir_exists "${DOTFILES_DIR}/scripts"
+# append_to_path_if_dir_exists "${PERSONAL_BIN_DIR}"
+# append_to_path_if_dir_exists "${DOTFILES_DIR}/scripts"
 
 # erlang history in iex
 # export ERL_AFLAGS="-kernel shell_history enabled -kernel shell_history_file_bytes 1024000"
@@ -123,10 +123,10 @@ export WORDCHARS="${WORDCHARS:s#.#}"
 command_exists fzf && source <(fzf --zsh)
 
 # remove empty components to avoid '::' ending up + resulting in './' being in $PATH, etc
-path=( "${path[@]:#}" )
-fpath=( "${fpath[@]:#}" )
-infopath=( "${infopath[@]:#}" )
-manpath=( "${manpath[@]:#}" )
+# path=( "${path[@]:#}" )
+# fpath=( "${fpath[@]:#}" )
+# infopath=( "${infopath[@]:#}" )
+# manpath=( "${manpath[@]:#}" )
 
 # remove duplicates from some env vars
 typeset -gU cdpath CPPFLAGS cppflags FPATH fpath infopath LDFLAGS ldflags MANPATH manpath PATH path PKG_CONFIG_PATH

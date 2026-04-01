@@ -19,7 +19,7 @@
 # execute 'FIRST_INSTALL=true zsh' to debug the load order of the custom zsh configuration files
 test -n "${FIRST_INSTALL+1}" && echo "loading ${0}"
 
-type is_directory &> /dev/null 2>&1 || source "${HOME}/.profile"
+# type is_directory &> /dev/null 2>&1 || source "${HOME}/.profile"
 
 recompile_zsh_scripts() {
   if [[ -s "${1}" && (! -s "${1}.zwc" || "${1}" -nt "${1}.zwc") ]]; then
