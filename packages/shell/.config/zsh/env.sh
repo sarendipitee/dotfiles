@@ -125,3 +125,6 @@ export DOCKER_CONFIG="$XDG_CONFIG_HOME"/docker
 
 # proto
 export PROTO_HOME="$XDG_DATA_HOME/proto";
+
+# dyff
+export KUBECTL_EXTERNAL_DIFF="dyff between --omit-header --set-exit-code"
