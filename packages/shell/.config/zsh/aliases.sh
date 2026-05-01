@@ -106,14 +106,15 @@ mov2gif() {
 alias tsx="npx tsx"
 
 # moon
-alias m="moon"
-alias mx="moonx"
-alias mc="moon check --closest"
-alias mca="moon check --all --summary detailed --log error"
 # Run moon task for the current project
 mr() {
 	moon run "~:$1" -- "${@:2}"
 }
+alias m="moon"
+alias mx="moonx"
+alias mc="moon check --closest"
+alias mca="moon check --all --summary detailed --log error"
+alias mrs="mr start"
 
 #pnpm
 alias p="pnpm"

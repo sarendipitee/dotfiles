@@ -35,9 +35,9 @@ export PERSONAL_AUTOLOAD_DIR="${HOME}/.mine/autoload"
 export ARCH="$(uname -m)"
 export ARCHFLAGS="-arch ${ARCH}"
 if [[ "${ARCH}" =~ 'arm' ]]; then
-  export HOMEBREW_PREFIX='/opt/homebrew'
+	export HOMEBREW_PREFIX='/opt/homebrew'
 else
-  export HOMEBREW_PREFIX='/usr/local'
+	export HOMEBREW_PREFIX='/usr/local'
 fi
 export HOMEBREW_BUNDLE_FILE="${XDG_CONFIG_HOME}/homebrew/Brewfile"
 export HOMEBREW_NO_ANALYTICS=1
@@ -46,10 +46,8 @@ export HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS=3
 export HOMEBREW_BAT=1
 export HOMEBREW_VERBOSE_USING_DOTS=1
 
-
 # Antigen
 export ADOTDIR="$XDG_DATA_HOME/antigen"
-
 
 # ZSH
 export HISTFILE="$XDG_STATE_HOME"/zsh/history
@@ -104,6 +102,9 @@ export NVM_DIR="$XDG_DATA_HOME/nvm"
 # pnpm
 export PNPM_HOME="$XDG_DATA_HOME/pnpm"
 
+# Moon
+export MOON_OUTPUT_STYLE=buffer-only-failure
+
 # Nuget
 export NUGET_PACKAGES="$XDG_CACHE_HOME"/NuGetPackages
 
@@ -124,7 +125,7 @@ export DOCKER_CONFIG="$XDG_CONFIG_HOME"/docker
 # export DOTNET_CLI_HOME="$XDG_DATA_HOME"/dotnet
 
 # proto
-export PROTO_HOME="$XDG_DATA_HOME/proto";
+export PROTO_HOME="$XDG_DATA_HOME/proto"
 
 # dyff
 export KUBECTL_EXTERNAL_DIFF="dyff between --omit-header --set-exit-code"
