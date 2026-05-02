@@ -1,0 +1,21 @@
+# Claude runtime
+sessions/
+cache/
+file-history/
+shell-snapshots/
+backups/
+debug/
+telemetry/
+statsig/
+plans/
+projects/
+session-env/
+ide/
+paste-cache/
+todos/
+hooks/
+plugins/
+*.log
+*.jsonl
+mcp-needs-auth-cache.json
+stats-cache.json
