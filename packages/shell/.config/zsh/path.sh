@@ -37,7 +37,7 @@ export PATH="$BUN_INSTALL/bin:$PATH"
 export PATH=$NVM_DIR/versions/node/v24.4.1/bin:$PATH
 
 # Proto
-export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
+export PATH="$PROTO_HOME/bin:$PATH"
 
 # ----
 
