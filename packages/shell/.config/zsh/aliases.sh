@@ -116,6 +116,9 @@ alias mc="moon check --closest"
 alias mca="moon check --all --summary detailed --log error"
 alias mrs="mr start"
 
+# Opencode
+alias oc="opencode"
+
 #pnpm
 alias p="pnpm"
 alias px="pnpm dlx"
