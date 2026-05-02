@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(pnpm vitest:*)",
+      "Bash(docker build:*)",
+      "Bash(open:*)",
+      "Bash(npx biome check:*)",
+      "mcp__grafana__*"
+    ],
+    "deny": [
+      "Skill(superpowers:brainstorming)",
+      "Skill(superpowers:writing-plans)"
+    ],
+    "defaultMode": "dontAsk"
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": false,
+    "claude-md-management@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": true
+  },
+  "effortLevel": "high",
+  "editorMode": "vim",
+  "verbose": true
+}
