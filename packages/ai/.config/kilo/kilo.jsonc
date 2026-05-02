@@ -11,7 +11,13 @@
       "*": "allow"
     },
     "task": "allow",
-    "skill": "allow"
+    "skill": "allow",
+    "external_directory": {
+      "/tmp/*": "allow",
+      "/Users/jd/Projects/stratifyre/.github/actions/docker-build/*": "allow",
+      "/Users/jd/Projects/stratifyre/.github/workflows/*": "allow",
+      "/Users/jd/Projects/stratifyre/*": "allow"
+    }
   },
   "skills": {
     "paths": ["~/.claude/skills"]
