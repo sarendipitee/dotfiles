@@ -32,12 +32,8 @@ export PATH=$PATH:$GOROOT/bin
 export PATH="$BUN_INSTALL/bin:$PATH"
 # [ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
-# Plugin in nvim break if it's not explicitly on path
-# because they won't read antigen
-export PATH=$NVM_DIR/versions/node/v24.4.1/bin:$PATH
-
-# Proto
-export PATH="$PROTO_HOME/bin:$PATH"
+# Proto - shims enable dynamic version detection for non-interactive shells
+export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
 
 # ----
 
