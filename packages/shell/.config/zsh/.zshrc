@@ -13,3 +13,6 @@ antigen init "$ZDOTDIR/antigenrc.zsh"
 # /nvm.sh 
 
 . "$HOME/.local/share/../bin/env"
+
+# Proto shell activation - enables dynamic version detection per project
+eval "$(proto activate zsh)"
