@@ -96,9 +96,6 @@ export TS_NODE_HISTORY="$XDG_STATE_HOME"/ts_node_repl_history
 # Bun
 export BUN_INSTALL="$XDG_DATA_HOME/bun"
 
-# nvm
-export NVM_DIR="$XDG_DATA_HOME/nvm"
-
 # pnpm
 export PNPM_HOME="$XDG_DATA_HOME/pnpm"
 
