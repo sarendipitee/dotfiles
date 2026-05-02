@@ -199,12 +199,13 @@ echo Creating zsh HISTFILE $HISTFILE
 touch $HISTFILE
 
 
-section_header 'Installing nvm (node)'
-ensure_dir_exists $NVM_DIR
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.2/install.sh | bash
-source $NVM_DIR/nvm.sh
-nvm install node
-npm i -g pnpm
+section_header 'Installing proto (node + more)'
+curl -fsSL https://moonrepo.dev/install/proto.sh | bash
+export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
+proto install node
+proto pin node --global
+proto install npm
+proto install pnpm
 
 section_header 'Installing uv (python)'
 curl -LsSf https://astral.sh/uv/install.sh | sh

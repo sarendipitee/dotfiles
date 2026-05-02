@@ -12,7 +12,6 @@ antigen bundle git
 antigen bundle git-extras
 antigen bundle iterm2
 antigen bundle last-working-dir
-antigen bundle nvm
 antigen bundle npm
 antigen bundle safe-paste
 antigen bundle vi-mode
