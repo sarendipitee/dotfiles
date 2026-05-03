@@ -8,4 +8,11 @@ for dir in $dir_list; do
 	packages="-R ${package} ${packages}"
 done
 
-stow -v --dotfiles --ignore='\.gitignore$' -d $packages_dir -t $HOME $packages
+stow \
+	--verbose \
+	--dotfiles \
+	--ignore='\.gitignore$' \
+	--override='.+' \
+	--dir $packages_dir \
+	--target $HOME \
+	$packages
