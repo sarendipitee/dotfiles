@@ -45,3 +45,4 @@
 ^\.config/kilo/node_modules/
 ^\.config/kilo/package\.(json|lock\.json)$
 ^\.config/kilo/\.gitignore$
+^\.gitignore$
