@@ -9,3 +9,9 @@ packages/vim/.config/vim/tmp
 packages/vim/.config/vim/undo
 packages/vim/.config/vim/view
 packages/vim/.config/vim/.netrwhist
+
+packages/shell/.config/zsh/.zcompdump
+packages/shell/.config/zsh/.zshrc.zwc
+packages/shell/.config/zsh/antigenrc.zsh.zwc
+
+packages/nvim/.config/nvim/lazy-lock.json
