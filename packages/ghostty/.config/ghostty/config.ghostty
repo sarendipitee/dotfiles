@@ -1,0 +1,43 @@
+# Ghostty configuration based on iTerm2 Default profile
+
+# Font configuration (FiraCode Nerd Font Mono 18pt)
+font-family = FiraCode Nerd Font Mono
+font-size = 18
+
+# Color scheme - Solarized Dark (matching iTerm profile)
+theme = solarized-dark
+
+# Terminal colors from iTerm Default profile
+background = #010e11
+foreground = #708584
+cursor-color = #708584
+cursor-text = #002731
+selection-background = #002731
+selection-foreground = #708584
+
+# Cursor configuration
+cursor-style = bar
+cursor-style-blink = true
+
+# Window configuration
+background-opacity = 0.88
+background-blur = true
+
+# Terminal configuration
+command = /bin/zsh
+terminal = xterm-256color
+
+# Scrollback
+scrollback-limit = 100000000
+
+# Mouse
+mouse-reporting = true
+
+# Powerline glyphs support
+font-codepoint-map = U+E0A0=U+E0A0
+font-codepoint-map = U+E0A1=U+E0A1
+font-codepoint-map = U+E0A2=U+E0A2
+font-codepoint-map = U+E0B0=U+E0B0
+font-codepoint-map = U+E0B1=U+E0B1
+font-codepoint-map = U+E0B2=U+E0B2
+font-codepoint-map = U+E0B3=U+E0B3

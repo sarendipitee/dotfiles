@@ -1,0 +1,4 @@
+# Ignore runtime/cache files
+\.log$
+\.tmp$
+\.cache/
