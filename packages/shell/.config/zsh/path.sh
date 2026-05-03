@@ -51,3 +51,7 @@ export PATH="/opt/homebrew/sbin:$PATH"
 export PATH=$HOME/.local/bin:$PATH
 export PATH=$HOME/.mine/bin:$PATH
 export PATH=$HOME/.mine/scripts:$PATH
+
+if command -v flox &>/dev/null; then
+	eval "$(flox activate -d $DOTFILES_DIR/packages/flox/global-env -m run)"
+fi

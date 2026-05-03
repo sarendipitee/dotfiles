@@ -85,6 +85,25 @@ else
 fi
 
 ####################
+# Install Flox #
+####################
+section_header "Installing Flox"
+if ! command_exists flox; then
+  sh "${DOTFILES_DIR}/scripts/install-flox.sh"
+  success 'Successfully installed Flox'
+else
+  warn "skipping installation of Flox since it's already installed"
+fi
+
+# Activate Flox environment (installs packages from manifest.toml)
+if command_exists flox; then
+  section_header "Activating Flox environment"
+  source "${DOTFILES_DIR}/packages/shell/.config/zsh/env.sh"
+  eval "$(flox activate -d $XDG_DATA_HOME/flox -m run)"
+  success 'Successfully activated Flox environment'
+fi
+
+####################
 # Install homebrew #
 ####################
 if [[ $OS == Darwin ]]; then
@@ -104,17 +123,21 @@ if [[ $OS == Darwin ]]; then
     warn "skipping installation of homebrew since it's already installed"
   fi
 
-  # TODO: Need to investigate why this step exits on a vanilla OS's first run of this script
-  # Note: Do not set the 'HOMEBREW_BASE_INSTALL' in this script - since its supposed to run idempotently. Also, don't run the cleanup of pre-installed brews/casks (for the same reason)
-  brew bundle check || brew bundle || true
-  success 'Successfully installed cmd-line and gui apps using homebrew'
+  # Install only Homebrew-only packages (GUI apps, displayplacer, etc.)
+  # Flox handles most CLI tools now
+  section_header "Installing Homebrew-only packages (GUI apps, etc.)"
+  brew bundle check --file="${DOTFILES_DIR}/packages/homebrew/.config/homebrew/Brewfile.homebrew-only" || \
+    brew bundle --file="${DOTFILES_DIR}/packages/homebrew/.config/homebrew/Brewfile.homebrew-only" || true
+  success 'Successfully installed homebrew-only packages'
 
 fi
 
 if [[ $OS == Linux ]]; then
 
-	section_header 'Installing basic utils'
-
+	section_header 'Installing basic utils (Flox handles most packages)'
+	
+	# Flox activation will handle most packages via manifest.toml
+	# Install only system-level packages via apt
 	sudo apt update
 
   sudo apt install -y \
@@ -126,25 +149,11 @@ if [[ $OS == Linux ]]; then
 		ca-certificates \
 		curl \
     git-lfs \
-    stow \
-    ffmpeg \
-    eza \
-    bat \
-    fzf \
-    jq \
-    ripgrep \
     libpq-dev \
-    httpie \
-    neovim \
     watchman \
-    rustup \
 		software-properties-common \
     zsh \
-
-		section_header 'Installing ET'
-		sudo add-apt-repository ppa:jgmath2000/et
-		sudo apt-get update
-		sudo apt-get install -y et
+    sudo
 
 		section_header 'Installing Docker'
 		for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
@@ -162,7 +171,7 @@ if [[ $OS == Linux ]]; then
 
 		sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-		# add user to docker grouup
+		# add user to docker grouput
 		sudo groupadd docker
 		sudo usermod -aG docker $USER
 		sudo chmod 666 /var/run/docker.sock
