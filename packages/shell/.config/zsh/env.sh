@@ -19,7 +19,7 @@ export XDG_STATE_HOME=$HOME/.local/state
 export XDG_CACHE_HOME=$HOME/.cache
 
 # All development codebases are cloned into a subfolder of this folder
-export PROJECTS_BASE_DIR="${HOME}/Projects"
+export PROJECTS_BASE_DIR="${HOME}/projects"
 
 export DOTFILES_DIR=$PROJECTS_BASE_DIR/dotfiles
 
