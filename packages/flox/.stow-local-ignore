@@ -1,3 +1,4 @@
 .stow-local-ignore
 .flox/env/.git
 global-env
+\.gitignore$
