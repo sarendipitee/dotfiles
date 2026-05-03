@@ -130,6 +130,9 @@ alias devdeps='jq .devDependencies < package.json'
 alias scripts='jq .scripts < package.json'
 alias s='scripts'
 
+# Zellij
+alias z='zellij'
+
 # Windows WSL
 if [[ $(uname -a) =~ "WSL2" ]]; then
 	alias open='explorer.exe $1'
