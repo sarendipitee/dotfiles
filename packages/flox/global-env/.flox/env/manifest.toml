@@ -26,7 +26,6 @@ fzf.pkg-path = "fzf"
 gh.pkg-path = "gh"
 git.pkg-path = "gitFull"
 jq.pkg-path = "jq"
-neovim.pkg-path = "neovim"
 ripgrep.pkg-path = "ripgrep"
 tmux.pkg-path = "tmux"
 tree.pkg-path = "tree"
@@ -42,6 +41,7 @@ shellcheck.pkg-path = "shellcheck"
 semgrep.pkg-path = "semgrep"
 httpie.pkg-path = "httpie"
 htop.pkg-path = "htop"
+neovim = { pkg-path = "neovim", version = "0.12.2", pkg-group = "neovim" }
 
 # Dev/Ops Tools
 awscli.pkg-path = "awscli"
