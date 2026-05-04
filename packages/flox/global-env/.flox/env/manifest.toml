@@ -41,6 +41,7 @@ shellcheck.pkg-path = "shellcheck"
 semgrep.pkg-path = "semgrep"
 httpie.pkg-path = "httpie"
 htop.pkg-path = "htop"
+mosh.pkg-path = "mosh"
 neovim = { pkg-path = "neovim", version = "0.12.2", pkg-group = "neovim" }
 
 # Dev/Ops Tools
