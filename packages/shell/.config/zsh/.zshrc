@@ -16,12 +16,13 @@ export PATH=$HOME/.local/bin:$HOME/.mine/bin:$HOME/.mine/scripts:$PATH
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 
 # Flox takes ultimate precedence
+export FLOX_SET_PROMPT=false
 eval "$(flox activate -d $DOTFILES_DIR/packages/flox/global-env -m run)"
 
 # Proto shell activation - enables dynamic version detection per project
 eval "$(proto activate zsh)"
 
-# Remove duplicate /usr/bin and /usr/local/bin from PATH (path_helper adds them)
-export PATH=$(echo ":$PATH:" | sed -e "s#:/usr/local/bin:#:#g" -e "s#:/usr/bin:#:#g" -e "s/^://" -e "s/:$//")
+# Remove duplicate PATH entries while preserving system paths needed by prompt plugins.
+typeset -U path PATH
 
 # zprof
