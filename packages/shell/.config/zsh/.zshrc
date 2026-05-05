@@ -6,13 +6,22 @@ source "$ZDOTDIR/antigen.zsh"
 antigen init "$ZDOTDIR/antigenrc.zsh"
 
 # Apply paths after everything so we get last say of $PATH
+# (path_helper in /etc/zprofile runs after .zshenv and can reorder PATH)
 
-# zprof 
+# Re-apply user path precedence here after all other scripts have run
+# Things I build myself go in here, overrides all other paths
+export PATH=$HOME/.local/bin:$HOME/.mine/bin:$HOME/.mine/scripts:$PATH
 
-# (prevent nvm.sh install.sh from writing to this file)
-# /nvm.sh 
+# Homebrew
+export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 
-. "$HOME/.local/share/../bin/env"
+# Flox takes ultimate precedence
+eval "$(flox activate -d $DOTFILES_DIR/packages/flox/global-env -m run)"
 
 # Proto shell activation - enables dynamic version detection per project
 eval "$(proto activate zsh)"
+
+# Remove duplicate /usr/bin and /usr/local/bin from PATH (path_helper adds them)
+export PATH=$(echo ":$PATH:" | sed -e "s#:/usr/local/bin:#:#g" -e "s#:/usr/bin:#:#g" -e "s/^://" -e "s/:$//")
+
+# zprof
