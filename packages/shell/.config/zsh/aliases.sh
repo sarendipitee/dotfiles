@@ -113,7 +113,7 @@ mr() {
 alias m="moon"
 alias mx="moonx"
 alias mc="moon check --closest"
-alias mca="moon check --all --summary detailed --log error"
+alias mca="MOON_OUTPUT_STYLE=buffer-only-failure moon check --all --summary detailed --log error"
 alias mrs="mr start"
 
 # Opencode
