@@ -21,7 +21,6 @@
 - Write clean, readable code
 - Add comments only when the "why" isn't obvious
 - Prefer small, focused changes
-- Test changes when possible
 
 ## Security
 
