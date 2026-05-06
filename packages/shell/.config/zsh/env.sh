@@ -126,3 +126,6 @@ export PROTO_HOME="$XDG_DATA_HOME/proto"
 
 # dyff
 export KUBECTL_EXTERNAL_DIFF="dyff between --omit-header --set-exit-code"
+
+# fzf - explicitly set to avoid invalid actions like toggle-raw
+export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
