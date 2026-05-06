@@ -46,9 +46,6 @@ export HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS=3
 export HOMEBREW_BAT=1
 export HOMEBREW_VERBOSE_USING_DOTS=1
 
-# Antigen
-export ADOTDIR="$XDG_DATA_HOME/antigen"
-
 # ZSH
 export HISTFILE="$XDG_STATE_HOME"/zsh/history
 export ZSH_CACHE_DIR="${XDG_CACHE_HOME}/zsh"

@@ -1,9 +1,15 @@
 
 source "$ZDOTDIR/completions-opts.zsh"
 source "$ZDOTDIR/options.zsh"
-source "$ZDOTDIR/antigen.zsh"
 
-antigen init "$ZDOTDIR/antigenrc.zsh"
+# Antidote plugin manager (static loading for speed)
+source "$ZDOTDIR/antidote/antidote.zsh"
+
+zsh_plugins=${ZDOTDIR:-$HOME/.config/zsh}/.zsh_plugins
+if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
+  antidote bundle <${zsh_plugins}.txt >! ${zsh_plugins}.zsh
+fi
+source ${zsh_plugins}.zsh
 
 # Apply paths after everything so we get last say of $PATH
 # (path_helper in /etc/zprofile runs after .zshenv and can reorder PATH)
