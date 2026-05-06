@@ -126,8 +126,8 @@ if [[ $OS == Darwin ]]; then
   # Install only Homebrew-only packages (GUI apps, displayplacer, etc.)
   # Flox handles most CLI tools now
   section_header "Installing Homebrew-only packages (GUI apps, etc.)"
-  brew bundle check --file="${DOTFILES_DIR}/packages/homebrew/.config/homebrew/Brewfile.homebrew-only" || \
-    brew bundle --file="${DOTFILES_DIR}/packages/homebrew/.config/homebrew/Brewfile.homebrew-only" || true
+  brew bundle check --file="${DOTFILES_DIR}/packages/homebrew/.config/homebrew/Brewfile" || \
+    brew bundle --file="${DOTFILES_DIR}/packages/homebrew/.config/homebrew/Brewfile" || true
   success 'Successfully installed homebrew-only packages'
 
 fi
