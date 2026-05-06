@@ -19,7 +19,6 @@ ohmyzsh/ohmyzsh path:plugins/zbell
 ohmyzsh/ohmyzsh path:plugins/fzf
 
 # External plugins (with deferred loading where supported)
-zsh-users/zsh-autosuggestions kind:defer
 zsh-users/zsh-completions
 zsh-users/zsh-syntax-highlighting kind:defer
 
