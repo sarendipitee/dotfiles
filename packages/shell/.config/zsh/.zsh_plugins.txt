@@ -1,0 +1,25 @@
+# Oh-My-Zsh framework
+getantidote/use-omz
+ohmyzsh/ohmyzsh path:lib
+
+# Theme
+ohmyzsh/ohmyzsh path:themes/agnoster.zsh-theme
+
+# OMZ plugins
+ohmyzsh/ohmyzsh path:plugins/brew
+ohmyzsh/ohmyzsh path:plugins/eza
+ohmyzsh/ohmyzsh path:plugins/git
+ohmyzsh/ohmyzsh path:plugins/git-extras
+ohmyzsh/ohmyzsh path:plugins/iterm2
+ohmyzsh/ohmyzsh path:plugins/last-working-dir
+ohmyzsh/ohmyzsh path:plugins/npm
+ohmyzsh/ohmyzsh path:plugins/safe-paste
+ohmyzsh/ohmyzsh path:plugins/vi-mode
+ohmyzsh/ohmyzsh path:plugins/zbell
+ohmyzsh/ohmyzsh path:plugins/fzf
+
+# External plugins (with deferred loading where supported)
+zsh-users/zsh-autosuggestions kind:defer
+zsh-users/zsh-completions
+zsh-users/zsh-syntax-highlighting kind:defer
+
