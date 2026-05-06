@@ -1,11 +1,3 @@
-## Flox Environment Manifest -----------------------------------------
-##
-##   _Everything_ you need to know about the _manifest_ is here:
-##
-##   https://flox.dev/docs/reference/command-reference/manifest.toml/
-##
-## -------------------------------------------------------------------
-# Flox manifest version managed by Flox CLI
 schema-version = "1.11.0"
 
 
@@ -86,6 +78,8 @@ nerd-font-meslo-lg.flake = "github:NixOS/nixpkgs/nixos-unstable#nerd-fonts.meslo
 nerd-font-ubuntu.flake = "github:NixOS/nixpkgs/nixos-unstable#nerd-fonts.ubuntu"
 nerd-font-ubuntu-mono.flake = "github:NixOS/nixpkgs/nixos-unstable#nerd-fonts.ubuntu-mono"
 nerd-font-victor-mono.flake = "github:NixOS/nixpkgs/nixos-unstable#nerd-fonts.victor-mono"
+_1password-cli.pkg-path = "_1password-cli"
+_1password.pkg-path = "_1password"
 
 ## Environment Variables ---------------------------------------------
 ##  ... available for use in the activated environment
