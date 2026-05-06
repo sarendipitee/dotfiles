@@ -118,6 +118,9 @@ export DOCKER_CONFIG="$XDG_CONFIG_HOME"/docker
 # Dotnet
 # export DOTNET_CLI_HOME="$XDG_DATA_HOME"/dotnet
 
+# OrbStack shell integration (DOCKER_HOST, PATH, completions)
+source "$HOME/.orbstack/shell/init.zsh" 2>/dev/null || :
+
 # proto
 export PROTO_HOME="$XDG_DATA_HOME/proto"
 
