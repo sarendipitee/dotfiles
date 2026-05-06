@@ -11,8 +11,9 @@ dotfiles/
 ├── packages/              # Config packages (one per tool/application)
 │   ├── ai/               # AI tools (Claude, OpenCode, Kilo)
 │   ├── apparix/          # Directory bookmarking
-│   ├── git/              # Git configuration
-│   ├── homebrew/         # Homebrew Brewfile
+│   ├── git/              # Git config
+│   ├── flox/             # Flox config (PRIMARY package manager)
+│   ├── homebrew/         # Homebrew Brewfile (**only** for MacOS only packages - Flox for everything else for cross platform)
 │   ├── misc/             # Miscellaneous scripts/binaries
 │   ├── nvim/             # Neovim (LazyVim distribution)
 │   ├── shell/            # Zsh, tmux configuration
@@ -29,20 +30,25 @@ dotfiles/
 ## Key Conventions
 
 ### Stow Usage
+
 - All configs use GNU Stow with `--dotfiles` flag for proper dotfile handling
 - Package directory: `packages/`
 - Target directory: `$HOME`
 - Symlink command: `stow -v --dotfiles -d packages -t $HOME <package>`
 
 ### XDG Base Directory Specification
+
 The repository follows XDG conventions. Key environment variables are set in `packages/shell/.config/zsh/env.sh`:
+
 - `XDG_CONFIG_HOME=$HOME/.config`
 - `XDG_DATA_HOME=$HOME/.local/share`
 - `XDG_STATE_HOME=$HOME/.local/state`
 - `XDG_CACHE_HOME=$HOME/.cache`
 
 ### Zsh Configuration (Modular)
+
 Located in `packages/shell/.config/zsh/`:
+
 - `.zshenv` - Environment variables (sourced first)
 - `.zshrc` - Interactive shell config
 - `env.sh` - All XDG and tool-specific environment variables
@@ -52,7 +58,9 @@ Located in `packages/shell/.config/zsh/`:
 - `colors.sh` - Color definitions
 
 ### Neovim Plugin Organization
+
 Located in `packages/nvim/.config/nvim/`:
+
 - `lua/plugins/` - 32 plugin configurations
 - `lua/themes/` - 20+ color schemes
 - `lua/plugins/lang/` - Language-specific plugins
@@ -60,19 +68,23 @@ Located in `packages/nvim/.config/nvim/`:
 ## Common Tasks
 
 ### Adding a New Package
+
 1. Create directory: `mkdir -p packages/<tool>/.config/<tool>`
 2. Add config files in the appropriate subdirectory
 3. Create `.stow-local-ignore` if needed to exclude runtime files
 4. Run: `stow -v --dotfiles -d packages -t $HOME <tool>`
 
 ### Modifying Existing Configs
+
 1. **Read first** - Use Read tool to understand existing conventions
 2. **Follow patterns** - Match existing code style, naming, and structure
 3. **Edit in place** - Modify files in `packages/<tool>/`, not in `$HOME`
 4. **Test symlinks** - Run stow command to verify symlinks work
 
 ### Working with AI Tool Configs
+
 Located in `packages/ai/`:
+
 - `.claude/CLAUDE.md` - Instructions for Claude assistant
 - `.config/opencode/` - OpenCode configuration
 - `.config/kilo/` - Kilo configuration
@@ -88,6 +100,7 @@ Located in `packages/ai/`:
 ## Helper Functions
 
 Available in `packages/shell/.config/zsh/functions.sh`:
+
 - `clone_repo_into <repo> <dir>` - Git clone with error handling
 - `ensure_dir_exists <dir>` - Create directory safely
 - `is_macos()`, `is_linux()`, `is_windows()` - OS detection
@@ -122,6 +135,7 @@ Available in `packages/shell/.config/zsh/functions.sh`:
 ## Testing Changes
 
 After modifying configurations:
+
 ```bash
 stow -v --dotfiles -d packages -t $HOME <package>
 
