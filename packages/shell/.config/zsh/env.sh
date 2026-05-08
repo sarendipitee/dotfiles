@@ -129,8 +129,3 @@ export KUBECTL_EXTERNAL_DIFF="dyff between --omit-header --set-exit-code"
 
 # fzf - explicitly set to avoid invalid actions like toggle-raw
 export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
-
-# Machine-local secrets and overrides. This file must stay outside git.
-if [ -f "$HOME/.my/env.zsh" ]; then
-	source "$HOME/.my/env.zsh"
-fi
