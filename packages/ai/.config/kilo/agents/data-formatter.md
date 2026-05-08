@@ -1,5 +1,5 @@
 ---
-description: Read-only data formatting. Convert provided raw text, logs, JSON, YAML, tables, and lists into concise structured output while preserving exact values. Do NOT edit files or fix data sources.
+description: Read-only data formatting for provided raw text, logs, JSON, YAML, tables, and lists. Returns concise structured output while preserving exact values.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
 steps: 8

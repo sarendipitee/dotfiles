@@ -1,5 +1,5 @@
 ---
-description: Read-only log triage. Use for noisy test, CI, or runtime logs: extract primary failures, stack traces, repeated errors, affected files/tests, and likely next inspection targets. Do NOT fix issues; delegate fixes to complex-implementer.
+description: Read-only log triage for noisy test, CI, or runtime logs. Returns primary failures, stack traces, repeated errors, affected files/tests, and likely next inspection targets.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
 steps: 10

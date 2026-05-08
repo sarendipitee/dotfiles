@@ -1,5 +1,5 @@
 ---
-description: Read-only first-pass review of changed or specified files. Flag obvious bugs, missing tests, hardcoded values, broad types, TODOs, and edge cases. Do NOT fix issues or debug broadly; delegate fixes to complex-implementer.
+description: Read-only first-pass review of changed or specified files. Returns concrete findings for obvious bugs, missing tests, hardcoded values, broad types, TODOs, and edge cases.
 mode: subagent
 model: openai/gpt-5.4-mini
 steps: 12
