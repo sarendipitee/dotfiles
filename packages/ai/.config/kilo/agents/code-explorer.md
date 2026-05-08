@@ -17,7 +17,7 @@ Selection check:
 
 - Proceed only if the task is read-only exploration of code structure, symbols, files, call paths, ownership boundaries, or entry points.
 - If the caller needs exhaustive usage mapping for a refactor, report that `refactor-mapper` is the better fit.
-- If the caller needs docs extraction, diff review, log triage, verification, or edits, report that mismatch instead of doing the work.
+- If the caller needs local context research, remote docs, diff review, log triage, verification, or edits, report that mismatch instead of doing the work.
 
 Scope control:
 
