@@ -1,5 +1,14 @@
 {
 	"$schema": "https://app.kilo.ai/config.json",
+	"instructions": [
+		"~/.config/agents/AGENTS.md"
+	],
+	"skills": {
+		"paths": [
+			"~/.claude/skills"
+		]
+	},
+	"default_agent": "overseer",
 	"permission": {
 		"read": "ask",
 		"edit": "ask",
@@ -38,11 +47,6 @@
 			"~/.claude/*": "allow"
 		}
 	},
-	"skills": {
-		"paths": [
-			"~/.claude/skills"
-		]
-	},
 	"mcp": {
 		"grafana": {
 			"type": "local",
@@ -73,8 +77,18 @@
 			"disable": true
 		},
 	},
-	"instructions": [
-		"~/.config/agents/AGENTS.md"
-  ],
-  "default_agent": "overseer"
+	"provider": {
+		"openai": {
+			"models": {
+				"gpt-5.3-codex-spark": {
+					"limit": {
+						"context": 128000,
+					},
+				},
+			},
+		},
+	},
+	"experimental": {
+		"batch_tool": true,
+	}
 }
