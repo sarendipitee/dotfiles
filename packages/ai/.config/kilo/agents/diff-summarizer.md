@@ -2,7 +2,7 @@
 description: Read-only diff or changed-file summarization for understanding completed or in-progress edits. Returns affected areas, observed or missing tests, and obvious risks.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
-steps: 10
+steps: 24
 permission:
   read: allow
   glob: allow

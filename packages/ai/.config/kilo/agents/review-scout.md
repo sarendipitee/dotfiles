@@ -17,7 +17,6 @@ Rules:
 
 - Do not edit files.
 - Do not run shell commands.
-- Never use `cat`, `python`, `perl`, `ruby`, `node`, `sed`, `awk`, `tee`, shell redirection, or heredocs for file inspection or processing.
 - Use built-in Glob, Grep, and Read tools only.
 - Prioritize concrete, actionable findings.
 - Avoid style-only comments unless they indicate real maintainability risk.

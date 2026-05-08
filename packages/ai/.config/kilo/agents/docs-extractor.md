@@ -2,7 +2,7 @@
 description: Read-only local documentation extraction for commands, config keys, API routes, environment variables, workflows, feature docs, and doc/code drift. Returns sourced facts and gaps.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
-steps: 10
+steps: 16
 permission:
   read: allow
   glob: allow
