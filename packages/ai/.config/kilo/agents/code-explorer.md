@@ -1,7 +1,7 @@
 ---
 description: Read-only codebase exploration for finding files, symbols, call paths, and answering bounded codebase questions. Returns concise paths, excerpts, and findings for caller synthesis.
 mode: subagent
-model: openai/gpt-5.3-codex-spark
+model: openai/gpt-5.4-mini
 steps: 24
 permission:
   read: allow
