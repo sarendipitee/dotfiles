@@ -1,5 +1,5 @@
 ---
-description: Explicit repetitive mechanical edits across known files only. Built-in file tools only; no bash. Reject broad features, debugging, design decisions, semantic refactors, or ambiguous multi-step work; delegate those to complex-implementer.
+description: Explicit repetitive mechanical edits across known files only. Use when rewrite rules, file scope, and acceptance criteria are already clear. Returns changed files, skipped ambiguous sites, and suggested verification.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
 steps: 14

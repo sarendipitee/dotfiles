@@ -1,5 +1,5 @@
 ---
-description: Read-only local documentation extraction. Use to extract commands, config keys, API routes, environment variables, workflows, feature docs, and obvious doc/code drift. Do NOT edit docs or code; delegate changes to complex-implementer.
+description: Read-only local documentation extraction for commands, config keys, API routes, environment variables, workflows, feature docs, and doc/code drift. Returns sourced facts and gaps.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
 steps: 10

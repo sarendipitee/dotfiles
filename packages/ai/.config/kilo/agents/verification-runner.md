@@ -1,5 +1,5 @@
 ---
-description: Run lint, typecheck, and test commands only. Use for targeted or full verification after edits, CI failure reproduction, and collecting concise command results. Read-only plus bash for existing verification commands; do NOT edit files or fix failures.
+description: Verification runner for targeted or full lint, typecheck, test, and CI reproduction commands after edits. Returns concise pass/fail results, primary failures, and verification gaps.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
 steps: 16

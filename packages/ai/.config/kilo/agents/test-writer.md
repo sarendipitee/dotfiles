@@ -1,5 +1,5 @@
 ---
-description: Focused test additions only. Target behavior, relevant files, assertions, and targeted test command required. Built-in file tools only; no bash. Reject implementation, debugging, and multi-step features; delegate those to complex-implementer.
+description: Focused test additions for known behavior with relevant files, assertions, and targeted test command supplied. Returns test files changed, behavior covered, and suggested verification.
 mode: subagent
 model: openai/gpt-5.4-mini
 steps: 24

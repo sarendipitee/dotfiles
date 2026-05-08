@@ -1,5 +1,5 @@
 ---
-description: Read-only refactor mapping for implementation agents. Use to map call sites, imports, symbols, config keys, tests, fixtures, deprecated API usage, and coordinated update targets only after the implementation goal has already been delegated to complex-implementer, or for pure read-only mapping requests. Do NOT use as the primary agent's delegate for broad implementation, debugging, semantic refactors, or ambiguous multi-step work; delegate the whole goal to complex-implementer.
+description: Read-only refactor mapping for bounded refactor slices or pure mapping requests. Returns call sites, imports, symbols, config keys, tests, fixtures, coordinated update targets, and ambiguity notes.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
 steps: 12

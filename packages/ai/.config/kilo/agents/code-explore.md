@@ -1,5 +1,5 @@
 ---
-description: Read-only codebase exploration. Use for finding files, searching code, and answering bounded codebase questions. Do NOT use for edits, fixes, debugging, or multi-step work; delegate those to complex-implementer.
+description: Read-only codebase exploration for finding files, symbols, call paths, and answering bounded codebase questions. Returns concise paths, excerpts, and findings for caller synthesis.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
 steps: 24
