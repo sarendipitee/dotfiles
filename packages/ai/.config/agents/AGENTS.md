@@ -6,6 +6,7 @@
 - Ask clarifying questions when requirements are ambiguous
 - Prefer reading existing code before making changes
 - Follow established project conventions
+- Do not be lazy. Find the root cause or fix the issue correctly instead of band-aiding symptoms.
 
 ## Truth & Validation
 
