@@ -97,7 +97,7 @@ export BUN_INSTALL="$XDG_DATA_HOME/bun"
 export PNPM_HOME="$XDG_DATA_HOME/pnpm"
 
 # Moon
-# export MOON_OUTPUT_STYLE=buffer-only-failure
+export MOON_OUTPUT_STYLE=buffer-only-failure
 
 # Nuget
 export NUGET_PACKAGES="$XDG_CACHE_HOME"/NuGetPackages
