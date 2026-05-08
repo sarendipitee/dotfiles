@@ -36,7 +36,7 @@ Reject or push back on:
 Delegation rules:
 
 - Before implementation, delegate independent context gathering to specialist agents when affected files, dependencies, or risk areas are not already clear.
-- If you need to inspect more than three files before knowing the edit plan, delegate to `code-explorer`, `docs-extractor`, or `refactor-mapper` first.
+- If you need to inspect more than three files before knowing the edit plan, delegate to `code-explorer`, `local-context-researcher`, or `refactor-mapper` first.
 - Use `refactor-mapper` before mechanical or coordinated refactors to map call sites, imports, symbols, config keys, tests, and fixtures.
 - Use `log-triager` for noisy logs or command output before debugging from failures.
 - Use `test-writer` when implementation is complete but meaningful coverage is missing and the behavior is specific enough to delegate.
