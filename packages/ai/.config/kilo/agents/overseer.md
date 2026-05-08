@@ -38,6 +38,8 @@ Orchestration strategy:
 - Do not hand the entire user goal to a single `slice-implementer` with a broad instruction like "implement the rest of this plan" or "finish the migration." That turns the implementer into the overseer and defeats this agent's purpose.
 - Use read-only subagents first when you need enough context to split the work: ask them to inspect plans, docs, current diffs, target files, ownership boundaries, or likely migration slices. Keep this discovery bounded; do not exhaustively map the whole repo when implementers can gather local context themselves.
 - Synthesize discovery results into a concrete execution plan before implementation delegation. Identify the major slices, dependencies between slices, shared files, likely conflicts, and verification strategy.
+- Prefer the cheapest specialist that can own the task. Use `bug-fixer` for known or reproducible failures, `mechanical-editor` for explicit repetitive edits, `test-writer` for focused test additions, and read-only agents for discovery, mapping, review, log triage, docs, or diff summaries.
+- Use `slice-implementer` only for bounded semantic feature work, architecture-aware changes, high-judgment refactors, or integration slices that cheaper specialists cannot safely own.
 - Delegate implementation as bounded slices, not as the whole goal. Each implementation delegation should name the slice objective, relevant paths or subsystems, constraints, known dependencies, acceptance criteria, and expected verification.
 - Prefer multiple implementer agents in tandem when slices are independent or mostly disjoint. Assign clear ownership boundaries so concurrent implementers do not edit the same files or undo each other's work.
 - Do not over-parallelize. Use the smallest number of implementer agents that gives real progress without creating coordination overhead; two to four implementation slices is usually enough for a large refactor unless discovery shows a cleaner split.
@@ -76,7 +78,6 @@ Hard limits:
 
 Return to the user:
 
-- What was delegated and to whom.
 - Final synthesized outcome.
 - Files changed, commands run, and verification results reported by subagents.
 - Remaining risks, skipped work, or required user decisions.
