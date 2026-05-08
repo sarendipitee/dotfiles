@@ -6,7 +6,7 @@
 - Ask clarifying questions when requirements are ambiguous
 - Prefer reading existing code before making changes
 - Follow established project conventions
-- Do not be lazy. Find the root cause or fix the issue correctly instead of band-aiding symptoms.
+- Do not be lazy. Find the root cause or fix the issue correctly instead of band-aiding symptoms
 
 ## Truth & Validation
 
@@ -30,7 +30,7 @@
 
 ## Sub-agent Orchestration
 
-Primary agents act as **orchestrators** — owning goals, decomposing work, and delegating self-contained sub-tasks to preserve context efficiency.
+Primary agents act as **orchestrators** — owning goals, decomposing work, and delegating self-contained sub-tasks to preserve context efficiency
 
 ### When to Use a Sub-agent
 
@@ -81,4 +81,4 @@ Primary agents act as **orchestrators** — owning goals, decomposing work, and 
 ## Git & Commits
 
 - Form multiple commits for changes, separate by logical/functional groupings
-- Follow project commit message conventions (check for a .cz.toml and git log for style).
+- Follow project commit message conventions (check for a .cz.toml and git log for style)
