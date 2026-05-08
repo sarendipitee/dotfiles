@@ -1,6 +1,14 @@
 .DS_Store
 
-packages/misc/.mine/bin
+.env
+.env.*
+*.env
+*secret*
+*secrets*
+packages/**/.env
+packages/**/.env.*
+
+packages/misc/.my/bin
 
 packages/vim/.config/vim/unused-bundle
 packages/vim/.config/vim/bundle

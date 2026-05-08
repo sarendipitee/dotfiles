@@ -27,8 +27,8 @@ export DOTFILES_DIR=$PROJECTS_BASE_DIR/dotfiles
 # export PATH="$PATH:$XDG_DATA_HOME/../bin"
 
 # Executable scripts that are not shared as part of this public repo are present here
-export PERSONAL_BIN_DIR="${HOME}/.mine/bin"
-export PERSONAL_AUTOLOAD_DIR="${HOME}/.mine/autoload"
+export PERSONAL_BIN_DIR="${HOME}/.my/bin"
+export PERSONAL_AUTOLOAD_DIR="${HOME}/.my/autoload"
 
 # Moving homebrew env vars here itself so that the initial homebrew installation on
 # a vanilla OS can be done/applied into memory immediately
@@ -129,3 +129,8 @@ export KUBECTL_EXTERNAL_DIFF="dyff between --omit-header --set-exit-code"
 
 # fzf - explicitly set to avoid invalid actions like toggle-raw
 export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"
+
+# Machine-local secrets and overrides. This file must stay outside git.
+if [ -f "$HOME/.my/env.zsh" ]; then
+	source "$HOME/.my/env.zsh"
+fi

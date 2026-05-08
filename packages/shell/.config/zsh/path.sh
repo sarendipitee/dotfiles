@@ -4,9 +4,6 @@
 #Python
 # export PATH=$PATH:$HOME/Library/Python/3.9/bin
 
-# Android platform tools
-export PATH=$PATH:~/.mine/bin/android
-
 #Rust/Cargo
 export PATH="$PATH:$CARGO_HOME/bin"
 

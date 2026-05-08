@@ -16,7 +16,7 @@ source ${zsh_plugins}.zsh
 
 # Re-apply user path precedence here after all other scripts have run
 # Things I build myself go in here, overrides all other paths
-export PATH=$HOME/.local/bin:$HOME/.mine/bin:$HOME/.mine/scripts:$PATH
+export PATH=$HOME/.local/bin:$HOME/.my/bin:$HOME/.my/scripts:$PATH
 
 # Homebrew
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
