@@ -17,5 +17,9 @@ source "$ZDOTDIR/functions.sh"
 source "$ZDOTDIR/aliases.sh"
 source "$ZDOTDIR/path.sh"
 
-for f in ${PERSONAL_AUTOLOAD_DIR}/*; do source $f; done
+# Use for machine-local secrets and overrides.
+# To avoid leaking secrets in git.
+if [[ -d "$PERSONAL_AUTOLOAD_DIR" ]]; then
+  for f in ${PERSONAL_AUTOLOAD_DIR}/*; do source $f; done
+fi
 
