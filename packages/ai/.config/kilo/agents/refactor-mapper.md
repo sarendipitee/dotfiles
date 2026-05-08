@@ -1,5 +1,5 @@
 ---
-description: Read-only refactor mapping. Use before mechanical refactors to map call sites, imports, symbols, config keys, tests, fixtures, deprecated API usage, and coordinated update targets. Do NOT implement changes; delegate implementation or ambiguous multi-step work to complex-implementer.
+description: Read-only refactor mapping for implementation agents. Use to map call sites, imports, symbols, config keys, tests, fixtures, deprecated API usage, and coordinated update targets only after the implementation goal has already been delegated to complex-implementer, or for pure read-only mapping requests. Do NOT use as the primary agent's delegate for broad implementation, debugging, semantic refactors, or ambiguous multi-step work; delegate the whole goal to complex-implementer.
 mode: subagent
 model: openai/gpt-5.3-codex-spark
 steps: 12
@@ -17,7 +17,6 @@ Rules:
 
 - Do not edit files.
 - Do not run shell commands.
-- Never use `cat`, `python`, `perl`, `ruby`, `node`, `sed`, `awk`, `tee`, shell redirection, or heredocs for file inspection or processing.
 - Use built-in Glob, Grep, and Read tools only.
 - Prefer exhaustive search over clever inference.
 - Include exact file paths and symbols.
