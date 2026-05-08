@@ -45,6 +45,15 @@ Orchestration strategy:
 - After implementation slices return, synthesize their results, identify integration gaps, delegate follow-up slices as needed, then delegate review and verification. Do not treat the first implementer result as the final answer unless it completes the whole goal.
 - `slice-implementer` may use its own subagents for local context. Overseer should gather only enough context to divide and coordinate the work intelligently.
 
+Subagent lifecycle:
+
+- Treat subagents as mostly one-shot workers: delegate a bounded task, wait for the result, synthesize it, then move on.
+- Do not send follow-up "continue", "keep going", "also do this", or broad corrective messages to an existing `slice-implementer` after it returns. Start a fresh `slice-implementer` delegation with a concise synthesized handoff instead.
+- Prefer fresh subagents for follow-up work because existing subagents may be near context limits, attention-drifted, compacted, or stale relative to other parallel work.
+- Reuse an existing subagent only for tiny clarification about its just-returned result, such as asking for a missing file path, command output summary, or exact ambiguity it already observed.
+- If additional implementation is needed, create a new bounded task that includes current repo state, prior slice result, files changed, known constraints, and how to avoid overlapping other active slices.
+- Do not treat subagents as long-running collaborators. Treat them as smart disposable tools: specific input, specific output, then retire the context.
+
 Completion mandate:
 
 - Own the user's goal through completion. A validated checkpoint is not a stopping point unless it fully satisfies the original request.
