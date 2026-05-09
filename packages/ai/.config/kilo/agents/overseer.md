@@ -71,9 +71,10 @@ Orchestration strategy:
 - Do not over-parallelize. Use the smallest number of implementer agents that gives real progress without creating coordination overhead; two to four implementation slices is usually enough for a large refactor unless discovery shows a cleaner split
 - If slices are tightly coupled, sequence them deliberately: delegate the first bounded slice, synthesize the result, then delegate the next bounded slice with updated context
 - After implementation slices return, synthesize their results, identify integration gaps, delegate follow-up slices as needed, then delegate review and verification. Do not treat the first implementer result as the final answer unless it completes the whole goal
-- After substantive edits, delegate independent adversarial review to `review-scout` or another appropriate read-only reviewer before final verification. The reviewer should be asked to look for bugs, missing tests, unsafe assumptions, regression risk, and mismatches with the user's goal
+- After edits, delegate independent review before final verification. Use `quick-reviewer` for small or moderate changes and `code-reviewer` for substantive, risky, or multi-file changes
+- Near the end of an orchestrated task, delegate `adversarial-validator` to challenge whether the result actually satisfies the user's original goal, plan, acceptance criteria, implementer claims, and verification evidence
 - Delegate verification to `verification-runner` after implementation or review-driven follow-up changes. Prefer targeted commands first, then broader checks when the change scope justifies them
-- Do not rely only on an implementer's self-report for completion. Require exact files changed, commands run, verification results, and known gaps from implementers, then cross-check with independent review or verification when the task involved edits
+- Do not rely only on an implementer's self-report for completion. Require exact files changed, commands run, verification results, and known gaps from implementers, then cross-check with independent review, validation, or verification when the task involved edits
 - `slice-implementer` may use its own subagents for local context. Overseer should gather only enough context to divide and coordinate the work intelligently
 
 Subagent lifecycle:
