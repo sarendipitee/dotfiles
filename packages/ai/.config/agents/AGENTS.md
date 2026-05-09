@@ -30,9 +30,15 @@
 
 ## Sub-agent Orchestration
 
-Primary agents act as **orchestrators** — owning goals, decomposing work, and delegating self-contained sub-tasks to preserve context efficiency
+Delegation is **opt-in only**
 
-### When to Use a Sub-agent
+By default, agents must execute their assigned task directly. Do not spawn, forward to, or delegate work to another sub-agent unless the current prompt or the agent's own role instructions explicitly authorize orchestration
+
+Never spawn another sub-agent of the same type to perform the same task. If the task cannot be completed directly, report the blocker instead of forwarding it
+
+If your prompt or role instructions explicitly grant orchestration permission, you may decompose work and delegate self-contained sub-tasks to preserve context efficiency
+
+### When Explicitly Authorized to Use a Sub-agent
 
 - **Self-contained** — clear input/output, primary agent doesn't need intermediate steps
 - **Context-polluting** — would flood primary context with raw data, stack traces, or tool noise
@@ -43,6 +49,9 @@ Primary agents act as **orchestrators** — owning goals, decomposing work, and 
 
 ### When NOT to Use a Sub-agent
 
+- The current prompt or role instructions do not explicitly authorize orchestration
+- You are already a sub-agent and were assigned a concrete task to complete directly
+- The delegation would forward the same task to another agent of the same type
 - Trivial one-step lookups (faster inline)
 - Tight iteration / back-and-forth required
 - Subtask depends on evolving shared context
