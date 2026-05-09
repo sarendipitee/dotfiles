@@ -21,8 +21,12 @@ export PATH=$HOME/.local/bin:$HOME/.my/bin:$HOME/.my/scripts:$PATH
 # Homebrew
 export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 
-# Proto shell activation - enables dynamic version detection per project
-eval "$(proto activate zsh)"
+# Direnv + Flox integration
+export DIRENV_LIB_PATH="${HOME}/.config/direnv/lib"
+if [[ -f "${DIRENV_LIB_PATH}/flox-direnv.sh" ]]; then
+  source "${DIRENV_LIB_PATH}/flox-direnv.sh"
+fi
+eval "$(direnv hook zsh)"
 
 # Remove duplicate PATH entries while preserving system paths needed by prompt plugins.
 typeset -U path PATH

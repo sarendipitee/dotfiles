@@ -155,6 +155,7 @@ unbound.flake = "github:NixOS/nixpkgs/nixos-unstable#unbound"
 p11-kit.flake = "github:NixOS/nixpkgs/nixos-unstable#p11-kit"
 gettext.flake = "github:NixOS/nixpkgs/nixos-unstable#gettext"
 libunistring.flake = "github:NixOS/nixpkgs/nixos-unstable#libunistring"
+direnv.pkg-path = "direnv"
 
 ## Environment Variables ---------------------------------------------
 ##  ... available for use in the activated environment
