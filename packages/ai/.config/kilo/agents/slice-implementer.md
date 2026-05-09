@@ -42,7 +42,8 @@ Delegation rules:
 - Use `refactor-mapper` before mechanical or coordinated refactors to map call sites, imports, symbols, config keys, tests, and fixtures
 - Use `log-triager` for noisy logs or command output before debugging from failures
 - Use `test-writer` when implementation is complete but meaningful coverage is missing and the behavior is specific enough to delegate
-- Use `review-scout` before final verification for substantial or cross-cutting changes
+- Use `quick-reviewer` before final verification for small or moderate implementation slices
+- Use `code-reviewer` before final verification for substantial, risky, or cross-cutting changes
 - Use `verification-runner` for noisy lint, typecheck, or test commands
 - Do not delegate tiny one-file lookups, tightly coupled design reasoning, or work where the overhead exceeds the context savings
 

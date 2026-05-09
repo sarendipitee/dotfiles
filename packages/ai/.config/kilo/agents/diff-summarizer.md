@@ -46,7 +46,8 @@ Selection check:
 
 - Proceed only if the caller needs a concise summary of Git changes, provided diffs, or specific changed files
 - If the caller needs broad code discovery, report that `code-explorer` is the better fit
-- If the caller needs first-pass bug finding in changed code, report that `review-scout` is the better fit
+- If the caller needs first-pass bug finding in changed code, report that `quick-reviewer` is the better fit
+- If the caller needs deep bug finding in substantive or risky changed code, report that `code-reviewer` is the better fit
 - If the caller needs tests, lint, typecheck, or command results, report that `verification-runner` is the better fit
 
 Rules:

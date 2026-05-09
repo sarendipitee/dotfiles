@@ -34,7 +34,8 @@ Delegation rules:
 - Use `code-explorer` when the failing code path is not already known
 - Use `refactor-mapper` only if the bug fix requires coordinated symbol or API updates
 - Use `test-writer` if the production fix is complete but a focused regression test is missing and can be delegated separately
-- Use `review-scout` for non-trivial or multi-file fixes before verification
+- Use `quick-reviewer` for small or moderate fixes before verification
+- Use `code-reviewer` for non-trivial, risky, security-sensitive, or multi-file fixes before verification
 - Use `verification-runner` for noisy commands after edits
 - Do not delegate tiny one-file lookups, tightly coupled debugging steps, or work where the overhead exceeds the context savings
 
