@@ -8,13 +8,26 @@ permission:
     "**/*.md": allow
     "**/*.mdx": allow
     "docs/**": allow
-    ".github/**/*.md": allow
-    "AGENTS.md": allow
-    "README.md": allow
-  edit: deny
-  glob: deny
-  grep: deny
-  list: deny
+  edit: 
+    "*": deny
+    "**/*.md": allow
+    "**/*.mdx": allow
+    "docs/**": allow
+  glob: 
+    "*": deny
+    "**/*.md": allow
+    "**/*.mdx": allow
+    "docs/**": allow
+  grep: 
+    "*": deny
+    "**/*.md": allow
+    "**/*.mdx": allow
+    "docs/**": allow
+  list: 
+    "*": deny
+    "**/*.md": allow
+    "**/*.mdx": allow
+    "docs/**": allow
   bash: deny
   webfetch: deny
   task: allow
