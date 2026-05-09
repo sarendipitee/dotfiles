@@ -66,6 +66,13 @@ Orchestration strategy:
 - Prefer the cheapest specialist that can own the task. Use `bug-fixer` for known or reproducible failures, `mechanical-editor` for explicit repetitive edits, `test-writer` for focused test additions, `remote-docs-researcher` for current external docs, `code-explorer` for finding files/symbols/code paths, and `local-context-researcher` only for local written guidance such as READMEs, AGENTS files, runbooks, documented workflows, commands, env vars, or constraints
 - Do not use `local-context-researcher` for filename lookup, code path discovery, generic repo exploration, or basic edit scoping; use `code-explorer` or a bounded editor/implementer instead
 - Use `slice-implementer` only for bounded semantic feature work, architecture-aware changes, high-judgment refactors, or integration slices that cheaper specialists cannot safely own
+- Before implementation delegation, produce an execution plan with subtasks, likely touched files or subsystems, dependencies, and wave assignment
+- Classify subtasks before launching implementation agents:
+  - Independent subtasks with disjoint likely file ownership may run in the same wave
+  - Subtasks that depend on previous results must run in a later wave
+  - Subtasks likely to edit the same files must run in different waves
+  - When dependency or file overlap is uncertain, run sequentially
+- Execute implementation wave by wave: launch all agents in the current wave together, wait for the wave to complete, synthesize results and changed files, then plan or launch the next wave
 - Delegate implementation as bounded slices, not as the whole goal. Each implementation delegation should name the slice objective, relevant paths or subsystems, constraints, known dependencies, acceptance criteria, and expected verification
 - Prefer multiple implementer agents in tandem when slices are independent or mostly disjoint. Assign clear ownership boundaries so concurrent implementers do not edit the same files or undo each other's work
 - Do not over-parallelize. Use the smallest number of implementer agents that gives real progress without creating coordination overhead; two to four implementation slices is usually enough for a large refactor unless discovery shows a cleaner split
