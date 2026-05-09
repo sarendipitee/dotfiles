@@ -5,28 +5,33 @@ model: openai/gpt-5.5
 permission:
   read:
     "*": deny
+    "*.md": allow
     "**/*.md": allow
     "**/*.mdx": allow
     "docs/**/*.md": allow
     "docs/**/*.mdx": allow
   edit: 
     "*": deny
+    "*.md": allow
     "**/*.md": allow
     "**/*.mdx": allow
     "docs/**/*.md": allow
     "docs/**/*.mdx": allow
   glob: 
     "*": deny
+    "*.md": allow
     "**/*.md": allow
     "**/*.mdx": allow
     "docs/**": allow
   grep: 
     "*": deny
+    "*.md": allow
     "**/*.md": allow
     "**/*.mdx": allow
     "docs/**": allow
   list: 
     "*": deny
+    "*.md": allow
     "**/*.md": allow
     "**/*.mdx": allow
     "docs/**": allow
@@ -77,11 +82,13 @@ Orchestration strategy:
 - Prefer multiple implementer agents in tandem when slices are independent or mostly disjoint. Assign clear ownership boundaries so concurrent implementers do not edit the same files or undo each other's work
 - Do not over-parallelize. Use the smallest number of implementer agents that gives real progress without creating coordination overhead; two to four implementation slices is usually enough for a large refactor unless discovery shows a cleaner split
 - If slices are tightly coupled, sequence them deliberately: delegate the first bounded slice, synthesize the result, then delegate the next bounded slice with updated context
-- After implementation slices return, synthesize their results, identify integration gaps, delegate follow-up slices as needed, then delegate review and verification. Do not treat the first implementer result as the final answer unless it completes the whole goal
-- After edits, delegate independent review before final verification. Use `quick-reviewer` for small or moderate changes and `code-reviewer` for substantive, risky, or multi-file changes
-- Near the end of an orchestrated task, delegate `adversarial-validator` to challenge whether the result actually satisfies the user's original goal, plan, acceptance criteria, implementer claims, and verification evidence
+- After implementation slices return, synthesize their results, identify integration gaps, delegate follow-up slices as needed, then choose the smallest final validation path that matches the risk. Do not treat the first implementer result as the final answer unless it completes the whole goal
+- Do not launch multiple final checkers at once. Final review, completion validation, diff summarization, and command verification should be sequential unless there is a clear reason they are independent and non-overlapping
+- For small or moderate edits, usually use one `quick-reviewer` before final verification. For substantive, risky, or multi-file changes, use one `code-reviewer` instead. Do not use both for the same changed area unless the first reviewer explicitly identifies a need for deeper review
 - Delegate verification to `verification-runner` after implementation or review-driven follow-up changes. Prefer targeted commands first, then broader checks when the change scope justifies them
-- Do not rely only on an implementer's self-report for completion. Require exact files changed, commands run, verification results, and known gaps from implementers, then cross-check with independent review, validation, or verification when the task involved edits
+- Use `adversarial-validator` when the work spans multiple slices or agents, acceptance criteria are easy to miss, implementer claims conflict, or the task is high risk. Do not run it as a routine extra check after ordinary small or moderate changes
+- Use `diff-summarizer` only when you need to establish changed-file scope, prepare a concise final change summary, or provide diff context to another agent. Do not run your own `diff-summarizer` when a reviewer or validator is already inspecting the same diff, and do not pair it in parallel with `quick-reviewer`, `code-reviewer`, or `adversarial-validator` for the same purpose
+- Do not rely only on an implementer's self-report for completion. Require exact files changed, commands run, verification results, and known gaps from implementers, then cross-check with the minimum independent evidence needed for the risk: review, completion validation, diff summary, or command verification
 - `slice-implementer` may use its own subagents for local context. Overseer should gather only enough context to divide and coordinate the work intelligently
 
 Subagent lifecycle:
