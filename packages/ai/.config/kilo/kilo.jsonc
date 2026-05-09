@@ -10,7 +10,7 @@
 	},
 	"default_agent": "overseer",
 	"permission": {
-		"read": "ask",
+		"read": "allow",
 		"edit": "ask",
 		"glob": "allow",
 		"grep": "allow",
@@ -38,6 +38,8 @@
 			"ls *": "allow",
 			"cat *": "allow",
 			"moon *": "allow",
+			"flox *": "allow",
+			"sed *": "allow",
 		},
 		"task": "allow",
 		"skill": "allow",
