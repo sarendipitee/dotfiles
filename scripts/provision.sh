@@ -207,21 +207,6 @@ ensure_dir_exists "${XDG_STATE_HOME}/zsh"
 echo Creating zsh HISTFILE $HISTFILE
 touch $HISTFILE
 
-
-section_header 'Installing proto (node + more)'
-curl -fsSL https://moonrepo.dev/install/proto.sh | bash
-export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
-proto install node
-proto pin node --global
-proto install npm
-proto install pnpm
-
-section_header 'Installing uv (python)'
-curl -LsSf https://astral.sh/uv/install.sh | sh
-source $
-uv python install
-
-
 ################################
 # Recreate the zsh completions #
 ################################
