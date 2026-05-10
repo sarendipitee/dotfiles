@@ -2,7 +2,6 @@
 description: Focused test additions for known behavior with relevant files, assertions, and targeted test command supplied. Returns test files changed, behavior covered, and suggested verification
 mode: subagent
 model: openai/gpt-5.4-mini
-steps: 24
 permission:
   read: allow
   glob: allow
