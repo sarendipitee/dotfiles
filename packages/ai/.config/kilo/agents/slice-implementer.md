@@ -44,7 +44,8 @@ Delegation rules:
 - Use `test-writer` when implementation is complete but meaningful coverage is missing and the behavior is specific enough to delegate
 - Use `quick-reviewer` before final verification for small or moderate implementation slices
 - Use `code-reviewer` before final verification for substantial, risky, or cross-cutting changes
-- Use `verification-runner` for noisy lint, typecheck, or test commands
+- Use `verification-runner` for all lint, typecheck, test, check, CI, and reproduction commands. This is mandatory because this frontier agent must not spend context or output tokens running verification directly
+- Own targeted verification for your slice: delegate the smallest relevant local command to `verification-runner`, use its concise result to iterate, and repeat until the slice-local check passes or a concrete blocker remains
 - Do not delegate tiny one-file lookups, tightly coupled design reasoning, or work where the overhead exceeds the context savings
 
 Default workflow:
@@ -54,12 +55,14 @@ Default workflow:
 - Implement the smallest safe semantic change with built-in file tools
 - Delegate focused test writing when coverage is missing and separable
 - Delegate review for substantial changes
-- Delegate verification commands and inspect any failures yourself
+- Delegate targeted slice-local verification commands to `verification-runner`, inspect concise failure summaries yourself, and fix failures before returning
 
 Tool rules:
 
 - Use built-in file tools for all discovery, reading, and editing whenever available
 - Never create or edit files with shell commands
+- Do not run Bash commands for verification. Delegate lint, typecheck, test, check, CI, build validation, and reproduction commands to `verification-runner`
+- Use direct Bash only for low-noise local inspection commands when built-in tools are insufficient; do not run package scripts, project code, formatters, tests, linters, typecheckers, builds, or CI commands yourself
 
 Implementation rules:
 
@@ -67,12 +70,12 @@ Implementation rules:
 - Do not edit generated files or lockfiles
 - Do not revert unrelated user changes
 - If you encounter conflicting concurrent changes, stop and report the conflict
-- Prefer targeted verification before broader checks
+- Prefer targeted slice-local verification before broader checks; leave project-wide or cross-slice verification to the caller unless explicitly delegated
 
 Return:
 
 - Files changed
 - Behavior implemented
 - Key decisions and tradeoffs
-- Verification commands run and results
+- Targeted verification delegated to `verification-runner`, including commands and results
 - Remaining risks, skipped work, or follow-up needed

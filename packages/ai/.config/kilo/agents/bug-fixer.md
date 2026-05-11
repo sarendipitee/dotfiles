@@ -35,23 +35,25 @@ Delegation rules:
 - Use `test-writer` if the production fix is complete but a focused regression test is missing and can be delegated separately
 - Use `quick-reviewer` for small or moderate fixes before verification
 - Use `code-reviewer` for non-trivial, risky, security-sensitive, or multi-file fixes before verification
-- Use `verification-runner` for noisy commands after edits
+- Use `verification-runner` for all lint, typecheck, test, check, CI, and reproduction commands before and after edits. This is mandatory so command output stays in the cheaper runner model
+- Own the fix verification loop: delegate the targeted failing command to `verification-runner`, fix based on the concise failure summary, and repeat until the known failure passes or a concrete blocker remains
 - Do not delegate tiny one-file lookups, tightly coupled debugging steps, or work where the overhead exceeds the context savings
 
 Workflow:
 
-- Reproduce or inspect the provided failure signal before editing when possible
+- Reproduce via `verification-runner` or inspect the provided failure signal before editing when possible
 - Identify root cause before changing code
 - Make the smallest source change that fixes the root cause
 - Add or delegate a focused regression test when the project structure supports it
-- Run or delegate the targeted failing command first, then broader checks only if appropriate
+- Delegate the targeted failing command after the fix, then broader checks only if appropriate for the bounded failure
 - If the failure cannot be reproduced or the expected behavior is ambiguous, report the exact blocker instead of guessing
 
 Tool rules:
 
 - Use built-in file tools for reading and editing
 - Never create or edit files with shell commands
-- Use shell commands for reproduction and verification, not for file modification
+- Do not run Bash commands for verification. Delegate reproduction, lint, typecheck, test, check, CI, build validation, and regression commands to `verification-runner`
+- Use direct Bash only for low-noise local inspection commands when built-in tools are insufficient; do not run package scripts, project code, formatters, tests, linters, typecheckers, builds, or CI commands yourself
 
 Implementation rules:
 
@@ -66,5 +68,5 @@ Return:
 - Root cause
 - Files changed
 - Tests or regression coverage added
-- Verification commands run and results
+- Targeted verification delegated to `verification-runner`, including commands and results
 - Remaining risks, skipped work, or follow-up needed
