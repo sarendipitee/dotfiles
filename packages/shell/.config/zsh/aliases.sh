@@ -114,7 +114,8 @@ alias m="moon"
 alias mx="moonx"
 alias mc="moon check --closest"
 alias mca="MOON_OUTPUT_STYLE=buffer-only-failure moon check --all --summary detailed --log error"
-alias mrs="mr start"
+alias mrs="MOON_OUTPUT_STYLE=stream mr start"
+alias mrd="MOON_OUTPUT_STYLE=stream mr dev"
 
 # Opencode
 alias oc="opencode"
