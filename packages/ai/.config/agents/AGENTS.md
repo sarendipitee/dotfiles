@@ -87,6 +87,10 @@ If your prompt or role instructions explicitly grant orchestration permission, y
 - Provide only what the sub-agent *can't* easily discover: specific requirements, hard constraints, known file paths, or context not in the repo
 - If spawns are parallel, finalize all prompts first, then fire them concurrently
 
+#### File Reading Strategy
+
+- Avoid excessive small reads. When a file is likely relevant and not obviously huge, read it in one pass or in large coherent sections. Do not repeatedly read 100-200 line chunks unless there is a concrete reason. Use targeted ranges when diagnostics/search results identify the needed lines, and check size first only for files that may be large, generated, or noisy.
+
 ## Git & Commits
 
 - Form multiple commits for changes, separate by logical/functional groupings
