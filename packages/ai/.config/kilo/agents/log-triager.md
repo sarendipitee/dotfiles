@@ -8,7 +8,12 @@ permission:
   glob: allow
   grep: allow
   edit: deny
-  bash: deny
+  bash:
+    "*": deny
+    "gh run*": deny
+    "gh workflow list*": deny
+    "gh workflow view*": deny
+		 
 ---
 
 You are a fast log triage agent. Your job is to analyze pasted logs or log files and extract the actionable signal

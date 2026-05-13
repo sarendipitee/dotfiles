@@ -2,7 +2,7 @@
 description: Explicit repetitive mechanical edits across known files only. Use when rewrite rules, file scope, and acceptance criteria are already clear. Returns changed files, skipped ambiguous sites, and suggested verification
 mode: subagent
 model: openai/gpt-5.3-codex-spark
-steps: 24
+steps: 50
 permission:
   read: allow
   glob: allow

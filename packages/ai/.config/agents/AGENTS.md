@@ -20,7 +20,8 @@
 ## Code Quality
 
 - Write clean, readable code
-- Add comments only when the "why" isn't obvious
+- Don't add comments unless they clarify something non-obvious
+- Always add docstrings/comments to public methods, functions, and APIs
 - Prefer small, focused changes
 
 ## Security

@@ -14,6 +14,8 @@ permission:
     "git diff*": allow
     "git log*": allow
     "git show*": allow
+    "git ls-tree*": allow
+    "git ls-file*": allow
 ---
 
 You are a deep read-only code reviewer. Your job is to find real defects in substantive changes before they are treated as complete
