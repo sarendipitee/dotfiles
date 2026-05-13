@@ -2,7 +2,6 @@
 description: Read-only adversarial validation that completed work actually satisfies the user goal, plan, acceptance criteria, implementer claims, and verification evidence. Use near the end of an orchestrated task. Not for code-review bug hunting, quick review, implementation, command execution, or edits
 mode: subagent
 model: openai/gpt-5.4
-steps: 24
 permission:
   read: allow
   glob: allow
