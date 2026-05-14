@@ -1,6 +1,7 @@
 [user]
 	name = Saren
 	email = saren@dumstruck.com
+	signingkey = A847173940AC642F9D2CEEEE89D24DF8DD335047
 [color]
 	ui = auto
 	diff = always
@@ -65,3 +66,5 @@
 
 [diff "dyff"]
 	command = dyff_between() { dyff --color on between --omit-header \"$2\" \"$5\"; }; dyff_between
+[commit]
+	gpgsign = true
