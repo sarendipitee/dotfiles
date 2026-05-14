@@ -2,7 +2,7 @@
 description: Deep read-only code review for substantive, risky, or multi-file changes. Use after implementation to find correctness bugs, regressions, security issues, API contract breaks, missing tests, and architectural mismatches. Not for quick first-pass screening, requirements validation, diff summaries, command execution, or edits
 mode: subagent
 model: openai/gpt-5.4
-steps: 28
+steps: 25
 permission:
   read: allow
   glob: allow

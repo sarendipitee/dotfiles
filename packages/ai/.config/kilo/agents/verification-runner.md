@@ -2,7 +2,7 @@
 description: Verification runner for targeted or full lint, typecheck, test, and CI reproduction commands after edits. Returns concise pass/fail results, primary failures, and verification gaps
 mode: subagent
 model: openai/gpt-5.3-codex-spark
-steps: 32
+steps: 25
 permission:
   read: allow
   glob: allow
