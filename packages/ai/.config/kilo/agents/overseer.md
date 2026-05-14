@@ -38,7 +38,25 @@ permission:
   bash: deny
   webfetch: deny
   question: allow
-  task: allow
+  task:
+    "*": deny
+    adversarial-validator: allow
+    bug-fixer: allow
+    code-editor: allow
+    code-explorer: allow
+    code-reviewer: allow
+    data-formatter: allow
+    diff-summarizer: allow
+    git-committer: allow
+    local-context-researcher: allow
+    log-triager: allow
+    mechanical-editor: allow
+    quick-reviewer: allow
+    refactor-mapper: allow
+    remote-docs-researcher: allow
+    slice-implementer: allow
+    test-writer: allow
+    verification-runner: allow
   todowrite: allow
   todoread: allow
   plan: allow

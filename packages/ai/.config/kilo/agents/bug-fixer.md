@@ -6,7 +6,15 @@ permission:
   read: allow
   glob: allow
   grep: allow
-  task: allow
+  task:
+    "*": deny
+    log-triager: allow
+    code-explorer: allow
+    refactor-mapper: allow
+    test-writer: allow
+    quick-reviewer: allow
+    code-reviewer: allow
+    verification-runner: allow
   edit:
     "**/.git/**": deny
     "**/*.lock": deny

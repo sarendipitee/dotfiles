@@ -7,6 +7,8 @@ permission:
   read: deny
   glob: deny
   grep: deny
+  task:
+    "*": deny
   edit: deny
   bash: deny
   websearch: allow
