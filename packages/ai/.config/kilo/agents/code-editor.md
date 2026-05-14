@@ -2,7 +2,6 @@
 description: "Mid-tier bounded code editing, not orchestration. Use when behavior, ownership boundary, and acceptance criteria are already clear, and the task needs moderate local code judgment beyond mechanical find/replace: contained refactors, straightforward feature edits in known files/subsystems, API adaptation in an owned area, review follow-up fixes, or small integration adjustments after design is decided. Prefer over slice-implementer when frontier architecture judgment or parallel coordination is not needed. Prefer mechanical-editor for exact repetitive rewrites. Not for broad discovery, architecture design, high-judgment slice ownership, tests-only work, verification, review, or whole-goal implementation"
 mode: subagent
 model: openai/gpt-5.4
-steps: 80
 permission:
   read: allow
   glob: allow

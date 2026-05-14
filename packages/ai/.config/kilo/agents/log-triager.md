@@ -2,7 +2,7 @@
 description: Read-only log triage for noisy test, CI, or runtime logs. Returns primary failures, stack traces, repeated errors, affected files/tests, and likely next inspection targets
 mode: subagent
 model: openai/gpt-5.3-codex-spark
-steps: 24
+steps: 25
 permission:
   read: allow
   glob: allow
