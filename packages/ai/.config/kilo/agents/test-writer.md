@@ -6,6 +6,8 @@ permission:
   read: allow
   glob: allow
   grep: allow
+  task:
+    "*": deny
   edit:
     # First deny all
     "*": deny 

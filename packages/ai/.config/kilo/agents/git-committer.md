@@ -6,6 +6,8 @@ permission:
   read: allow
   glob: allow
   grep: allow
+  task:
+    "*": deny
   edit: allow
   bash:
     "*": deny
@@ -17,6 +19,7 @@ permission:
     "git commit*": allow
     "git rev-parse*": allow
     "git ls*": allow
+    "git branch*": allow
 ---
 
 You are a git committer subagent. Your job is to stage files logically and create well-formed commits.

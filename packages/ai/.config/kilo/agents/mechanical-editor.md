@@ -1,12 +1,14 @@
 ---
-description: Explicit repetitive mechanical edits across known files only. Use when rewrite rules, file scope, and acceptance criteria are already clear. Returns changed files, skipped ambiguous sites, and suggested verification
+description: "Cheap mechanical editor for exact repetitive rewrites across known files only. Use when file scope, rewrite rule, before/after pattern, skip rules, and acceptance criteria are explicit, and each site should be changed without semantic redesign. Prefer code-editor instead when edits require moderate local judgment, API adaptation, or non-repetitive code changes. Not for discovery, architecture decisions, tests-only work, verification, review, or ambiguous transformations"
 mode: subagent
-model: openai/gpt-5.3-codex-spark
+model: openai/gpt-5.4-mini
 steps: 50
 permission:
   read: allow
   glob: allow
   grep: allow
+  task:
+    "*": deny
   edit:
     "**/*.lock": deny
     "**/dist/**": deny
