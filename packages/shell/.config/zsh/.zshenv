@@ -11,7 +11,9 @@ source "$ZDOTDIR/env.sh"
 # Flox
 export PATH="/usr/local/bin:$PATH"
 export FLOX_SET_PROMPT=false
-eval "$(flox activate -d $DOTFILES_DIR/packages/flox/global-env -m run)"
+if [ -z "$FLOX_ENV" ]; then
+	eval "$(flox activate -d $DOTFILES_DIR/packages/flox/global-env -m run)"
+fi
 
 # Non-interactive shells do not run .zshrc, so direnv's prompt hook never fires.
 # Export the current directory's env explicitly for command shells like Kilo tasks.
