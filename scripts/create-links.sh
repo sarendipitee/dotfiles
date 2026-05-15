@@ -5,6 +5,8 @@ packages_dir=$(realpath "$script_dir"/../packages)
 dotfiles_dir=$(realpath "$script_dir/..")
 cd "$dotfiles_dir" && git submodule update --init --recursive
 
+"$dotfiles_dir"/scripts/generate-ai-agents.rb
+
 dir_list="$packages_dir/*"
 
 for dir in $dir_list; do
