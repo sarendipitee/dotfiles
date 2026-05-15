@@ -31,8 +31,12 @@ source "$ZDOTDIR/functions.sh"
 source "$ZDOTDIR/aliases.sh"
 source "$ZDOTDIR/path.sh"
 
-# apparix
-source "$XDG_CONFIG_HOME/apparix/apparix.bash"
+# Rust
+# TODO: move somewhere better, won't work pre-flox-activate in env.sh
+export RUST_SRC_PATH="$(rustc --print sysroot)/lib/rustlib/src/rust/src"
+
+# zoxide
+eval "$(zoxide init zsh)"
 
 # Use for machine-local secrets and overrides.
 # To avoid leaking secrets in git.

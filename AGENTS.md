@@ -10,7 +10,6 @@ This is a dotfiles repository using **GNU Stow** for symlink management. Configu
 dotfiles/
 ├── packages/              # Config packages (one per tool/application)
 │   ├── ai/               # AI tools (Claude, OpenCode, Kilo)
-│   ├── apparix/          # Directory bookmarking
 │   ├── git/              # Git config
 │   ├── flox/             # Flox config (PRIMARY package manager)
 │   ├── homebrew/         # Homebrew Brewfile (**only** for MacOS only packages - Flox for everything else for cross platform)
