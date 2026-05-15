@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+
+set -e
+
+PROXY_PORT=${1:-85256}
+WEB_PORT=${2:-85257}
+
+PID_FILE="${HOME}/.local/run/mitmproxy.pid"
+
+ensure_dir_exists() {
+    local dir="$1"
+    if [ ! -d "$dir" ]; then
+        mkdir -p "$dir"
+    fi
+}
+
+ensure_dir_exists "$(dirname "$PID_FILE")"
+
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+    echo "mitmproxy already running (PID $(cat "$PID_FILE"))"
+    exit 0
+fi
+
+echo "Starting mitmweb proxy..."
+echo "  Proxy: http://localhost:${PROXY_PORT}"
+echo "  Web UI: http://localhost:${WEB_PORT}"
+echo ""
+
+if [ ! -d "$HOME/.mitmproxy" ]; then
+    echo "First run: generating mitmproxy CA certificate..."
+    mitmweb --version >/dev/null 2>&1 || true
+fi
+
+if [ -f "$HOME/.mitmproxy/mitmproxy-ca-cert.pem" ]; then
+    echo "Installing CA certificate to macOS keychain..."
+    if ! security find-certificate -c "mitmproxy" >/dev/null 2>&1; then
+        sudo security add-trusted-cert -d -r trustRoot \
+            -k /Library/Keychains/System.keychain \
+            "$HOME/.mitmproxy/mitmproxy-ca-cert.pem" 2>/dev/null || true
+    fi
+else
+    echo "Warning: CA certificate not found. Run mitmweb once first."
+fi
+
+echo ""
+echo "Starting mitmweb on ports ${PROXY_PORT}/${WEB_PORT}..."
+nohup mitmweb --listen-port "$PROXY_PORT" --web-port "$WEB_PORT" >/dev/null 2>&1 &
+echo $! > "$PID_FILE"
+echo "Started mitmproxy (PID $(cat "$PID_FILE"))"
