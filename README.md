@@ -23,7 +23,7 @@ stow -v --dotfiles -d packages -t $HOME <package>
 | `nvim` | Neovim with LazyVim distribution and 25+ plugins |
 | `ai` | Claude, OpenCode, and Kilo AI tool configurations |
 | `homebrew` | Brewfile with all Homebrew packages and casks |
-| `apparix` | Directory bookmarking tool configuration |
+| `zoxide` | Directory bookmarking tool configuration |
 | `misc` | Miscellaneous scripts and binaries |
 
 ## Prerequisites

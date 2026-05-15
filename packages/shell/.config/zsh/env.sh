@@ -76,9 +76,6 @@ export GNUPGHOME="$XDG_DATA_HOME"/gnupg
 # Keras
 export KERAS_HOME="${XDG_STATE_HOME}/keras"
 
-# Apparix (directory bookmarking)
-export APPARIX_HOME="${XDG_CONFIG_HOME}/apparix"
-
 # LM Studio
 export LM_STUDIO_API_KEY='xxx'
 export LM_STUDIO_API_BASE='http://localhost:1234/v1'
