@@ -1,0 +1,85 @@
+model = "gpt-5.5"
+model_reasoning_effort = "low"
+personality = "pragmatic"
+
+[mcp_servers.temporal]
+command = "uvx"
+args = [
+	"temporal-mcp-server",
+	"--host",
+	"localhost:17233",
+	"--namespace",
+	"default",
+]
+
+[mcp_servers.grafana]
+command = "uvx"
+args = ["mcp-grafana"]
+
+[mcp.grafana.environment]
+GRAFANA_URL = "$GRAFANA_URL"
+GRAFANA_USERNAME = "$GRAFANA_USERNAME"
+GRAFANA_PASSWORD = "$GRAFANA_PASSWORD"
+
+[projects."/Users/jd/Projects/stratifyre"]
+trust_level = "trusted"
+
+[projects."/Users/jd/Projects/dotfiles"]
+trust_level = "trusted"
+
+[projects."/Users/jd/Projects/strat-infra"]
+trust_level = "trusted"
+
+[projects."/Users/jd/Projects/chatehr"]
+trust_level = "trusted"
+
+[projects."/Users/jd/Documents/Codex/2026-05-15/how-do-i-use-my-overseer"]
+trust_level = "trusted"
+
+[projects."/Users/jd/Documents/Codex/2026-05-15/can-you-see-my-overseer-skill"]
+trust_level = "trusted"
+
+[projects."/Users/jd/Documents/Codex/2026-05-15/overseer-users-jd-projects-dotfiles-packages"]
+trust_level = "trusted"
+
+[tui.model_availability_nux]
+"gpt-5.5" = 1
+
+[agents]
+max_threads = 15
+max_depth = 3
+
+[marketplaces.openai-bundled]
+last_updated = "2026-05-16T04:31:39Z"
+source_type = "local"
+source = "/Users/jd/.codex/.tmp/bundled-marketplaces/openai-bundled"
+
+[marketplaces.openai-primary-runtime]
+last_updated = "2026-05-16T00:40:10Z"
+source_type = "local"
+source = "/Users/jd/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
+
+[plugins."documents@openai-primary-runtime"]
+enabled = true
+
+[plugins."spreadsheets@openai-primary-runtime"]
+enabled = true
+
+[plugins."presentations@openai-primary-runtime"]
+enabled = true
+
+[plugins."temporal@openai-curated"]
+enabled = true
+
+[plugins."browser@openai-bundled"]
+enabled = true
+
+[plugins."chrome@openai-bundled"]
+enabled = true
+
+[plugins."computer-use@openai-bundled"]
+enabled = true
+
+[[skills.config]]
+name = "temporal:temporal-developer"
+enabled = false
