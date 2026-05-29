@@ -2,6 +2,8 @@ model = "gpt-5.5"
 model_reasoning_effort = "low"
 personality = "pragmatic"
 
+notify = ["/Users/jd/.codex/computer-use/Codex Computer Use.app/Contents/SharedSupport/SkyComputerUseClient.app/Contents/MacOS/SkyComputerUseClient", "turn-ended"]
+
 [mcp_servers.temporal]
 command = "uvx"
 args = [
@@ -15,11 +17,26 @@ args = [
 [mcp_servers.grafana]
 command = "uvx"
 args = ["mcp-grafana"]
+env = { GRAFANA_URL = "https://grafana.stratifyre.com" }
+env_vars = ["GRAFANA_USERNAME", "GRAFANA_PASSWORD"]
+startup_timeout_sec = 30
 
-[mcp.grafana.environment]
-GRAFANA_URL = "$GRAFANA_URL"
-GRAFANA_USERNAME = "$GRAFANA_USERNAME"
-GRAFANA_PASSWORD = "$GRAFANA_PASSWORD"
+[mcp_servers.node_repl]
+args = []
+command = "/Applications/Codex.app/Contents/Resources/node_repl"
+startup_timeout_sec = 120
+
+[mcp_servers.node_repl.env]
+NODE_REPL_NATIVE_PIPE_CONNECT_TIMEOUT_MS = "1000"
+NODE_REPL_NODE_MODULE_DIRS = ""
+NODE_REPL_NODE_PATH = "/Applications/Codex.app/Contents/Resources/node"
+NODE_REPL_TRUSTED_CODE_PATHS = "/Users/jd/.codex"
+CODEX_HOME = "/Users/jd/.codex"
+NODE_REPL_TRUSTED_BROWSER_CLIENT_SHA256S = "496c7b3cb95b4bc20cff49b513150606e0da0000c92bf752206bee5a6c248423"
+BROWSER_USE_AVAILABLE_BACKENDS = "chrome,iab"
+BROWSER_USE_MARKETPLACE_NAME = "openai-bundled"
+NODE_REPL_UNTRUSTED_ENV_ALLOWLIST = "BROWSER_USE_MARKETPLACE_NAME"
+CODEX_CLI_PATH = "/Applications/Codex.app/Contents/Resources/codex"
 
 [projects."/Users/jd/Projects/stratifyre"]
 trust_level = "trusted"
@@ -42,6 +59,12 @@ trust_level = "trusted"
 [projects."/Users/jd/Documents/Codex/2026-05-15/overseer-users-jd-projects-dotfiles-packages"]
 trust_level = "trusted"
 
+[projects."/Users/jd/Projects/dioxus-components"]
+trust_level = "trusted"
+
+[projects."/Users/jd/Downloads"]
+trust_level = "trusted"
+
 [tui.model_availability_nux]
 "gpt-5.5" = 1
 
@@ -50,12 +73,12 @@ max_threads = 15
 max_depth = 3
 
 [marketplaces.openai-bundled]
-last_updated = "2026-05-16T04:31:39Z"
+last_updated = "2026-05-27T15:35:57Z"
 source_type = "local"
 source = "/Users/jd/.codex/.tmp/bundled-marketplaces/openai-bundled"
 
 [marketplaces.openai-primary-runtime]
-last_updated = "2026-05-16T00:40:10Z"
+last_updated = "2026-05-26T03:40:16Z"
 source_type = "local"
 source = "/Users/jd/.cache/codex-runtimes/codex-primary-runtime/plugins/openai-primary-runtime"
 
@@ -77,9 +100,35 @@ enabled = true
 [plugins."chrome@openai-bundled"]
 enabled = true
 
-[plugins."computer-use@openai-bundled"]
-enabled = true
-
 [[skills.config]]
 name = "temporal:temporal-developer"
 enabled = false
+
+[desktop]
+ambient-suggestions-enabled = false
+sansFontSize = 16
+codeFontSize = 14
+usePointerCursors = true
+composerEnterBehavior = "cmdIfMultiline"
+preventSleepWhileRunning = true
+keepRemoteControlAwakeWhilePluggedIn = true
+selected-avatar-id = "fireball"
+conversationDetailMode = "STEPS_COMMANDS"
+
+[desktop.appearanceDarkChromeTheme]
+accent = "#339cff"
+contrast = 63
+ink = "#ffffff"
+opaqueWindows = false
+surface = "#181818"
+
+[desktop.appearanceDarkChromeTheme.fonts]
+
+[desktop.appearanceDarkChromeTheme.semanticColors]
+diffAdded = "#40c977"
+diffRemoved = "#fa423e"
+skill = "#ad7bf9"
+
+[features]
+js_repl = false
+multi_agent = true
