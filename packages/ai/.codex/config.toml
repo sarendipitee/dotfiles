@@ -69,8 +69,8 @@ trust_level = "trusted"
 "gpt-5.5" = 1
 
 [agents]
-max_threads = 15
-max_depth = 3
+max_threads = 25
+max_depth = 4
 
 [marketplaces.openai-bundled]
 last_updated = "2026-05-27T15:35:57Z"
