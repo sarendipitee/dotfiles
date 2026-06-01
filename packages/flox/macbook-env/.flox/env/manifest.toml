@@ -1,0 +1,4 @@
+schema-version = "1.11.0"
+
+[options]
+systems = ["aarch64-darwin"]
