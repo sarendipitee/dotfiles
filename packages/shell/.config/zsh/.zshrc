@@ -31,4 +31,7 @@ eval "$(direnv hook zsh)"
 # Remove duplicate PATH entries while preserving system paths needed by prompt plugins.
 typeset -U path PATH
 
+# GPG agent TTY sync
+gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
+
 # zprof
