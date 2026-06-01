@@ -75,7 +75,7 @@ alias fs="stat -f \"%z bytes\""
 alias hidedesktop="defaults write com.apple.finder CreateDesktop -bool false && killall Finder"
 alias showdesktop="defaults write com.apple.finder CreateDesktop -bool true && killall Finder"
 
-# PlistBuddy alias, because sometimes `defaults` just doesn’t cut it
+# PlistBuddy alias, because sometimes `defaults` just doesn't cut it
 alias plistbuddy="/usr/libexec/PlistBuddy"
 
 # Pretty JSON
@@ -145,3 +145,6 @@ if [[ $(uname -a) =~ "WSL2" ]]; then
 		/mnt/c/Users/$USER/AppData/Local/Fork/Fork.exe "$arg"
 	}
 fi
+
+# Additional aliases
+alias goclaw="/usr/bin/docker exec goclaw /app/goclaw"
