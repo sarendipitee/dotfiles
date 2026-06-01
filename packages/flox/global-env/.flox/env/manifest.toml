@@ -54,7 +54,6 @@ stern.pkg-path = "stern"
 ctop.pkg-path = "ctop"
 argo.pkg-path = "argo"
 argocd.pkg-path = "argocd"
-dolt.pkg-path = "dolt"
 sqlite.pkg-path = "sqlite"
 stow.pkg-path = "stow"
 
@@ -170,6 +169,7 @@ cudatoolkit.pkg-path = "cudatoolkit"
 cudatoolkit.systems = ["x86_64-linux"]
 nvidia-container-toolkit.pkg-path = "nvidia-container-toolkit"
 nvidia-container-toolkit.systems = ["x86_64-linux"]
+claude-code.pkg-path = "claude-code"
 
 ## Environment Variables ---------------------------------------------
 ##  ... available for use in the activated environment
@@ -205,6 +205,62 @@ common = '''
     export LD_LIBRARY_PATH="${_FLOX_CUDA_LIB_DIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
   fi
   unset _FLOX_CUDA_LIB_DIR
+
+  # Gas Town toolchain: dolt, gt, bd - managed via profile hook
+  _FLOX_GT_HOME="$HOME/.local/share/flox/gt"
+  if command -v curl &>/dev/null; then
+    _ARCH="$(uname -m)"
+    _OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
+    case "$_OS" in
+      linux*) _OS="linux" ;;
+      darwin*) _OS="darwin" ;;
+    esac
+    case "$_ARCH" in
+      x86_64|amd64) _ARCH="amd64" ;;
+      aarch64|arm64) _ARCH="arm64" ;;
+    esac
+
+    # Dolt 2.1.0
+    _FLOX_DOLT_BIN="$_FLOX_GT_HOME/dolt/bin/dolt"
+    if [ ! -x "$_FLOX_DOLT_BIN" ]; then
+      mkdir -p "$_FLOX_GT_HOME/dolt/bin"
+      curl -sL "https://github.com/dolthub/dolt/releases/download/v2.1.0/dolt-${_OS}-${_ARCH}.tar.gz" \
+        | tar -xz --strip-components=1 -C "$_FLOX_GT_HOME/dolt" 2>/dev/null
+      chmod +x "$_FLOX_DOLT_BIN" 2>/dev/null
+    fi
+    export PATH="$_FLOX_GT_HOME/dolt/bin:$PATH"
+
+    # gt v1.2.0 (flat tarball, extract to temp and move binary)
+    _FLOX_GT_BIN="$_FLOX_GT_HOME/gt/bin/gt"
+    if [ ! -x "$_FLOX_GT_BIN" ]; then
+      _FLOX_TMP="$(mktemp -d)"
+      curl -sL "https://github.com/gastownhall/gastown/releases/download/v1.2.0/gastown_1.2.0_${_OS}_${_ARCH}.tar.gz" \
+        | tar -xz -C "$_FLOX_TMP" 2>/dev/null
+      mkdir -p "$_FLOX_GT_HOME/gt/bin"
+      mv "$_FLOX_TMP/gt" "$_FLOX_GT_BIN" 2>/dev/null
+      chmod +x "$_FLOX_GT_BIN" 2>/dev/null
+      rm -rf "$_FLOX_TMP"
+      unset _FLOX_TMP
+    fi
+    export PATH="$_FLOX_GT_HOME/gt/bin:$PATH"
+
+    # bd v1.0.4 (pinned to gastown v1.2.0 max supported version)
+    _FLOX_BD_BIN="$_FLOX_GT_HOME/bd/bin/bd"
+    if [ ! -x "$_FLOX_BD_BIN" ]; then
+      _FLOX_TMP="$(mktemp -d)"
+      curl -sL "https://github.com/gastownhall/beads/releases/download/v1.0.4/beads_1.0.4_${_OS}_${_ARCH}.tar.gz" \
+        | tar -xz -C "$_FLOX_TMP" 2>/dev/null
+      mkdir -p "$_FLOX_GT_HOME/bd/bin"
+      mv "$_FLOX_TMP/bd" "$_FLOX_BD_BIN" 2>/dev/null
+      chmod +x "$_FLOX_BD_BIN" 2>/dev/null
+      rm -rf "$_FLOX_TMP"
+      unset _FLOX_TMP
+    fi
+    export PATH="$_FLOX_GT_HOME/bd/bin:$PATH"
+
+    unset _FLOX_DOLT_BIN _FLOX_GT_BIN _FLOX_BD_BIN
+  fi
+  unset _FLOX_GT_HOME _ARCH _OS
 '''
 
 
