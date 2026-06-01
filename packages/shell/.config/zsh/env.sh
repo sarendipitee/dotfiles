@@ -72,6 +72,7 @@ export RUSTUP_HOME="$XDG_DATA_HOME"/rustup
 
 # gnupg
 export GNUPGHOME="$XDG_DATA_HOME"/gnupg
+export GPG_TTY=$(tty)
 
 # Keras
 export KERAS_HOME="${XDG_STATE_HOME}/keras"
