@@ -1,0 +1,33 @@
+[Unit]
+Description=vLLM inference server - google/gemma-4-E4B-it (port 8080)
+Documentation=https://github.com/vllm-project/vllm
+After=network-online.target docker.service
+Wants=network-online.target
+Conflicts=vllm-step3.service vllm-qwen.service
+
+[Service]
+Type=simple
+ExecStartPre=-/usr/bin/docker rm -f vllm-gemma4
+ExecStart=/usr/bin/docker run \
+  --name vllm-gemma4 \
+  --rm \
+  --device=nvidia.com/gpu=all \
+  -v %h/.cache/huggingface:/root/.cache/huggingface \
+  -p 8080:8080 \
+  --ipc=host \
+  --shm-size=24g \
+  vllm/vllm-openai:v0.20.2 \
+  google/gemma-4-E4B-it \
+  --port 8080 \
+  --max-model-len 8192 \
+  --gpu-memory-utilization 0.88 \
+  --max-num-seqs 8 \
+  --enable-auto-tool-choice \
+  --tool-call-parser gemma4
+ExecStop=/usr/bin/docker stop vllm-gemma4
+ExecStopPost=/usr/bin/docker rm -f vllm-gemma4
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target

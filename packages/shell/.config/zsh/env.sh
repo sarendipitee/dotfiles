@@ -101,7 +101,11 @@ export NUGET_PACKAGES="$XDG_CACHE_HOME"/NuGetPackages
 
 # Go
 export GOPATH=$HOME/Projects/go
-export GOROOT=/opt/homebrew/opt/go/libexec
+if command -v go &>/dev/null; then
+  export GOROOT=$(go env GOROOT 2>/dev/null)
+elif [ -d /opt/homebrew/opt/go/libexec ]; then
+  export GOROOT=/opt/homebrew/opt/go/libexec
+fi
 
 # Java
 export JAVA_HOME=/opt/homebrew/opt/openjdk/

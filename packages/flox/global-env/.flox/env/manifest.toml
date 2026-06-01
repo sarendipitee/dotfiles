@@ -54,6 +54,8 @@ stern.pkg-path = "stern"
 ctop.pkg-path = "ctop"
 argo.pkg-path = "argo"
 argocd.pkg-path = "argocd"
+dolt.pkg-path = "dolt"
+sqlite.pkg-path = "sqlite"
 stow.pkg-path = "stow"
 
 # Custom Tap Packages (via nixpkgs flake)
@@ -68,6 +70,10 @@ python311.pkg-path = "python311"
 
 # Rust tooling
 rustup.pkg-path = "rustup"
+
+# Node
+node = { pkg-path = "nodejs_25", pkg-group = "nodejs" }
+pnpm = { pkg-path = "pnpm", pkg-group = "nodejs" }
 
 # Nerd Fonts (open-source variants available in nixpkgs)
 nerd-font-fira-code.flake = "github:NixOS/nixpkgs/nixos-unstable#nerd-fonts.fira-code"
@@ -156,6 +162,14 @@ p11-kit.flake = "github:NixOS/nixpkgs/nixos-unstable#p11-kit"
 gettext.flake = "github:NixOS/nixpkgs/nixos-unstable#gettext"
 libunistring.flake = "github:NixOS/nixpkgs/nixos-unstable#libunistring"
 direnv.pkg-path = "direnv"
+ollama.pkg-path = "ollama"
+vllm.pkg-path = "flox-cuda/python3Packages.vllm"
+vllm.pkg-group = "vllm"
+vllm.systems = ["x86_64-linux"]
+cudatoolkit.pkg-path = "cudatoolkit"
+cudatoolkit.systems = ["x86_64-linux"]
+nvidia-container-toolkit.pkg-path = "nvidia-container-toolkit"
+nvidia-container-toolkit.systems = ["x86_64-linux"]
 
 ## Environment Variables ---------------------------------------------
 ##  ... available for use in the activated environment
@@ -183,16 +197,15 @@ direnv.pkg-path = "direnv"
 ## ... sourced by _your shell_ when you run 'flox activate'.
 ## -------------------------------------------------------------------
 [profile]
-# common = '''
-#   gum style \
-#   --foreground 212 --border-foreground 212 --border double \
-#   --align center --width 50 --margin "1 2" --padding "2 4" \
-#     $INTRO_MESSAGE
-# '''
-## Shell-specific customizations such as setting aliases go here:
-# bash = ...
-# zsh  = ...
-# fish = ...
+common = '''
+  # Add NVIDIA CUDA driver libraries (libcuda.so, libnvidia-ml.so)
+  # Needed for GPU-accelerated packages like vllm
+  _FLOX_CUDA_LIB_DIR="$HOME/.local/share/flox-cuda-lib"
+  if [ -d "$_FLOX_CUDA_LIB_DIR" ]; then
+    export LD_LIBRARY_PATH="${_FLOX_CUDA_LIB_DIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  fi
+  unset _FLOX_CUDA_LIB_DIR
+'''
 
 
 ## Services ---------------------------------------------------------
