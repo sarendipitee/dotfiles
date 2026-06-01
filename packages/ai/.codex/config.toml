@@ -68,6 +68,9 @@ trust_level = "trusted"
 [projects."/Users/jd/Downloads"]
 trust_level = "trusted"
 
+[projects."/home/saren/gt"]
+trust_level = "trusted"
+
 [tui.model_availability_nux]
 "gpt-5.5" = 4
 
