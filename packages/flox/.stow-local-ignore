@@ -1,4 +1,11 @@
 .stow-local-ignore
-.flox/env/.git
-global-env
+\.flox
 \.gitignore$
+\.config$
+
+# Flox environments (activated via shell, not stowed)
+global-env
+nvidia-env
+gpu-workstation-env
+macbook-env
+linux-workstation-env

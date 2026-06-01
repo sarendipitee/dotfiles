@@ -121,6 +121,7 @@ lua.flake = "github:NixOS/nixpkgs/nixos-unstable#lua"
 autoconf.flake = "github:NixOS/nixpkgs/nixos-unstable#autoconf"
 libheif.flake = "github:NixOS/nixpkgs/nixos-unstable#libheif"
 librsvg.flake = "github:NixOS/nixpkgs/nixos-unstable#librsvg"
+librsvg.priority = 4
 libuv.flake = "github:NixOS/nixpkgs/nixos-unstable#libuv"
 pulseaudio.flake = "github:NixOS/nixpkgs/nixos-unstable#pulseaudio"
 utf8proc.flake = "github:NixOS/nixpkgs/nixos-unstable#utf8proc"
@@ -160,14 +161,6 @@ p11-kit.flake = "github:NixOS/nixpkgs/nixos-unstable#p11-kit"
 gettext.flake = "github:NixOS/nixpkgs/nixos-unstable#gettext"
 libunistring.flake = "github:NixOS/nixpkgs/nixos-unstable#libunistring"
 direnv.pkg-path = "direnv"
-ollama.pkg-path = "ollama"
-vllm.pkg-path = "flox-cuda/python3Packages.vllm"
-vllm.pkg-group = "vllm"
-vllm.systems = ["x86_64-linux"]
-cudatoolkit.pkg-path = "cudatoolkit"
-cudatoolkit.systems = ["x86_64-linux"]
-nvidia-container-toolkit.pkg-path = "nvidia-container-toolkit"
-nvidia-container-toolkit.systems = ["x86_64-linux"]
 claude-code.pkg-path = "claude-code"
 
 ## Environment Variables ---------------------------------------------
@@ -197,14 +190,6 @@ claude-code.pkg-path = "claude-code"
 ## -------------------------------------------------------------------
 [profile]
 common = '''
-  # Add NVIDIA CUDA driver libraries (libcuda.so, libnvidia-ml.so)
-  # Needed for GPU-accelerated packages like vllm
-  _FLOX_CUDA_LIB_DIR="$HOME/.local/share/flox-cuda-lib"
-  if [ -d "$_FLOX_CUDA_LIB_DIR" ]; then
-    export LD_LIBRARY_PATH="${_FLOX_CUDA_LIB_DIR}${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-  fi
-  unset _FLOX_CUDA_LIB_DIR
-
   # Gas Town toolchain: dolt, gt, bd - managed via profile hook
   _FLOX_GT_HOME="$HOME/.local/share/flox/gt"
   if command -v curl &>/dev/null; then

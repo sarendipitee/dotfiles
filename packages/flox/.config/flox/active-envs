@@ -1,0 +1,3 @@
+# Flox environments to activate (one per line, order matters)
+# Available envs: global-env, nvidia-env, macbook-env, etc
+global-env
