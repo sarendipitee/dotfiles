@@ -16,6 +16,9 @@ export PATH=$PATH:/usr/local/MacGPG2/bin
 # pnpm
 export PATH="$PNPM_HOME:$PATH"
 
+# npm global binaries
+export PATH="$NPM_CONFIG_PREFIX/bin:$PATH"
+
 # Krew
 export PATH="$PATH:$KREW_ROOT/bin"
 
