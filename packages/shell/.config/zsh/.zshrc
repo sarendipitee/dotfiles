@@ -11,6 +11,9 @@ if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
 fi
 source ${zsh_plugins}.zsh
 
+# Unalias Oh My Zsh git aliases that conflict with tools
+unalias gc 2>/dev/null
+
 # Apply paths after everything so we get last say of $PATH
 # (path_helper in /etc/zprofile runs after .zshenv and can reorder PATH)
 
