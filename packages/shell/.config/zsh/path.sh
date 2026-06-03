@@ -5,6 +5,7 @@
 # export PATH=$PATH:$HOME/Library/Python/3.9/bin
 
 #Rust/Cargo
+export RUST_SRC_PATH="$(rustc --print sysroot)/lib/rustlib/src/rust/src"
 export PATH="$PATH:$CARGO_HOME/bin"
 
 # Go
@@ -14,7 +15,7 @@ export PATH=$PATH:$HOME/Projects/go/bin
 export PATH=$PATH:/usr/local/MacGPG2/bin
 
 # pnpm
-export PATH="$PNPM_HOME:$PATH"
+export PATH="$PNPM_HOME/bin:$PATH"
 
 # npm global binaries
 export PATH="$NPM_CONFIG_PREFIX/bin:$PATH"
@@ -58,13 +59,13 @@ export PATH=$HOME/.mine/scripts:$PATH
 #   envs/nvidia
 _FLOX_ENVS_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/flox/active-envs"
 if [ -f "$_FLOX_ENVS_FILE" ]; then
-  while IFS= read -r _flox_env || [ -n "$_flox_env" ]; do
-    case "$_flox_env" in ''|\#*) continue ;; esac
-    eval "$(flox activate -d "$DOTFILES_DIR/packages/flox/${_flox_env}" -m run)"
-  done < "$_FLOX_ENVS_FILE"
-  unset _flox_env
+	while IFS= read -r _flox_env || [ -n "$_flox_env" ]; do
+		case "$_flox_env" in '' | \#*) continue ;; esac
+		eval "$(flox activate -d "$DOTFILES_DIR/packages/flox/${_flox_env}" -m run)"
+	done <"$_FLOX_ENVS_FILE"
+	unset _flox_env
 else
-  eval "$(flox activate -d "$DOTFILES_DIR/packages/flox/envs/global" -m run)"
+	eval "$(flox activate -d "$DOTFILES_DIR/packages/flox/envs/global" -m run)"
 fi
 unset _FLOX_ENVS_FILE
 PS1="$FLOX_SAVE_ZSH_PS1"
