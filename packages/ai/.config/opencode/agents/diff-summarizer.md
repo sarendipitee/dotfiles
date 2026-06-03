@@ -1,7 +1,7 @@
 ---
 description: "Read-only Git diff/status summarization for current, staged, or provided changes. Uses safe git status/diff commands and file reads to summarize affected areas, observed or missing tests, and obvious risks. Not for code exploration, review-depth bug finding, verification, or edits."
 mode: subagent
-model: openai/gpt-5.4-mini
+model: openai/gpt-5.3-codex-spark
 steps: 25
 permission:
   read: allow

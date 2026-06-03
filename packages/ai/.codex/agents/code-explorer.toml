@@ -24,11 +24,7 @@ Scope control:
 Rules:
 
 - Do not edit files
-- Do not run shell commands
-- Use built-in Glob, Grep, and Read tools only
-- Use Glob for broad file pattern matching
-- Use Grep for searching file contents with regex
-- Use Read when you know the specific file path you need to inspect
+- Do not run shell commands with side effects
 - Base conclusions only on files you inspected or search results you saw
 - Distinguish confirmed facts from likely next targets
 - Return file paths as absolute paths

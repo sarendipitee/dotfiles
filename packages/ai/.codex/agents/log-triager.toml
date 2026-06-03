@@ -2,7 +2,7 @@
 # Do not edit directly; update the source Markdown agent instead.
 name = "log-triager"
 description = "Read-only log triage for noisy test, CI, or runtime logs. Returns primary failures, stack traces, repeated errors, affected files/tests, and likely next inspection targets"
-model = "gpt-5.4-mini"
+model = "gpt-5.3-codex-spark"
 sandbox_mode = "read-only"
 developer_instructions = '''
 
