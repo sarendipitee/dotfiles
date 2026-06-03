@@ -14,22 +14,24 @@ const CLAUDE_CODE_DIR = path.join(ROOT, "packages/ai/.claude/agents");
 
 const TIER_MODELS = {
 	cheap: {
-		openai: "openai/gpt-5.3-codex-spark",
+		kilo: "openai/gpt-5.3-codex-spark",
 		codex: "gpt-5.3-codex-spark",
 		claude: "haiku",
 	},
 	"medium-cheap": {
-		openai: "openai/gpt-5.4-mini",
-		codex: "gpt-5.4-mini",
-		claude: "sonnet",
+		//openai: "openai/gpt-5.4-mini",
+		kilo: "openai/gpt-5.3-codex-spark",
+		//codex: "gpt-5.4-mini",
+		codex: "gpt-5.3-codex-spark",
+		claude: "haiku",
 	},
 	"medium-high": {
-		openai: "openai/gpt-5.4",
+		kilo: "openai/gpt-5.4",
 		codex: "gpt-5.4",
 		claude: "sonnet",
 	},
 	frontier: {
-		openai: "openai/gpt-5.5",
+		kilo: "openai/gpt-5.5",
 		codex: "gpt-5.5",
 		claude: "opus",
 	},
@@ -151,8 +153,8 @@ function readSoT(sotPath) {
 	};
 }
 
-function openaiModel(tier) {
-	return TIER_MODELS[tier]?.openai;
+function kiloModel(tier) {
+	return TIER_MODELS[tier]?.kilo;
 }
 function codexModel(tier) {
 	return TIER_MODELS[tier]?.codex;
@@ -195,7 +197,7 @@ function kiloMarkdown(agent) {
 	const parts = [];
 	parts.push(`description: ${JSON.stringify(frontmatter.description)}`);
 	parts.push(`mode: ${JSON.stringify(frontmatter.mode)}`);
-	parts.push(`model: ${JSON.stringify(openaiModel(frontmatter.tier))}`);
+	parts.push(`model: ${JSON.stringify(kiloModel(frontmatter.tier))}`);
 	if (frontmatter.steps) parts.push(`steps: ${frontmatter.steps}`);
 
 	if (
