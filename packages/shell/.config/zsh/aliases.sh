@@ -11,10 +11,12 @@ alias cpwd='pwd | pbcopy'
 
 # Git aliases
 alias gs='git status'
-alias gc='git checkout'
 alias ga='git add'
 alias gd='git diff'
 alias gds='git diff --summary'
+
+# gascity conflict
+unalias gc 2>/dev/null
 
 # ROT13-encode text. Works for decoding, too! ;)
 alias rot13='tr a-zA-Z n-za-mN-ZA-M'
