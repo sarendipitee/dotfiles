@@ -1,23 +1,10 @@
 ---
+name: "test-writer"
 description: "Focused test additions for known behavior with relevant files, assertions, and targeted test command supplied. Returns test files changed, behavior covered, and suggested verification"
-mode: "subagent"
-model: "openai/gpt-5.4-mini"
-permission:
-  read: "allow"
-  glob: "allow"
-  grep: "allow"
-  task:
-    "*": "deny"
-  edit:
-    "*": "deny"
-    "**/*.spec.ts": "allow"
-    "**/*.spec.tsx": "allow"
-    "**/*.test.ts": "allow"
-    "**/*.test.tsx": "allow"
-    "**/__fixtures__/**": "allow"
-    "**/fixtures/**": "allow"
-    "test/**": "allow"
-  bash: "deny"
+model: "sonnet"
+tools:
+  - "Read"
+  - "WebFetch"
 ---
 
 You are a focused test-writing subagent. Add or update tests for the exact behavior delegated by the primary agent

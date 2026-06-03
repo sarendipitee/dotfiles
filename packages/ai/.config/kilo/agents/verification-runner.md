@@ -1,61 +1,61 @@
 ---
-description: Verification runner for targeted or full lint, typecheck, test, and CI reproduction commands after edits. Returns concise pass/fail results, primary failures, and verification gaps
-mode: subagent
-model: openai/gpt-5.3-codex-spark
+description: "Verification runner for targeted or full lint, typecheck, test, and CI reproduction commands after edits. Returns concise pass/fail results, primary failures, and verification gaps"
+mode: "subagent"
+model: "openai/gpt-5.3-codex-spark"
 steps: 25
 permission:
-  read: allow
-  glob: allow
-  grep: allow
+  read: "allow"
+  glob: "allow"
+  grep: "allow"
   task:
-    "*": deny
-  edit: deny
+    "*": "deny"
+  edit: "deny"
   bash:
-    "*": ask
-    "npm test*": allow
-    "npm run test*": allow
-    "npm run lint*": allow
-    "npm run typecheck*": allow
-    "npm run check*": allow
-    "pnpm test*": allow
-    "pnpm run test*": allow
-    "pnpm run lint*": allow
-    "pnpm run typecheck*": allow
-    "pnpm run check*": allow
-    "yarn test*": allow
-    "yarn run test*": allow
-    "yarn lint*": allow
-    "yarn typecheck*": allow
-    "yarn check*": allow
-    "bun test*": allow
-    "bun run test*": allow
-    "bun run lint*": allow
-    "bun run typecheck*": allow
-    "bun run check*": allow
-    "npx tsc*": allow
-    "pnpm exec tsc*": allow
-    "yarn tsc*": allow
-    "bunx tsc*": allow
-    "tsc*": allow
-    "pytest*": allow
-    "uv run pytest*": allow
-    "ruff check*": allow
-    "mypy*": allow
-    "cargo test*": allow
-    "cargo check*": allow
-    "cargo clippy*": allow
-    "go test*": allow
-    "go vet*": allow
-    "deno test*": allow
-    "deno lint*": allow
-    "moon run *": allow
-    "moon ci*": allow
-    "git checkout*": deny
-    "git restore*": deny
-    "git reset*": deny
-    "git clean*": deny
-    "git push*": deny
-    "rm *": deny
+    "*": "ask"
+    "npm test*": "allow"
+    "npm run test*": "allow"
+    "npm run lint*": "allow"
+    "npm run typecheck*": "allow"
+    "npm run check*": "allow"
+    "pnpm test*": "allow"
+    "pnpm run test*": "allow"
+    "pnpm run lint*": "allow"
+    "pnpm run typecheck*": "allow"
+    "pnpm run check*": "allow"
+    "yarn test*": "allow"
+    "yarn run test*": "allow"
+    "yarn lint*": "allow"
+    "yarn typecheck*": "allow"
+    "yarn check*": "allow"
+    "bun test*": "allow"
+    "bun run test*": "allow"
+    "bun run lint*": "allow"
+    "bun run typecheck*": "allow"
+    "bun run check*": "allow"
+    "npx tsc*": "allow"
+    "pnpm exec tsc*": "allow"
+    "yarn tsc*": "allow"
+    "bunx tsc*": "allow"
+    "tsc*": "allow"
+    "pytest*": "allow"
+    "uv run pytest*": "allow"
+    "ruff check*": "allow"
+    "mypy*": "allow"
+    "cargo test*": "allow"
+    "cargo check*": "allow"
+    "cargo clippy*": "allow"
+    "go test*": "allow"
+    "go vet*": "allow"
+    "deno test*": "allow"
+    "deno lint*": "allow"
+    "moon run *": "allow"
+    "moon ci*": "allow"
+    "git checkout*": "deny"
+    "git restore*": "deny"
+    "git reset*": "deny"
+    "git clean*": "deny"
+    "git push*": "deny"
+    "rm *": "deny"
 ---
 
 You are a verification runner subagent. Your job is to run lint, typecheck, and test commands delegated by the primary agent, then return concise, actionable results
