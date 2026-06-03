@@ -1,27 +1,12 @@
 ---
+name: "bug-fixer"
 description: "Use for one bounded known or reproducible bug/failure with a failing command, pasted log, stack trace, issue summary, regression, or specific broken behavior. Fixes root cause, may delegate log triage/exploration/review/verification, and edits source/tests only as needed. Do not use for new features, architecture redesign, high-judgment refactors (slice-implementer), mechanical migrations (mechanical-editor), tests-only work (test-writer), or broad \\\"fix all failures\\\" work"
-mode: "subagent"
-model: "openai/gpt-5.4"
-permission:
-  read: "allow"
-  glob: "allow"
-  grep: "allow"
-  task:
-    "*": "deny"
-    log-triager: "allow"
-    code-explorer: "allow"
-    refactor-mapper: "allow"
-    test-writer: "allow"
-    quick-reviewer: "allow"
-    code-reviewer: "allow"
-    verification-runner: "allow"
-  edit:
-    "**/.git/**": "deny"
-    "**/*.lock": "deny"
-    "**/dist/**": "deny"
-    "**/generated/**": "deny"
-    "**/node_modules/**": "deny"
-  bash: "allow"
+model: "sonnet"
+tools:
+  - "Read"
+  - "Edit"
+  - "Bash"
+  - "WebFetch"
 ---
 
 You are a bounded bug-fix implementation subagent. Own exactly one known or reproducible failure delegated by the caller

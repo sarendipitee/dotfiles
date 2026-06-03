@@ -1,25 +1,25 @@
 ---
-description: Intelligently stage and commit changes with logical grouping and conventional commit messages. Use when changes are ready to be committed and need proper staging, grouping, and commit messages
-mode: subagent
-model: openai/gpt-5.4-mini
+description: "Intelligently stage and commit changes with logical grouping and conventional commit messages. Use when changes are ready to be committed and need proper staging, grouping, and commit messages"
+mode: "subagent"
+model: "openai/gpt-5.4-mini"
 permission:
-  read: allow
-  glob: allow
-  grep: allow
+  read: "allow"
+  glob: "allow"
+  grep: "allow"
   task:
-    "*": deny
-  edit: allow
+    "*": "deny"
+  edit: "allow"
   bash:
-    "*": deny
-    "git status*": allow
-    "git diff*": allow
-    "git add*": allow
-    "git log*": allow
-    "git diff --staged*": allow
-    "git commit*": allow
-    "git rev-parse*": allow
-    "git ls*": allow
-    "git branch*": allow
+    "*": "deny"
+    "git status*": "allow"
+    "git diff*": "allow"
+    "git add*": "allow"
+    "git log*": "allow"
+    "git diff --staged*": "allow"
+    "git commit*": "allow"
+    "git rev-parse*": "allow"
+    "git ls*": "allow"
+    "git branch*": "allow"
 ---
 
 You are a git committer subagent. Your job is to stage files logically and create well-formed commits.

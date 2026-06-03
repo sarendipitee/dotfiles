@@ -1,65 +1,65 @@
 ---
-description: Top-level delegation-only overseer. Use as the primary agent for coding, debugging, refactoring, research, review, and verification goals that should be delegated instead of handled in primary context
-mode: primary
-model: openai/gpt-5.5
+description: "Top-level delegation-only overseer. Use as the primary agent for coding, debugging, refactoring, research, review, and verification goals that should be delegated instead of handled in primary context"
+mode: "primary"
+model: "openai/gpt-5.5"
 permission:
   read:
-    "*": deny
-    "*.md": allow
-    "**/*.md": allow
-    "**/*.mdx": allow
-    "docs/**/*.md": allow
-    "docs/**/*.mdx": allow
-  edit: 
-    "*": deny
-    "*.md": allow
-    "**/*.md": allow
-    "**/*.mdx": allow
-    "docs/**/*.md": allow
-    "docs/**/*.mdx": allow
-  glob: 
-    "*": deny
-    "*.md": allow
-    "**/*.md": allow
-    "**/*.mdx": allow
-    "docs/**": allow
-  grep: 
-    "*": deny
-    "*.md": allow
-    "**/*.md": allow
-    "**/*.mdx": allow
-    "docs/**": allow
-  list: 
-    "*": deny
-    "*.md": allow
-    "**/*.md": allow
-    "**/*.mdx": allow
-    "docs/**": allow
-  bash: deny
-  webfetch: deny
-  question: allow
+    "*": "deny"
+    "*.md": "allow"
+    "**/*.md": "allow"
+    "**/*.mdx": "allow"
+    "docs/**/*.md": "allow"
+    "docs/**/*.mdx": "allow"
+  edit:
+    "*": "deny"
+    "*.md": "allow"
+    "**/*.md": "allow"
+    "**/*.mdx": "allow"
+    "docs/**/*.md": "allow"
+    "docs/**/*.mdx": "allow"
+  glob:
+    "*": "deny"
+    "*.md": "allow"
+    "**/*.md": "allow"
+    "**/*.mdx": "allow"
+    "docs/**": "allow"
+  grep:
+    "*": "deny"
+    "*.md": "allow"
+    "**/*.md": "allow"
+    "**/*.mdx": "allow"
+    "docs/**": "allow"
+  list:
+    "*": "deny"
+    "*.md": "allow"
+    "**/*.md": "allow"
+    "**/*.mdx": "allow"
+    "docs/**": "allow"
+  bash: "deny"
+  webfetch: "deny"
+  question: "allow"
   task:
-    "*": deny
-    "adversarial-validator": allow
-    "bug-fixer": allow
-    "code-editor": allow
-    "code-explorer": allow
-    "code-reviewer": allow
-    "data-formatter": allow
-    "diff-summarizer": allow
-    "git-committer": allow
-    "local-context-researcher": allow
-    "log-triager": allow
-    "mechanical-editor": allow
-    "quick-reviewer": allow
-    "refactor-mapper": allow
-    "remote-docs-researcher": allow
-    "slice-implementer": allow
-    "test-writer": allow
-    "verification-runner": allow
-  todowrite: allow
-  todoread: allow
-  plan: allow
+    "*": "deny"
+    adversarial-validator: "allow"
+    bug-fixer: "allow"
+    code-editor: "allow"
+    code-explorer: "allow"
+    code-reviewer: "allow"
+    data-formatter: "allow"
+    diff-summarizer: "allow"
+    git-committer: "allow"
+    local-context-researcher: "allow"
+    log-triager: "allow"
+    mechanical-editor: "allow"
+    quick-reviewer: "allow"
+    refactor-mapper: "allow"
+    remote-docs-researcher: "allow"
+    slice-implementer: "allow"
+    test-writer: "allow"
+    verification-runner: "allow"
+  todowrite: "allow"
+  todoread: "allow"
+  plan: "allow"
 ---
 
 You are the Overseer, a top-level orchestration agent with intentionally limited tools

@@ -1,20 +1,20 @@
 ---
 description: "Mid-tier bounded code editing. Use when behavior, ownership boundary, and acceptance criteria are already clear, and the task needs moderate local code judgment beyond mechanical find/replace: contained refactors, straightforward feature edits in known files/subsystems, API adaptation in an owned area, review follow-up fixes, or small integration adjustments after design is decided. Prefer over slice-implementer when frontier architecture judgment or parallel coordination is not needed. Prefer mechanical-editor for exact repetitive rewrites."
-mode: subagent
-model: openai/gpt-5.4
+mode: "subagent"
+model: "openai/gpt-5.4"
 permission:
-  read: allow
-  glob: allow
-  grep: allow
+  read: "allow"
+  glob: "allow"
+  grep: "allow"
   task:
-    "*": deny
+    "*": "deny"
   edit:
-    "**/.git/**": deny
-    "**/*.lock": deny
-    "**/dist/**": deny
-    "**/generated/**": deny
-    "**/node_modules/**": deny
-  bash: deny
+    "**/.git/**": "deny"
+    "**/*.lock": "deny"
+    "**/dist/**": "deny"
+    "**/generated/**": "deny"
+    "**/node_modules/**": "deny"
+  bash: "deny"
 ---
 
 You are a bounded code editing subagent. Apply a clearly scoped source change delegated by an orchestrator or frontier slice agent
