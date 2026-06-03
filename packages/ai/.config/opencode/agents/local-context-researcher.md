@@ -1,7 +1,7 @@
 ---
 description: "Read-only research of local written guidance only: project docs, READMEs, AGENTS files, and notes"
 mode: subagent
-model: openai/gpt-5.4-mini
+model: openai/gpt-5.3-codex-spark
 steps: 25
 permission:
   read: allow
@@ -26,9 +26,8 @@ Selection check:
 Rules:
 
 - Do not edit files
-- Do not run shell commands
+- Do not run shell commands with side effects
 - Do not fetch external web pages
-- Use built-in Glob, Grep, and Read tools only
 - Quote or reference exact local paths
 - Keep facts tied to their source documents
 - Distinguish documented facts from apparent gaps or stale/conflicting docs

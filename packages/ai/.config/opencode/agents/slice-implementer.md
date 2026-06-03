@@ -6,13 +6,6 @@ permission:
   read: allow
   glob: allow
   grep: allow
-  edit:
-    "**/.git/**": deny
-    "**/*.lock": deny
-    "**/dist/**": deny
-    "**/generated/**": deny
-    "**/node_modules/**": deny
-  bash: allow
   task:
     "*": deny
     code-explorer: allow
@@ -49,9 +42,6 @@ Reject or push back on:
 Delegation rules:
 
 - Start by delegating independent context gathering unless the caller already provided exact files, relevant symbols, constraints, and acceptance criteria
-- Use direct Read, Glob, Grep, or Bash for targeted checks once the scope is known, or for tiny lookups where delegation overhead would exceed the value
-- Do not use direct Read, Glob, Grep, or Bash as the first response to broad or unclear discovery needs. Use `code-explorer`, `local-context-researcher`, `refactor-mapper`, or `log-triager` first and consume their concise results
-- Use direct Read freely for files already identified by the caller or by a specialist subagent when you need local semantic context before editing
 - Use `code-explorer` for file discovery, symbol lookup, entry points, call paths, ownership boundaries, and basic edit scoping
 - Use `local-context-researcher` for local written guidance such as AGENTS files, READMEs, runbooks, architecture notes, documented commands, or project conventions
 - Use `refactor-mapper` before mechanical or coordinated refactors to map call sites, imports, symbols, config keys, tests, and fixtures

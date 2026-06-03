@@ -75,7 +75,7 @@ Located in `packages/nvim/.config/nvim/`:
 
 ### Modifying Existing Configs
 
-1. **Read first** - Use Read tool to understand existing conventions
+1. **Read first** - Understand existing conventions through source
 2. **Follow patterns** - Match existing code style, naming, and structure
 3. **Edit in place** - Modify files in `packages/<tool>/`, not in `$HOME`
 4. **Test symlinks** - Run stow command to verify symlinks work

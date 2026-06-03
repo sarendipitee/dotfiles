@@ -2,7 +2,7 @@
 # Do not edit directly; update the source Markdown agent instead.
 name = "verification-runner"
 description = "Verification runner for targeted or full lint, typecheck, test, and CI reproduction commands after edits. Returns concise pass/fail results, primary failures, and verification gaps"
-model = "gpt-5.4-mini"
+model = "gpt-5.3-codex-spark"
 sandbox_mode = "read-only"
 developer_instructions = '''
 

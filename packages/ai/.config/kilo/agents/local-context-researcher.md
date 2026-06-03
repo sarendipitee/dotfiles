@@ -26,9 +26,8 @@ Selection check:
 Rules:
 
 - Do not edit files
-- Do not run shell commands
+- Do not run shell commands with side effects
 - Do not fetch external web pages
-- Use built-in Glob, Grep, and Read tools only
 - Quote or reference exact local paths
 - Keep facts tied to their source documents
 - Distinguish documented facts from apparent gaps or stale/conflicting docs

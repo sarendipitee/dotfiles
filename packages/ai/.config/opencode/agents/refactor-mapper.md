@@ -1,7 +1,7 @@
 ---
 description: Read-only refactor mapping for bounded refactor slices or pure mapping requests. Returns call sites, imports, symbols, config keys, tests, fixtures, coordinated update targets, and ambiguity notes
 mode: subagent
-model: openai/gpt-5.4-mini
+model: openai/gpt-5.3-codex-spark
 steps: 25
 permission:
   read: allow
