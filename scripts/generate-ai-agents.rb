@@ -9,6 +9,7 @@ SOURCE_DIR = File.join(ROOT, "packages/ai/.config/kilo/agents")
 OPENCODE_DIR = File.join(ROOT, "packages/ai/.config/opencode/agents")
 CODEX_DIR = File.join(ROOT, "packages/ai/.codex/agents")
 CODEX_SKILLS_DIR = File.join(ROOT, "packages/ai/.codex/skills")
+CLAUDE_CODE_DIR = File.join(ROOT, "packages/ai/.claude/agents")
 
 # Represents one source Markdown agent definition.
 Agent = Struct.new(:name, :path, :frontmatter, :prompt, keyword_init: true)
@@ -44,6 +45,54 @@ end
 def codex_sandbox(agent)
   edit = agent.frontmatter.dig("permission", "edit")
   edit == "deny" ? "read-only" : nil
+end
+
+# Convert OpenAI/Kilo model name to Claude model.
+def claude_model(model)
+  return "opus" if model.nil? || model.empty?
+
+  case model
+  when /gpt-4|gpt-5/ then "opus"
+  when /gpt-3\.5/ then "haiku"
+  else "sonnet"
+  end
+end
+
+# Extract allowed tools from permission structure.
+def claude_tools(agent)
+  permission = agent.frontmatter.fetch("permission", {})
+  tools = []
+
+  tools << "Read" if permission.dig("read", "*") != "deny"
+  tools << "Edit" if permission.dig("edit", "*") != "deny"
+  tools << "Bash" if permission["bash"] != "deny"
+  tools << "WebFetch" if permission["webfetch"] != "deny"
+
+  tools.empty? ? nil : tools
+end
+
+# Generate Claude Code Markdown agent.
+def claude_code_markdown(agent)
+  description = agent.frontmatter.fetch("description")
+  model = claude_model(agent.frontmatter["model"])
+  tools = claude_tools(agent)
+
+  frontmatter = {
+    "name" => agent.name,
+    "description" => description,
+    "model" => model
+  }
+  frontmatter["tools"] = tools if tools
+
+  yaml_str = YAML.dump(frontmatter, default_flow_style: false)
+  yaml_str = yaml_str.sub(/^---\n/, "").sub(/\n$/, "")
+
+  <<~MARKDOWN
+    ---
+    #{yaml_str}
+    ---
+    #{agent.prompt}
+  MARKDOWN
 end
 
 # Escape a string for TOML basic strings.
@@ -99,6 +148,7 @@ def generate(agents, check:)
   agents.each do |agent|
     outputs[File.join(OPENCODE_DIR, "#{agent.name}.md")] = File.read(agent.path)
     outputs[File.join(CODEX_DIR, "#{agent.name}.toml")] = codex_toml(agent)
+    outputs[File.join(CLAUDE_CODE_DIR, "#{agent.name}.md")] = claude_code_markdown(agent)
   end
 
   overseer = agents.find { |agent| agent.name == "overseer" }
@@ -110,7 +160,7 @@ def generate(agents, check:)
 
   if check
     if changed.empty?
-      puts "Generated OpenCode and Codex agents are up to date."
+      puts "Generated OpenCode, Codex, and Claude Code agents are up to date."
       return true
     end
 
@@ -121,6 +171,7 @@ def generate(agents, check:)
 
   FileUtils.mkdir_p(OPENCODE_DIR)
   FileUtils.mkdir_p(CODEX_DIR)
+  FileUtils.mkdir_p(CLAUDE_CODE_DIR)
   FileUtils.mkdir_p(File.join(CODEX_SKILLS_DIR, "overseer"))
 
   outputs.each do |path, content|
@@ -129,6 +180,7 @@ def generate(agents, check:)
 
   puts "Generated #{agents.length} OpenCode agents in #{OPENCODE_DIR.delete_prefix("#{ROOT}/")}"
   puts "Generated #{agents.length} Codex agents in #{CODEX_DIR.delete_prefix("#{ROOT}/")}"
+  puts "Generated #{agents.length} Claude Code agents in #{CLAUDE_CODE_DIR.delete_prefix("#{ROOT}/")}"
   puts "Generated Codex Overseer skill in #{CODEX_SKILLS_DIR.delete_prefix("#{ROOT}/")}/overseer"
   true
 end
