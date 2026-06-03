@@ -49,10 +49,10 @@ export PATH=$HOME/.mine/scripts:$PATH
 
 # Flox takes ultimate precedence
 # Reads env list from ~/.config/flox/active-envs (one per line, # comments OK)
-# Falls back to global-env if file is missing
+# Falls back to envs/global if file is missing
 # Example active-envs:
-#   global-env
-#   nvidia-env
+#   envs/global
+#   envs/nvidia
 _FLOX_ENVS_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/flox/active-envs"
 if [ -f "$_FLOX_ENVS_FILE" ]; then
   while IFS= read -r _flox_env || [ -n "$_flox_env" ]; do
@@ -61,7 +61,7 @@ if [ -f "$_FLOX_ENVS_FILE" ]; then
   done < "$_FLOX_ENVS_FILE"
   unset _flox_env
 else
-  eval "$(flox activate -d "$DOTFILES_DIR/packages/flox/global-env" -m run)"
+  eval "$(flox activate -d "$DOTFILES_DIR/packages/flox/envs/global" -m run)"
 fi
 unset _FLOX_ENVS_FILE
 PS1="$FLOX_SAVE_ZSH_PS1"
