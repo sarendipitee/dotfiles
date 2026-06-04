@@ -3,8 +3,6 @@
 ## General Behavior
 
 - Be concise and direct
-- Ask clarifying questions when requirements are ambiguous
-- Prefer reading existing code before making changes
 - Follow established project conventions
 - Do not be lazy. Find the root cause or fix the issue correctly instead of band-aiding symptoms
 
@@ -23,6 +21,7 @@
 - Don't add comments unless they clarify something non-obvious
 - Always add docstrings/comments to public methods, functions, and APIs
 - Prefer small, focused changes
+- **IMPORTANT**: Search for potential existing helpers, functions / components and prefer re-using them
 
 ## Security
 
