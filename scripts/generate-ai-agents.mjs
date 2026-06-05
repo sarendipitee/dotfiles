@@ -14,15 +14,15 @@ const CLAUDE_CODE_DIR = path.join(ROOT, "packages/ai/.claude/agents");
 
 const TIER_MODELS = {
 	cheap: {
-		kilo: "openai/gpt-5.3-codex-spark",
-		codex: "gpt-5.3-codex-spark",
+		kilo: "openai/gpt-5.4-mini",
+		// codex: "gpt-5.3-codex-spark",
+		codex: "gpt-5.4-mini",
 		claude: "haiku",
 	},
 	"medium-cheap": {
-		//openai: "openai/gpt-5.4-mini",
-		kilo: "openai/gpt-5.3-codex-spark",
-		//codex: "gpt-5.4-mini",
-		codex: "gpt-5.3-codex-spark",
+		kilo: "openai/gpt-5.4-mini",
+		//codex: "gpt-5.3-codex-spark",
+		codex: "gpt-5.4-mini",
 		claude: "haiku",
 	},
 	"medium-high": {
