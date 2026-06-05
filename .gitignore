@@ -29,3 +29,13 @@ packages/flox/envs/global/result-*
 
 # Generated antidote plugins file
 packages/shell/.config/zsh/.zsh_plugins.zsh
+
+packages/ai/.claude/.credentials.json
+packages/ai/.claude/.last-cleanup
+packages/ai/.claude/.last-update-result.json
+packages/ai/.claude/keybindings.json
+packages/ai/.codex/app-server-control/
+packages/ai/.codex/rules/
+packages/ai/.codex/shell_snapshots/
+packages/ai/.codex/refinery.config.toml
+packages/ai/.codex/slice-implementer.config.toml
