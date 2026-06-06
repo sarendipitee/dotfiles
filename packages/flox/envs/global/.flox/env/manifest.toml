@@ -94,7 +94,6 @@ findutils.flake = "github:NixOS/nixpkgs/nixos-unstable#findutils"
 gawk.flake = "github:NixOS/nixpkgs/nixos-unstable#gawk"
 git-extras.flake = "github:NixOS/nixpkgs/nixos-unstable#git-extras"
 git-lfs.flake = "github:NixOS/nixpkgs/nixos-unstable#git-lfs"
-graphviz.flake = "github:NixOS/nixpkgs/nixos-unstable#graphviz"
 nmap.flake = "github:NixOS/nixpkgs/nixos-unstable#nmap"
 parallel.flake = "github:NixOS/nixpkgs/nixos-unstable#parallel"
 gnused.flake = "github:NixOS/nixpkgs/nixos-unstable#gnused"
@@ -124,7 +123,6 @@ llvm.flake = "github:NixOS/nixpkgs/nixos-unstable#llvm"
 flac.flake = "github:NixOS/nixpkgs/nixos-unstable#flac"
 gettext.flake = "github:NixOS/nixpkgs/nixos-unstable#gettext"
 direnv.pkg-path = "direnv"
-claude-code.pkg-path = "claude-code"
 
 ## Environment Variables ---------------------------------------------
 ##  ... available for use in the activated environment

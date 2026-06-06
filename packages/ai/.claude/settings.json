@@ -12,8 +12,9 @@
       "Skill(superpowers:brainstorming)",
       "Skill(superpowers:writing-plans)"
     ],
-    "defaultMode": "dontAsk"
+    "defaultMode": "bypassPermissions"
   },
+  "model": "sonnet",
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "superpowers@claude-plugins-official": false,
@@ -21,7 +22,9 @@
     "code-review@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true
   },
-  "effortLevel": "high",
+  "effortLevel": "low",
+  "advisorModel": "opus",
+  "skipDangerousModePermissionPrompt": true,
   "editorMode": "vim",
   "verbose": true
 }
