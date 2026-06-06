@@ -37,5 +37,3 @@ packages/ai/.claude/keybindings.json
 packages/ai/.codex/app-server-control/
 packages/ai/.codex/rules/
 packages/ai/.codex/shell_snapshots/
-packages/ai/.codex/refinery.config.toml
-packages/ai/.codex/slice-implementer.config.toml

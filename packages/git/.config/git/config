@@ -67,6 +67,16 @@
 [diff "dyff"]
 	command = dyff_between() { dyff --color on between --omit-header \"$2\" \"$5\"; }; dyff_between
 [commit]
-	gpgsign = true
+	gpgsign = false
 [init]
 	defaultBranch = dev
+[tag]
+	gpgsign = false
+[credential "https://github.com"]
+	helper = 
+	helper = !/home/saren/projects/dotfiles/packages/flox/global-env/.flox/run/x86_64-linux.global-env.run/bin/gh auth git-credential
+[credential "https://gist.github.com"]
+	helper = 
+	helper = !/home/saren/projects/dotfiles/packages/flox/global-env/.flox/run/x86_64-linux.global-env.run/bin/gh auth git-credential
+[beads]
+	role = maintainer
