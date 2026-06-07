@@ -14,7 +14,53 @@
 		"notion": {
 			"type": "remote",
 			"url": "https://mcp.notion.com/mcp",
-			"enabled": true
+			"enabled": false
+		}
+	},
+	"permission": {
+		"read": "allow",
+		"edit": {
+			"*": "allow",
+			"/etc/**": "ask",
+			"/System/**": "ask",
+			"/private/**": "ask",
+			"/bin/**": "ask",
+			"/sbin/**": "ask",
+			"/usr/bin/**": "ask",
+			"/usr/lib/**": "ask",
+			"/dev/**": "ask",
+			"/cores/**": "ask",
+			"/boot/**": "ask",
+			"/lib/**": "ask",
+			"/lib64/**": "ask",
+			"/proc/**": "ask",
+			"/sys/**": "ask",
+			"/root/**": "ask",
+			"/run/**": "ask"
+		},
+		"glob": "allow",
+		"grep": "allow",
+		"list": "allow",
+		"webfetch": "allow",
+		"websearch": "allow",
+		"external_directory": "allow",
+		"bash": {
+			"*": "allow",
+			"sudo *": "ask",
+			"rm -rf *": "ask",
+			"rm -fr *": "ask",
+			"chmod -R *": "ask",
+			"chown -R *": "ask",
+			"dd *": "ask",
+			"mkfs*": "ask",
+			"fdisk *": "ask",
+			"parted *": "ask",
+			"shutdown*": "ask",
+			"reboot*": "ask",
+			"halt*": "ask",
+			"poweroff*": "ask",
+			"killall *": "ask",
+			"pkill *": "ask"
 		}
 	}
 }
