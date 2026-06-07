@@ -2,7 +2,7 @@
 # Do not edit directly; update the source agent YAML instead.
 name = "data-formatter"
 description = "Read-only data formatting for provided raw text, logs, JSON, YAML, tables, and lists. Returns concise structured output while preserving exact values"
-model = "gpt-5.3-codex-spark"
+model = "gpt-5.4-mini"
 sandbox_mode = "read-only"
 developer_instructions = '''
 

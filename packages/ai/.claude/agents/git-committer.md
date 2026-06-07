@@ -1,7 +1,7 @@
 ---
 name: "git-committer"
 description: "Intelligently stage and commit changes with logical grouping and conventional commit messages. Use when changes are ready to be committed and need proper staging, grouping, and commit messages"
-model: "sonnet"
+model: "haiku"
 tools:
   - "Read"
   - "Edit"

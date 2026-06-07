@@ -1,7 +1,7 @@
 ---
 name: "mechanical-editor"
 description: "Cheap mechanical editor for exact repetitive rewrites across known files only. Use when file scope, rewrite rule, before/after pattern, skip rules, and acceptance criteria are explicit, and each site should be changed without semantic redesign. Prefer code-editor instead when edits require moderate local judgment, API adaptation, or non-repetitive code changes. Not for discovery, architecture decisions, tests-only work, verification, review, or ambiguous transformations"
-model: "sonnet"
+model: "haiku"
 tools:
   - "Read"
   - "Edit"
