@@ -1,7 +1,7 @@
 ---
 name: "code-explorer"
 description: "Bounded read-only code exploration for files, filenames, symbols, entry points, call paths, ownership boundaries, or specific code questions. Use for basic edit scoping and code discovery. Returns sourced findings. Not for exhaustive refactor maps, written guidance/docs, diffs/review, logs, verification, or edits."
-model: "sonnet"
+model: "haiku"
 tools:
   - "Read"
   - "Edit"

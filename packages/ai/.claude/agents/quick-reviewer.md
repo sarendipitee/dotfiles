@@ -1,7 +1,7 @@
 ---
 name: "quick-reviewer"
 description: "Fast read-only first-pass review of changed or specified files. Use to catch obvious correctness bugs, regressions, missing tests, unsafe assumptions, hardcoded values, broad types, TODOs, and edge cases before verification. Not for deep architectural review, requirements validation, diff summaries, command execution, or edits"
-model: "sonnet"
+model: "haiku"
 tools:
   - "Read"
   - "Edit"

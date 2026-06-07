@@ -1,7 +1,7 @@
 ---
 name: "test-writer"
 description: "Focused test additions for known behavior with relevant files, assertions, and targeted test command supplied. Returns test files changed, behavior covered, and suggested verification"
-model: "sonnet"
+model: "haiku"
 tools:
   - "Read"
   - "WebFetch"

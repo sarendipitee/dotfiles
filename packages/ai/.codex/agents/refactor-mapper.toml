@@ -2,7 +2,7 @@
 # Do not edit directly; update the source agent YAML instead.
 name = "refactor-mapper"
 description = "Read-only refactor mapping for bounded refactor slices or pure mapping requests. Returns call sites, imports, symbols, config keys, tests, fixtures, coordinated update targets, and ambiguity notes"
-model = "gpt-5.3-codex-spark"
+model = "gpt-5.4-mini"
 sandbox_mode = "read-only"
 developer_instructions = '''
 

@@ -1,7 +1,7 @@
 ---
 description: "Read-only data formatting for provided raw text, logs, JSON, YAML, tables, and lists. Returns concise structured output while preserving exact values"
 mode: "subagent"
-model: "openai/gpt-5.3-codex-spark"
+model: "openai/gpt-5.4-mini"
 steps: 25
 permission:
   read: "allow"

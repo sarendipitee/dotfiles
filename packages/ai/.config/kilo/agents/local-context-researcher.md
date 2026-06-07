@@ -1,7 +1,7 @@
 ---
 description: "Read-only research of local written guidance only: project docs, READMEs, AGENTS files, and notes"
 mode: "subagent"
-model: "openai/gpt-5.3-codex-spark"
+model: "openai/gpt-5.4-mini"
 steps: 25
 permission:
   read: "allow"
