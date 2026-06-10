@@ -1,0 +1,4 @@
+interface:
+  display_name: "Screenshot UI Redesign Plan"
+  short_description: "Turn UI screenshots into grounded redesign plans."
+  default_prompt: "Use this skill to critique the attached UI screenshot, inspect the repository context, and produce a concrete redesign plan with visual QA acceptance criteria."
