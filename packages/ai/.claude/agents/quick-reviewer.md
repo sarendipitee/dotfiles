@@ -4,7 +4,6 @@ description: "Fast read-only first-pass review of changed or specified files. Us
 model: "haiku"
 tools:
   - "Read"
-  - "Edit"
   - "WebFetch"
 ---
 

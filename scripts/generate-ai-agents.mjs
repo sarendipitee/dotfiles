@@ -166,11 +166,18 @@ function claudeModel(tier) {
 function claudeTools(permission) {
 	if (!permission) return null;
 	const tools = [];
-	if (permission.read?.["*"] !== "deny") tools.push("Read");
-	if (permission.edit?.["*"] !== "deny") tools.push("Edit");
-	if (permission.bash !== "deny") tools.push("Bash");
-	if (permission.webfetch !== "deny") tools.push("WebFetch");
+	if (!permissionDenied(permission.read)) tools.push("Read");
+	if (!permissionDenied(permission.edit)) tools.push("Edit");
+	if (!permissionDenied(permission.bash)) tools.push("Bash");
+	if (!permissionDenied(permission.webfetch)) tools.push("WebFetch");
 	return tools.length > 0 ? tools : null;
+}
+
+function permissionDenied(permissionValue) {
+	return (
+		permissionValue === "deny" ||
+		permissionValue?.["*"] === "deny"
+	);
 }
 
 function codexSandbox(permission) {

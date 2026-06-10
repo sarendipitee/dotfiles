@@ -4,7 +4,6 @@ description: "Read-only refactor mapping for bounded refactor slices or pure map
 model: "haiku"
 tools:
   - "Read"
-  - "Edit"
   - "WebFetch"
 ---
 

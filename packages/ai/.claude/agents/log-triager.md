@@ -4,8 +4,6 @@ description: "Read-only log triage for noisy test, CI, or runtime logs. Returns 
 model: "haiku"
 tools:
   - "Read"
-  - "Edit"
-  - "Bash"
   - "WebFetch"
 ---
 
