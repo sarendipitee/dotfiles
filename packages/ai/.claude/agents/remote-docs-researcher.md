@@ -3,8 +3,6 @@ name: "remote-docs-researcher"
 description: "Remote documentation research for current library, framework, API, CLI, or platform facts. Uses web sources and returns cited, version-aware findings. Not for local context research, code exploration, implementation, review, verification, or broad web research."
 model: "haiku"
 tools:
-  - "Read"
-  - "Edit"
   - "WebFetch"
 ---
 

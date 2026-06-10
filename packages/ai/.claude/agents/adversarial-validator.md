@@ -4,8 +4,6 @@ description: "Read-only adversarial validation that completed work actually sati
 model: "opus"
 tools:
   - "Read"
-  - "Edit"
-  - "Bash"
   - "WebFetch"
 ---
 

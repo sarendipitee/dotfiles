@@ -4,8 +4,6 @@ description: "Deep read-only code review for substantive, risky, or multi-file c
 model: "sonnet"
 tools:
   - "Read"
-  - "Edit"
-  - "Bash"
   - "WebFetch"
 ---
 

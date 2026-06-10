@@ -4,8 +4,6 @@ description: "Read-only Git diff/status summarization for current, staged, or pr
 model: "haiku"
 tools:
   - "Read"
-  - "Edit"
-  - "Bash"
   - "WebFetch"
 ---
 

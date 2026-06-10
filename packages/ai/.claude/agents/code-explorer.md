@@ -4,7 +4,6 @@ description: "Bounded read-only code exploration for files, filenames, symbols, 
 model: "haiku"
 tools:
   - "Read"
-  - "Edit"
   - "WebFetch"
 ---
 

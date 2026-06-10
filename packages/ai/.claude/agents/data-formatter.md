@@ -4,7 +4,6 @@ description: "Read-only data formatting for provided raw text, logs, JSON, YAML,
 model: "haiku"
 tools:
   - "Read"
-  - "Edit"
   - "WebFetch"
 ---
 

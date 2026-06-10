@@ -5,7 +5,6 @@ model: "haiku"
 tools:
   - "Read"
   - "Edit"
-  - "Bash"
   - "WebFetch"
 ---
 

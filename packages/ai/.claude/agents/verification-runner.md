@@ -4,7 +4,6 @@ description: "Verification runner for targeted or full lint, typecheck, test, an
 model: "haiku"
 tools:
   - "Read"
-  - "Edit"
   - "Bash"
   - "WebFetch"
 ---
