@@ -274,12 +274,6 @@ function generate(agents, check) {
 			claudeCodeMarkdown(agent);
 	}
 
-	const overseer = agents.find((a) => a.name === "overseer");
-	if (!overseer) throw new Error("missing overseer agent");
-
-	outputs[path.join(CODEX_SKILLS_DIR, "overseer", "SKILL.md")] =
-		codexSkill(overseer);
-
 	const changed = Object.entries(outputs).filter(([p, c]) => {
 		let existing;
 		try {
@@ -305,8 +299,6 @@ function generate(agents, check) {
 	fs.mkdirSync(OPENCODE_DIR, { recursive: true });
 	fs.mkdirSync(CODEX_DIR, { recursive: true });
 	fs.mkdirSync(CLAUDE_CODE_DIR, { recursive: true });
-	fs.mkdirSync(path.join(CODEX_SKILLS_DIR, "overseer"), { recursive: true });
-
 	for (const [filePath, content] of Object.entries(outputs)) {
 		fs.writeFileSync(filePath, content, "utf-8");
 	}
@@ -323,9 +315,6 @@ function generate(agents, check) {
 	);
 	console.log(
 		`Generated ${agents.length} Claude Code agents in ${CLAUDE_CODE_DIR.replace(rootRel, "")}`,
-	);
-	console.log(
-		`Generated Codex Overseer skill in ${CODEX_SKILLS_DIR.replace(rootRel, "")}/overseer`,
 	);
 	return true;
 }
