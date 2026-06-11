@@ -24,8 +24,9 @@ packages/shell/.config/zsh/antigenrc.zsh.zwc
 
 packages/nvim/.config/nvim/lazy-lock.json
 
-# Flox build results
+# Flox 
 packages/flox/envs/global/result-*
+packages/flox/active-envs
 
 # Generated antidote plugins file
 packages/shell/.config/zsh/.zsh_plugins.zsh
