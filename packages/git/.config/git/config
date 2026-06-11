@@ -21,8 +21,10 @@
 	mnemonicprefix = true
 	renames = copies
 [alias]
-	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --
+	lg = log --color --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
 	co = checkout
+	c = commit
+	wt = worktree
 	up = pull --rebase --autostash
 	mr = !sh -c 'git fetch $1 merge-requests/$2/head:mr-$1-$2 && git checkout mr-$1-$2' -
 	fix = !${EDITOR} -- $(git diff --name-only --relative --diff-filter=U | uniq)
@@ -74,9 +76,9 @@
 	gpgsign = false
 [credential "https://github.com"]
 	helper = 
-	helper = !/home/saren/projects/dotfiles/packages/flox/global-env/.flox/run/x86_64-linux.global-env.run/bin/gh auth git-credential
+	helper = !/home/saren/projects/dotfiles/packages/flox/envs/global/.flox/run/x86_64-linux.global.run/bin/gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !/home/saren/projects/dotfiles/packages/flox/global-env/.flox/run/x86_64-linux.global-env.run/bin/gh auth git-credential
+	helper = !/home/saren/projects/dotfiles/packages/flox/envs/global/.flox/run/x86_64-linux.global.run/bin/gh auth git-credential
 [beads]
 	role = maintainer
