@@ -9,7 +9,7 @@
 	branch = always
 	interactive = always
 [core]
-	excludesfile = /Users/JD/.gitignore
+	excludesfile = $HOME/.gitignore
 	editor = nvim
 	ignorecase = false
 	fileMode = true
