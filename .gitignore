@@ -38,3 +38,9 @@ packages/ai/.claude/keybindings.json
 packages/ai/.codex/app-server-control/
 packages/ai/.codex/rules/
 packages/ai/.codex/shell_snapshots/
+
+# Generated agent files (from scripts/generate-ai-agents.mjs)
+packages/ai/.config/kilo/agents/
+packages/ai/.config/opencode/agents/
+packages/ai/.codex/agents/
+packages/ai/.claude/agents/*.md
