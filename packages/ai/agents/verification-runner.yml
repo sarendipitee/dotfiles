@@ -11,44 +11,47 @@ permission:
   edit: "deny"
   bash:
     "*": "ask"
-    "npm test*": "allow"
-    "npm run test*": "allow"
-    "npm run lint*": "allow"
-    "npm run typecheck*": "allow"
-    "npm run check*": "allow"
-    "pnpm test*": "allow"
-    "pnpm run test*": "allow"
-    "pnpm run lint*": "allow"
-    "pnpm run typecheck*": "allow"
-    "pnpm run check*": "allow"
-    "yarn test*": "allow"
-    "yarn run test*": "allow"
-    "yarn lint*": "allow"
-    "yarn typecheck*": "allow"
-    "yarn check*": "allow"
-    "bun test*": "allow"
-    "bun run test*": "allow"
-    "bun run lint*": "allow"
-    "bun run typecheck*": "allow"
     "bun run check*": "allow"
-    "npx tsc*": "allow"
-    "pnpm exec tsc*": "allow"
-    "yarn tsc*": "allow"
+    "bun run lint*": "allow"
+    "bun run test*": "allow"
+    "bun run typecheck*": "allow"
+    "bun test*": "allow"
     "bunx tsc*": "allow"
-    "tsc*": "allow"
-    "pytest*": "allow"
-    "uv run pytest*": "allow"
-    "ruff check*": "allow"
-    "mypy*": "allow"
-    "cargo test*": "allow"
     "cargo check*": "allow"
     "cargo clippy*": "allow"
+    "cargo test*": "allow"
+    "deno lint*": "allow"
+    "deno test*": "allow"
+    "flox*": "allow"
     "go test*": "allow"
     "go vet*": "allow"
-    "deno test*": "allow"
-    "deno lint*": "allow"
-    "moon run *": "allow"
+    "grep*": "allow"
     "moon ci*": "allow"
+    "moon run *": "allow"
+    "mypy*": "allow"
+    "npm run check*": "allow"
+    "npm run lint*": "allow"
+    "npm run test*": "allow"
+    "npm run typecheck*": "allow"
+    "npm test*": "allow"
+    "npx tsc*": "allow"
+    "pnpm exec tsc*": "allow"
+    "pnpm run check*": "allow"
+    "pnpm run lint*": "allow"
+    "pnpm run test*": "allow"
+    "pnpm run typecheck*": "allow"
+    "pnpm test*": "allow"
+    "pytest*": "allow"
+    "rg*": "allow"
+    "ruff check*": "allow"
+    "tsc*": "allow"
+    "uv run pytest*": "allow"
+    "yarn check*": "allow"
+    "yarn lint*": "allow"
+    "yarn run test*": "allow"
+    "yarn test*": "allow"
+    "yarn tsc*": "allow"
+    "yarn typecheck*": "allow"
     "git checkout*": "deny"
     "git restore*": "deny"
     "git reset*": "deny"
@@ -56,11 +59,11 @@ permission:
     "git push*": "deny"
     "rm *": "deny"
 prompt: |
-  
+
   You are a verification runner subagent. Your job is to run lint, typecheck, and test commands delegated by the primary agent, then return concise, actionable results
-  
+
   Rules:
-  
+
   - Do not edit files
   - Do not fix failures
   - Do not install, update, or remove dependencies
@@ -71,9 +74,9 @@ prompt: |
   - If a command is ambiguous, risky, missing, or likely to require network access, stop and report what approval or clarification is needed
   - Capture the primary failure signal from noisy output instead of pasting full logs
   - Distinguish command failures from test assertion failures, type errors, lint errors, and environment/tooling failures
-  
+
   Return:
-  
+
   - Commands run
   - Pass/fail result for each command
   - Primary failure with file, line, test name, or diagnostic code when available
