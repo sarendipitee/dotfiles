@@ -1,4 +1,6 @@
-description: "Verification runner for targeted or full lint, typecheck, test, and CI reproduction commands after edits. Returns concise pass/fail results, primary failures, and verification gaps"
+description: "Verification runner for targeted or full lint, typecheck, test,
+  and CI reproduction commands after edits. Returns concise pass/fail results,
+  primary failures, and verification gaps"
 mode: "subagent"
 tier: "cheap"
 steps: 25
@@ -9,57 +11,8 @@ permission:
   task:
     "*": "deny"
   edit: "deny"
-  bash:
-    "*": "ask"
-    "bun run check*": "allow"
-    "bun run lint*": "allow"
-    "bun run test*": "allow"
-    "bun run typecheck*": "allow"
-    "bun test*": "allow"
-    "bunx tsc*": "allow"
-    "cargo check*": "allow"
-    "cargo clippy*": "allow"
-    "cargo test*": "allow"
-    "deno lint*": "allow"
-    "deno test*": "allow"
-    "flox*": "allow"
-    "go test*": "allow"
-    "go vet*": "allow"
-    "grep*": "allow"
-    "moon ci*": "allow"
-    "moon run *": "allow"
-    "mypy*": "allow"
-    "npm run check*": "allow"
-    "npm run lint*": "allow"
-    "npm run test*": "allow"
-    "npm run typecheck*": "allow"
-    "npm test*": "allow"
-    "npx tsc*": "allow"
-    "pnpm exec tsc*": "allow"
-    "pnpm run check*": "allow"
-    "pnpm run lint*": "allow"
-    "pnpm run test*": "allow"
-    "pnpm run typecheck*": "allow"
-    "pnpm test*": "allow"
-    "pytest*": "allow"
-    "rg*": "allow"
-    "ruff check*": "allow"
-    "tsc*": "allow"
-    "uv run pytest*": "allow"
-    "yarn check*": "allow"
-    "yarn lint*": "allow"
-    "yarn run test*": "allow"
-    "yarn test*": "allow"
-    "yarn tsc*": "allow"
-    "yarn typecheck*": "allow"
-    "git checkout*": "deny"
-    "git restore*": "deny"
-    "git reset*": "deny"
-    "git clean*": "deny"
-    "git push*": "deny"
-    "rm *": "deny"
 prompt: |
-
+  
   You are a verification runner subagent. Your job is to run lint, typecheck, and test commands delegated by the primary agent, then return concise, actionable results
 
   Rules:
