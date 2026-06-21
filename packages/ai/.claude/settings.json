@@ -20,11 +20,19 @@
     "superpowers@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "context-mode@context-mode": true
   },
   "effortLevel": "low",
   "advisorModel": "opus",
   "skipDangerousModePermissionPrompt": true,
+  "skipWorkflowUsageWarning": true,
   "editorMode": "vim",
-  "verbose": true
+  "verbose": true,
+  "agentPushNotifEnabled": true,
+  "inputNeededNotifEnabled": true,
+  "statusLine": {
+    "type": "command",
+    "command": "context-mode statusline"
+  }
 }

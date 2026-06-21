@@ -1,5 +1,8 @@
 {
 	"$schema": "https://opencode.ai/config.json",
+	"plugin": [
+		"context-mode"
+	],
 	"provider": {
 		"zai-coding-plan": {
 			"options": {
@@ -16,6 +19,11 @@
 			"url": "https://mcp.notion.com/mcp",
 			"enabled": false
 		}
+	},
+	"skills": {
+		"paths": [
+			"~/.claude/skills"
+		]
 	},
 	"permission": {
 		"read": "allow",
