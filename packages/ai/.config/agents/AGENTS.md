@@ -4,7 +4,9 @@
 
 - Be concise and direct
 - Follow established project conventions
-- Do not be lazy. Find the root cause or fix the issue correctly instead of band-aiding symptoms
+- **Do not make assumptions EVER**: Read the current docs, find the real source code.
+- Do not be lazy and take shortcuts if you aren't sure.
+- **Find the root cause**: fix the issue correctly instead of band-aiding symptoms
 
 ## Caveman Default Mode
 

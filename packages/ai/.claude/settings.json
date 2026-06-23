@@ -14,25 +14,49 @@
     ],
     "defaultMode": "bypassPermissions"
   },
-  "model": "sonnet",
+  "model": "opus[1m]",
+  "statusLine": {
+    "type": "command",
+    "command": "context-mode statusline"
+  },
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "superpowers@claude-plugins-official": false,
     "claude-md-management@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
-    "rust-analyzer-lsp@claude-plugins-official": true,
+    "rust-analyzer-lsp@claude-plugins-official": false,
     "context-mode@context-mode": true
   },
+  "extraKnownMarketplaces": {
+    "context-mode": {
+      "source": {
+        "source": "github",
+        "repo": "mksglu/context-mode"
+      }
+    }
+  },
+  "env": {
+    "CLAUDE_CODE_TMPDIR": "/home/saren/tmp"
+  },
   "effortLevel": "low",
-  "advisorModel": "opus",
+  "tui": "default",
   "skipDangerousModePermissionPrompt": true,
   "skipWorkflowUsageWarning": true,
+  "theme": "dark",
   "editorMode": "vim",
   "verbose": true,
-  "agentPushNotifEnabled": true,
   "inputNeededNotifEnabled": true,
-  "statusLine": {
-    "type": "command",
-    "command": "context-mode statusline"
+  "agentPushNotifEnabled": true,
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"/home/saren/.claude/hooks/context-mode-cache-heal.mjs\""
+          }
+        ]
+      }
+    ]
   }
 }

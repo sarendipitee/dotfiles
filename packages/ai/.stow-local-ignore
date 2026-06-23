@@ -48,6 +48,9 @@
 ^agents$
 ^agents/$
 ^agents/
+^agents/$
+^skills/$
+^skills/
 ^\.gitignore$
 ^\.agents$
 ^\.agents/$
