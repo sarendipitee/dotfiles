@@ -22,6 +22,17 @@
         ]
       }
     ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/python3 \"$HOME/.config/ai/codex-hook-scripts/caveman-subagent-start.py\"",
+            "statusMessage": "Injecting caveman subagent rules"
+          }
+        ]
+      }
+    ],
     "PreCompact": [
       {
         "hooks": [
