@@ -35,6 +35,9 @@ packages/ai/.claude/.credentials.json
 packages/ai/.claude/.last-cleanup
 packages/ai/.claude/.last-update-result.json
 packages/ai/.claude/keybindings.json
+packages/ai/.claude/context-mode/
+packages/ai/.claude/tasks/
+
 packages/ai/.codex/app-server-control/
 packages/ai/.codex/rules/
 packages/ai/.codex/shell_snapshots/
