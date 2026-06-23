@@ -42,6 +42,7 @@ caddy.pkg-path = "caddy"
 cmake.pkg-path = "cmake"
 ffmpeg.pkg-path = "ffmpeg"
 go.pkg-path = "go"
+icu = { pkg-path = "icu", version = "76.1", outputs = ["dev", "out"] }
 kubectl.pkg-path = "kubectl"
 k9s.pkg-path = "k9s"
 terraform.pkg-path = "terraform"
@@ -57,7 +58,6 @@ sqlite.pkg-path = "sqlite"
 stow.pkg-path = "stow"
 
 # Custom Tap Packages (via nixpkgs flake)
-opencode.flake = "github:NixOS/nixpkgs/nixos-unstable#opencode"
 dyff.flake = "github:NixOS/nixpkgs/nixos-unstable#dyff"
 talosctl.flake = "github:NixOS/nixpkgs/nixos-unstable#talosctl"
 supabase-cli.flake = "github:NixOS/nixpkgs/nixos-unstable#supabase-cli"
@@ -150,61 +150,42 @@ direnv.pkg-path = "direnv"
 ## -------------------------------------------------------------------
 [profile]
 common = '''
-  # Gas Town toolchain: dolt, gt, bd - managed via profile hook
-  _FLOX_GT_HOME="$HOME/.local/share/flox/gt"
-  if command -v curl &>/dev/null; then
-    _ARCH="$(uname -m)"
-    _OS="$(uname -s | tr '[:upper:]' '[:lower:]')"
-    case "$_OS" in
-      linux*) _OS="linux" ;;
-      darwin*) _OS="darwin" ;;
+  _flox_prepend_path_once() {
+    _flox_var_name="$1"
+    _flox_path_value="$2"
+    eval "_flox_current_value=\${$_flox_var_name:-}"
+    case ":$_flox_current_value:" in
+      *":$_flox_path_value:"*) ;;
+      *)
+        if [ -n "$_flox_current_value" ]; then
+          export "$_flox_var_name=$_flox_path_value:$_flox_current_value"
+        else
+          export "$_flox_var_name=$_flox_path_value"
+        fi
+        ;;
     esac
-    case "$_ARCH" in
-      x86_64|amd64) _ARCH="amd64" ;;
-      aarch64|arm64) _ARCH="arm64" ;;
-    esac
+  }
 
-    # Dolt 2.1.0
-    _FLOX_DOLT_BIN="$_FLOX_GT_HOME/dolt/bin/dolt"
-    if [ ! -x "$_FLOX_DOLT_BIN" ]; then
-      mkdir -p "$_FLOX_GT_HOME/dolt/bin"
-      curl -sL "https://github.com/dolthub/dolt/releases/download/v2.1.0/dolt-${_OS}-${_ARCH}.tar.gz" \
-        | tar -xz --strip-components=1 -C "$_FLOX_GT_HOME/dolt" 2>/dev/null
-      chmod +x "$_FLOX_DOLT_BIN" 2>/dev/null
+  if [ -n "${FLOX_ENV:-}" ]; then
+    if [ -d "$FLOX_ENV/include" ]; then
+      _flox_prepend_path_once CPATH "$FLOX_ENV/include"
     fi
-    export PATH="$_FLOX_GT_HOME/dolt/bin:$PATH"
-
-    # gt v1.2.0 (flat tarball, extract to temp and move binary)
-    _FLOX_GT_BIN="$_FLOX_GT_HOME/gt/bin/gt"
-    if [ ! -x "$_FLOX_GT_BIN" ]; then
-      _FLOX_TMP="$(mktemp -d)"
-      curl -sL "https://github.com/gastownhall/gastown/releases/download/v1.2.0/gastown_1.2.0_${_OS}_${_ARCH}.tar.gz" \
-        | tar -xz -C "$_FLOX_TMP" 2>/dev/null
-      mkdir -p "$_FLOX_GT_HOME/gt/bin"
-      mv "$_FLOX_TMP/gt" "$_FLOX_GT_BIN" 2>/dev/null
-      chmod +x "$_FLOX_GT_BIN" 2>/dev/null
-      rm -rf "$_FLOX_TMP"
-      unset _FLOX_TMP
+    if [ -d "$FLOX_ENV/lib" ]; then
+      _flox_prepend_path_once LIBRARY_PATH "$FLOX_ENV/lib"
+      # Mirror into LD_LIBRARY_PATH so libraries the linker picked from this
+      # env (via LIBRARY_PATH) also resolve at runtime. Without this, a
+      # system compiler links an env-provided lib (e.g. icu4c) that the
+      # default loader path can't find, and binaries crash with
+      # "cannot open shared object file". This env's lib dir is curated and
+      # contains no glibc/loader, so it is safe on LD_LIBRARY_PATH.
+      _flox_prepend_path_once LD_LIBRARY_PATH "$FLOX_ENV/lib"
     fi
-    export PATH="$_FLOX_GT_HOME/gt/bin:$PATH"
-
-    # bd v1.0.4 (pinned to gastown v1.2.0 max supported version)
-    _FLOX_BD_BIN="$_FLOX_GT_HOME/bd/bin/bd"
-    if [ ! -x "$_FLOX_BD_BIN" ]; then
-      _FLOX_TMP="$(mktemp -d)"
-      curl -sL "https://github.com/gastownhall/beads/releases/download/v1.0.4/beads_1.0.4_${_OS}_${_ARCH}.tar.gz" \
-        | tar -xz -C "$_FLOX_TMP" 2>/dev/null
-      mkdir -p "$_FLOX_GT_HOME/bd/bin"
-      mv "$_FLOX_TMP/bd" "$_FLOX_BD_BIN" 2>/dev/null
-      chmod +x "$_FLOX_BD_BIN" 2>/dev/null
-      rm -rf "$_FLOX_TMP"
-      unset _FLOX_TMP
+    if [ -d "$FLOX_ENV/lib/pkgconfig" ]; then
+      _flox_prepend_path_once PKG_CONFIG_PATH "$FLOX_ENV/lib/pkgconfig"
     fi
-    export PATH="$_FLOX_GT_HOME/bd/bin:$PATH"
-
-    unset _FLOX_DOLT_BIN _FLOX_GT_BIN _FLOX_BD_BIN
   fi
-  unset _FLOX_GT_HOME _ARCH _OS
+  unset -f _flox_prepend_path_once
+  unset _flox_var_name _flox_path_value _flox_current_value
 '''
 
 

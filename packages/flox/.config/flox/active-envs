@@ -2,4 +2,4 @@
 # Available envs: global, nvidia, macbook, gascity, etc
 envs/global
 #envs/gascity
-#envs/nvidia
+envs/nvidia
