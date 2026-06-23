@@ -11,6 +11,10 @@ source "$ZDOTDIR/env.sh"
 export PATH="/usr/local/bin:$PATH"
 export FLOX_SET_PROMPT=false
 
+source "$ZDOTDIR/path.pre-flox.sh"
+source "$ZDOTDIR/flox.sh"
+source "$ZDOTDIR/path.post-flox.sh"
+
 # Non-interactive shells do not run .zshrc, so direnv's prompt hook never fires.
 # Export the current directory's env explicitly for command shells like Kilo tasks.
 if [[ ! -o interactive ]] \
@@ -25,7 +29,6 @@ fi
 source "$ZDOTDIR/colors.sh"
 source "$ZDOTDIR/functions.sh"
 source "$ZDOTDIR/aliases.sh"
-source "$ZDOTDIR/path.sh"
 
 # zoxide
 eval "$(zoxide init zsh)"
