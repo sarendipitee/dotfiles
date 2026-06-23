@@ -39,7 +39,7 @@
 
 Delegation is **opt-in only**
 
-By default, agents must execute their assigned task directly. Do not spawn, forward to, or delegate work to another sub-agent unless the current prompt or the agent's own role instructions explicitly authorize orchestration
+By default, agents must execute their assigned task directly. Do not spawn, forward to, or delegate work to another sub-agent unless the current prompt or you have been given explicit authorize orchestration
 
 Never spawn another sub-agent of the same type to perform the same task. If the task cannot be completed directly, report the blocker instead of forwarding it
 
@@ -88,11 +88,13 @@ If your prompt or role instructions explicitly grant orchestration permission, y
 | Draft generation | Long artifact for review |
 | Validation/review | Checking output against rubric |
 
+
 ### Practical Notes
 
 - Don't pre-fetch extensive context before spawning a sub-agent — sub-agents can gather their own context using available tools
 - Provide only what the sub-agent *can't* easily discover: specific requirements, hard constraints, known file paths, or context not in the repo
 - If spawns are parallel, finalize all prompts first, then fire them concurrently
+- Specialized agents already have restrictions in their prompts, you do not need to repeat guard rails
 
 #### File Reading Strategy
 
@@ -102,3 +104,4 @@ If your prompt or role instructions explicitly grant orchestration permission, y
 
 - Form multiple commits for changes, separate by logical/functional groupings
 - Follow project commit message conventions (check for a .cz.toml and git log for style)
+- Do not add "Co-authored by" in commit messages
