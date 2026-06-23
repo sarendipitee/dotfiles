@@ -2,3 +2,7 @@ plugged/
 undo/
 sessions/
 tmp/
+unused-bundle/
+bundle/
+view/
+.netrwhist

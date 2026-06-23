@@ -1,23 +1,8 @@
-# Claude runtime
-sessions/
-cache/
-file-history/
-shell-snapshots/
-backups/
-debug/
-telemetry/
-statsig/
-plans/
-projects/
-session-env/
-ide/
-paste-cache/
-todos/
-hooks/
-plugins/
-!/.config/opencode/plugins/
-!/.config/opencode/plugins/**
-*.log
-*.jsonl
-mcp-needs-auth-cache.json
-stats-cache.json
+
+# Generated agent files (from scripts/generate-ai-agents.mjs)
+.config/kilo/agents/
+.config/opencode/agents/
+.codex/agents/
+.claude/agents
+
+skills/.system/

@@ -1,6 +1,9 @@
 
 skills/.system
 skills/migrate-to-codex
+app-server-control/
+rules/
+shell_snapshots/
 
 # Runtime files
 .personality_migration
