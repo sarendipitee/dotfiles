@@ -6,6 +6,11 @@
 - Follow established project conventions
 - Do not be lazy. Find the root cause or fix the issue correctly instead of band-aiding symptoms
 
+## Caveman Default Mode
+
+- Load and use the `caveman` skill from session start.
+- Treat Caveman as active by default: keep replies terse, drop filler and pleasantries, preserve technical accuracy, and stop only when the user says "stop caveman" or "normal mode". Use normal clarity for security warnings, irreversible actions, or cases where compression would create ambiguity.
+
 ## Truth & Validation
 
 - **NEVER** assume things - research what is unknown with truth (files, source code, live documentation, etc)
