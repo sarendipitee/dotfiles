@@ -122,6 +122,7 @@ llvm.flake = "github:NixOS/nixpkgs/nixos-unstable#llvm"
 flac.flake = "github:NixOS/nixpkgs/nixos-unstable#flac"
 gettext.flake = "github:NixOS/nixpkgs/nixos-unstable#gettext"
 direnv.pkg-path = "direnv"
+luarocks.pkg-path = "luarocks"
 
 ## Environment Variables ---------------------------------------------
 ##  ... available for use in the activated environment
