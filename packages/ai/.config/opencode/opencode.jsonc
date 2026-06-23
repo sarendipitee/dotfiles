@@ -1,7 +1,8 @@
 {
 	"$schema": "https://opencode.ai/config.json",
 	"plugin": [
-		"context-mode"
+		"context-mode",
+		"./plugins/caveman/plugin.js"
 	],
 	"provider": {
 		"zai-coding-plan": {
@@ -11,7 +12,8 @@
 		}
 	},
 	"instructions": [
-		"~/.config/agents/AGENTS.md"
+		"~/.config/agents/AGENTS.md",
+		"~/.config/opencode/AGENTS.md"
 	],
 	"mcp": {
 		"notion": {

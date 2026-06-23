@@ -15,6 +15,8 @@ paste-cache/
 todos/
 hooks/
 plugins/
+!/.config/opencode/plugins/
+!/.config/opencode/plugins/**
 *.log
 *.jsonl
 mcp-needs-auth-cache.json
