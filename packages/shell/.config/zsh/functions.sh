@@ -270,3 +270,7 @@ y() {
 to() {
 	__zoxide_z "$@"
 }
+
+vimr() {
+	open -a VimR "${@:-.}"
+}
