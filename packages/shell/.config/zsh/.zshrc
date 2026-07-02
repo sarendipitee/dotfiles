@@ -12,7 +12,7 @@ fi
 source ${zsh_plugins}.zsh
 
 # Remote session indicator (SSH nesting badge for prompt)
-source "$ZDOTDIR/prompt-remote.zsh"
+source "${DOTFILES_DIR:?}/packages/shell/.config/zsh/prompt-remote.zsh"
 
 # Unalias Oh My Zsh git aliases that conflict with tools
 unalias gc 2>/dev/null
