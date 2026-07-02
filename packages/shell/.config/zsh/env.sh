@@ -102,11 +102,11 @@ export MOON_OUTPUT_STYLE=buffer-only-failure
 export NUGET_PACKAGES="$XDG_CACHE_HOME"/NuGetPackages
 
 # Go
-export GOPATH=$HOME/Projects/go
+export GOPATH="$XDG_STATE_HOME/projects/go"
 if command -v go &>/dev/null; then
-  export GOROOT=$(go env GOROOT 2>/dev/null)
+	export GOROOT=$(go env GOROOT 2>/dev/null)
 elif [ -d /opt/homebrew/opt/go/libexec ]; then
-  export GOROOT=/opt/homebrew/opt/go/libexec
+	export GOROOT=/opt/homebrew/opt/go/libexec
 fi
 
 # Java
