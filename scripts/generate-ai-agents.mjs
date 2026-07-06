@@ -174,10 +174,15 @@ function claudeTools(permission) {
 }
 
 function permissionDenied(permissionValue) {
-	return (
-		permissionValue === "deny" ||
-		permissionValue?.["*"] === "deny"
-	);
+	if (permissionValue === "deny") return true;
+	if (permissionValue && typeof permissionValue === "object") {
+		// A granular map is only fully denied if every entry denies. A
+		// deny-by-default block with specific allow entries (e.g. bash locked
+		// to a git allowlist) still needs the tool granted.
+		const values = Object.values(permissionValue);
+		return values.length > 0 && values.every((v) => v === "deny");
+	}
+	return false;
 }
 
 function codexSandbox(permission) {
