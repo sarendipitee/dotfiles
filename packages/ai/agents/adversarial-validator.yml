@@ -11,6 +11,11 @@ permission:
   grep: "allow"
   task:
     "*": "deny"
+    code-explorer: "allow"
+    refactor-mapper: "allow"
+    local-context-researcher: "allow"
+    remote-docs-researcher: "allow"
+    log-triager: "allow"
   edit: "deny"
   bash:
     "*": "deny"
