@@ -18,4 +18,4 @@ prompt_context() {
 
 # Two-line prompt: info segments on line 1, prompt char on line 2
 PROMPT='%{%f%b%k%}$(build_prompt)
-%(!.%{%F{red}%}#.%{%F{green}%}❯%{%f%}) '
+%(!.%{%F{red}%}#.%{%F{white}%}❯%{%f%}) '
