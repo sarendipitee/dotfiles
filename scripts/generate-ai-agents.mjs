@@ -23,17 +23,17 @@ const TIER_MODELS = {
 		kilo: "openai/gpt-5.4-mini",
 		//codex: "gpt-5.3-codex-spark",
 		codex: "gpt-5.4-mini",
-		claude: "haiku",
+		claude: "sonnet",
 	},
 	"medium-high": {
 		kilo: "openai/gpt-5.4",
 		codex: "gpt-5.4",
-		claude: "sonnet",
+		claude: "opus",
 	},
 	frontier: {
 		kilo: "openai/gpt-5.5",
 		codex: "gpt-5.5",
-		claude: "opus",
+		claude: "fable",
 	},
 };
 
@@ -167,9 +167,13 @@ function claudeTools(permission) {
 	if (!permission) return null;
 	const tools = [];
 	if (!permissionDenied(permission.read)) tools.push("Read");
+	if (!permissionDenied(permission.glob)) tools.push("Glob");
+	if (!permissionDenied(permission.grep)) tools.push("Grep");
 	if (!permissionDenied(permission.edit)) tools.push("Edit");
 	if (!permissionDenied(permission.bash)) tools.push("Bash");
 	if (!permissionDenied(permission.webfetch)) tools.push("WebFetch");
+	if (permission.websearch === "allow") tools.push("WebSearch");
+	if (!permissionDenied(permission.task)) tools.push("Task");
 	return tools.length > 0 ? tools : null;
 }
 
