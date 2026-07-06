@@ -123,6 +123,7 @@ flac.flake = "github:NixOS/nixpkgs/nixos-unstable#flac"
 gettext.flake = "github:NixOS/nixpkgs/nixos-unstable#gettext"
 direnv.pkg-path = "direnv"
 luarocks.pkg-path = "luarocks"
+eternal-terminal.pkg-path = "eternal-terminal"
 
 ## Environment Variables ---------------------------------------------
 ##  ... available for use in the activated environment
