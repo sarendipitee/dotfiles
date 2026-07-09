@@ -182,6 +182,38 @@ if [[ $OS == Linux ]]; then
 
 fi
 
+#########################
+# Setup Tailscale #
+#########################
+section_header 'Setting up Tailscale'
+
+if [[ $OS == Darwin ]]; then
+  if ! command_exists tailscale; then
+    section_header 'Installing Tailscale via Homebrew'
+    brew install tailscale
+    success 'Tailscale installed'
+  fi
+
+  section_header 'Starting tailscaled via launchd'
+  sudo brew services start tailscale 2>/dev/null || true
+  success 'tailscaled service started'
+
+elif [[ $OS == Linux ]]; then
+  if ! command_exists tailscale; then
+    section_header 'Installing Tailscale'
+    sh <(curl -fsSL https://tailscale.com/install.sh)
+    success 'Tailscale installed'
+  fi
+fi
+
+if command_exists tailscale; then
+  if ! tailscale status 2>/dev/null >/dev/null; then
+    warn 'Tailscale installed but not authenticated. Run: tailscale up'
+  else
+    success 'Tailscale is authenticated and running'
+  fi
+fi
+
 section_header 'Creating symlinks in home folder'
 
 sh "${DOTFILES_DIR}/scripts/create-links.sh"
