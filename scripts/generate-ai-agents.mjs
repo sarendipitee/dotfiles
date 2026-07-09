@@ -14,25 +14,25 @@ const CLAUDE_CODE_DIR = path.join(ROOT, "packages/ai/.claude/agents");
 
 const TIER_MODELS = {
 	cheap: {
-		kilo: "openai/gpt-5.4-mini",
+		kilo: "openai/gpt-5.6-luna",
 		// codex: "gpt-5.3-codex-spark",
-		codex: "gpt-5.4-mini",
+		codex: "gpt-5.6-luna",
 		claude: "haiku",
 	},
 	"medium-cheap": {
-		kilo: "openai/gpt-5.4-mini",
+		kilo: "openai/gpt-5.6-luna",
 		//codex: "gpt-5.3-codex-spark",
-		codex: "gpt-5.4-mini",
+		codex: "gpt-5.6-luna",
 		claude: "sonnet",
 	},
 	"medium-high": {
-		kilo: "openai/gpt-5.4",
-		codex: "gpt-5.4",
+		kilo: "openai/gpt-5.6-terra",
+		codex: "gpt-5.6-terra",
 		claude: "opus",
 	},
 	frontier: {
-		kilo: "openai/gpt-5.5",
-		codex: "gpt-5.5",
+		kilo: "openai/gpt-5.6-sol",
+		codex: "gpt-5.6-sol",
 		claude: "fable",
 	},
 };
