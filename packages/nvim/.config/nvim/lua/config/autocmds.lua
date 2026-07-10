@@ -27,3 +27,13 @@ end
 
 -- if you only want these mappings for toggle term use term://*toggleterm#* instead
 vim.cmd("autocmd! TermOpen term://* lua set_terminal_keymaps()")
+
+-- Markdown: off diagnostics and spellcheck by default
+vim.api.nvim_create_autocmd({ "FileType", "LspAttach" }, {
+  pattern = "markdown",
+  desc = "Disable diagnostics and spellcheck for markdown files",
+  callback = function(args)
+    vim.opt_local.spell = false
+    vim.diagnostic.enable(false, { buf = args.buf })
+  end,
+})
