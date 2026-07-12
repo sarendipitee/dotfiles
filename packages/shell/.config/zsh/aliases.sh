@@ -14,6 +14,7 @@ alias gs='git status'
 alias ga='git add'
 alias gd='git diff'
 alias gds='git diff --summary'
+alias lg='lazygit'
 
 # gascity conflict
 unalias gc 2>/dev/null
