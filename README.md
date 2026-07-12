@@ -32,6 +32,23 @@ Provisioning installs Flox, activates tracked global environment, installs GNU
 Stow from that environment, links packages, initializes Antidote, and configures
 Zsh. On Ubuntu, it also installs and enables OpenSSH server.
 
+Profiles and component overrides:
+
+```bash
+./scripts/provision.sh --profile core
+./scripts/provision.sh --profile server
+./scripts/provision.sh --profile desktop
+./scripts/provision.sh --profile full
+
+./scripts/provision.sh --profile server --without-nvidia
+./scripts/provision.sh --profile core --with-ssh --ssh-key-only
+```
+
+`full` is default. NVIDIA setup runs only when supported NVIDIA display hardware
+is detected. `--ssh-key-only` requires populated `~/.ssh/authorized_keys` before
+disabling password authentication. Provision logs live under
+`~/.local/state/dotfiles/logs/`.
+
 ## Repository Structure
 
 ```

@@ -138,12 +138,16 @@ clone_repo_into() {
 	unset target_folder
 }
 
+# Applies OpenSSH-compatible modes without removing directory traversal bits.
 set_ssh_folder_permissions() {
 	local target_folder="${HOME}/.ssh"
 	ensure_dir_exists "${target_folder}"
+	chmod 700 "${target_folder}"
 	if dir_has_children "${target_folder}"; then
-		chmod -R 600 "${target_folder}"/*
-		success "Successfully set permissions for all files in '${target_folder}'"
+		find "${target_folder}" -type d -exec chmod 700 {} +
+		find "${target_folder}" -type f -exec chmod 600 {} +
+		find "${target_folder}" -type f \( -name '*.pub' -o -name 'known_hosts' -o -name 'known_hosts.old' \) -exec chmod 644 {} +
+		success "Successfully set SSH directory and file permissions in '${target_folder}'"
 	else
 		warn "Couldn't find any files in '${target_folder}' to set permissions for"
 	fi

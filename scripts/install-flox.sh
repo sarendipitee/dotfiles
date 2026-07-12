@@ -1,87 +1,85 @@
 #!/usr/bin/env bash
 
-# Install Flox without using Homebrew
-# Downloads and installs the correct package for the current OS/architecture
+set -Eeo pipefail
 
-set -e
+FLOX_VERSION="1.12.0"
+TMP_DIR=
 
-if command -v flox &> /dev/null; then
-    echo "Flox is already installed ($(flox --version 2>/dev/null || echo 'version unknown'))"
-    exit 0
-fi
+cleanup() {
+	[ -z "$TMP_DIR" ] || rm -rf "$TMP_DIR"
+}
 
-echo "Installing Flox..."
+trap cleanup EXIT
 
-OS=$(uname -s)
-ARCH=$(uname -m)
-FLOX_VERSION="1.11.4"
+error() {
+	printf 'ERROR: %s\n' "$*" >&2
+	exit 1
+}
 
-# Create temp directory for download
-TMP_DIR=$(mktemp -d)
-cd "$TMP_DIR"
+verify_checksum() {
+	local file="$1" expected="$2" actual
+	if command -v sha256sum >/dev/null 2>&1; then
+		actual=$(sha256sum "$file" | awk '{print $1}')
+	else
+		actual=$(shasum -a 256 "$file" | awk '{print $1}')
+	fi
+	[ "$actual" = "$expected" ] || error "Checksum mismatch for $(basename "$file")"
+}
 
-if [[ "$OS" == "Darwin" ]]; then
-    # macOS
-    if [[ "$ARCH" == "arm64" ]]; then
-        PKG_URL="https://downloads.flox.dev/by-env/stable/osx/flox-${FLOX_VERSION}.aarch64-darwin.pkg"
-        PKG_FILE="flox-${FLOX_VERSION}.aarch64-darwin.pkg"
-    else
-        PKG_URL="https://downloads.flox.dev/by-env/stable/osx/flox-${FLOX_VERSION}.x86_64-darwin.pkg"
-        PKG_FILE="flox-${FLOX_VERSION}.x86_64-darwin.pkg"
-    fi
-    
-    echo "Downloading Flox for macOS..."
-    curl -fsSL -o "$PKG_FILE" "$PKG_URL"
-    
-    echo "Installing Flox pkg (requires sudo)..."
-    sudo installer -pkg "$PKG_FILE" -target /
-    
-elif [[ "$OS" == "Linux" ]]; then
-    # Linux - detect package manager
-    if command -v dpkg &> /dev/null; then
-        # Debian-based
-        if [[ "$ARCH" == "aarch64" ]]; then
-            DEB_URL="https://downloads.flox.dev/by-env/stable/deb/flox-${FLOX_VERSION}.aarch64-linux.deb"
-            DEB_FILE="flox-${FLOX_VERSION}.aarch64-linux.deb"
-        else
-            DEB_URL="https://downloads.flox.dev/by-env/stable/deb/flox-${FLOX_VERSION}.x86_64-linux.deb"
-            DEB_FILE="flox-${FLOX_VERSION}.x86_64-linux.deb"
-        fi
-        
-        echo "Downloading Flox for Debian/Ubuntu..."
-        curl -fsSL -o "$DEB_FILE" "$DEB_URL"
-        sudo dpkg -i "$DEB_FILE" || sudo apt-get install -f -y
-        
-    elif command -v rpm &> /dev/null; then
-        # RPM-based
-        if [[ "$ARCH" == "aarch64" ]]; then
-            RPM_URL="https://downloads.flox.dev/by-env/stable/rpm/flox-${FLOX_VERSION}.aarch64-linux.rpm"
-            RPM_FILE="flox-${FLOX_VERSION}.aarch64-linux.rpm"
-        else
-            RPM_URL="https://downloads.flox.dev/by-env/stable/rpm/flox-${FLOX_VERSION}.x86_64-linux.rpm"
-            RPM_FILE="flox-${FLOX_VERSION}.x86_64-linux.rpm"
-        fi
-        
-        echo "Downloading Flox for RHEL/CentOS..."
-        curl -fsSL -o "$RPM_FILE" "$RPM_URL"
-        sudo rpm -ivh "$RPM_FILE" || sudo yum install -y "$RPM_FILE"
-    else
-        echo "Error: Unsupported Linux distribution"
-        exit 1
-    fi
-else
-    echo "Error: Unsupported operating system: $OS"
-    exit 1
-fi
+main() {
+	local os arch artifact checksum package_type package_file package_url
 
-# Cleanup
-cd - > /dev/null
-rm -rf "$TMP_DIR"
+	if command -v flox >/dev/null 2>&1; then
+		printf 'Flox already installed: %s\n' "$(flox --version 2>/dev/null || printf unknown)"
+		return
+	fi
 
-# Verify installation
-if command -v flox &> /dev/null; then
-    echo "Flox installed successfully: $(flox --version)"
-else
-    echo "Error: Flox installation failed"
-    exit 1
-fi
+	os=$(uname -s)
+	arch=$(uname -m)
+	case "${os}/${arch}" in
+		Darwin/arm64)
+			artifact="flox-${FLOX_VERSION}.aarch64-darwin.pkg"
+			checksum="1a30d001ca2bb7506b551528cc68bc4d2226a965e631d3e81389fb1cf2fb18cb"
+			package_type=osx
+			;;
+		Darwin/x86_64)
+			artifact="flox-${FLOX_VERSION}.x86_64-darwin.pkg"
+			checksum="597df53a8ba66515058243e31b28e92f9284f2e9fd56d86c424eb1b782e74f8b"
+			package_type=osx
+			;;
+		Linux/aarch64 | Linux/arm64)
+			artifact="flox-${FLOX_VERSION}.aarch64-linux.deb"
+			checksum="50d919fd8977510bf24433374b64672932f3d09115cb555a750647f8a2a8050f"
+			package_type=deb
+			;;
+		Linux/x86_64)
+			artifact="flox-${FLOX_VERSION}.x86_64-linux.deb"
+			checksum="78c9118823a4e7b4f287a632396d9efb4e9044818ac1d4df36a5b96d3d8df159"
+			package_type=deb
+			;;
+		*) error "Unsupported platform for Flox: ${os}/${arch}" ;;
+	esac
+
+	if [ "$package_type" = deb ]; then
+		command -v dpkg >/dev/null 2>&1 || error 'Flox Linux bootstrap requires dpkg'
+	fi
+
+	TMP_DIR=$(mktemp -d)
+	package_file="${TMP_DIR}/${artifact}"
+	package_url="https://downloads.flox.dev/by-env/stable/${package_type}/${artifact}"
+
+	printf 'Downloading Flox %s for %s/%s\n' "$FLOX_VERSION" "$os" "$arch"
+	curl -fsSL "$package_url" -o "$package_file"
+	verify_checksum "$package_file" "$checksum"
+
+	if [ "$package_type" = osx ]; then
+		sudo installer -pkg "$package_file" -target /
+	else
+		sudo dpkg -i "$package_file" || sudo apt-get install -f -y
+	fi
+
+	command -v flox >/dev/null 2>&1 || error 'Flox installation completed without a usable flox command'
+	printf 'Flox installed: %s\n' "$(flox --version)"
+}
+
+main "$@"
