@@ -8,8 +8,8 @@ ohmyzsh/ohmyzsh path:themes/agnoster.zsh-theme
 # OMZ plugins
 ohmyzsh/ohmyzsh path:plugins/brew
 ohmyzsh/ohmyzsh path:plugins/eza
-ohmyzsh/ohmyzsh path:plugins/git
-ohmyzsh/ohmyzsh path:plugins/git-extras
+#ohmyzsh/ohmyzsh path:plugins/git
+#ohmyzsh/ohmyzsh path:plugins/git-extras
 ohmyzsh/ohmyzsh path:plugins/iterm2
 ohmyzsh/ohmyzsh path:plugins/last-working-dir
 ohmyzsh/ohmyzsh path:plugins/npm
