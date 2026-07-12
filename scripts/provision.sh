@@ -13,6 +13,10 @@ is_directory() {
 	is_non_zero_string "${1}" && test -d "${1}"
 }
 
+command_exists() {
+	command -v "${1}" >/dev/null 2>&1
+}
+
 DOTFILES_DIR="$HOME/projects/dotfiles"
 
 source "${DOTFILES_DIR}/packages/shell/.config/zsh/colors.sh"
@@ -156,7 +160,9 @@ if [[ $OS == Linux ]]; then
     sudo
 
 		section_header 'Installing Docker'
-		for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do sudo apt-get remove $pkg; done
+		for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
+			sudo apt-get remove -y "$pkg" || true
+		done
 		sudo apt-get update
 		sudo install -m 0755 -d /etc/apt/keyrings -y
 		sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
@@ -169,16 +175,23 @@ if [[ $OS == Linux ]]; then
 			sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 		sudo apt-get update
 
-		sudo apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+		sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
-		# add user to docker grouput
-		sudo groupadd docker
-		sudo usermod -aG docker $USER
-		sudo chmod 666 /var/run/docker.sock
+		# Add the login user to Docker without making the daemon socket world-writable.
+		sudo groupadd -f docker
+		sudo usermod -aG docker "$USER"
+		sudo systemctl enable --now docker
 
-		sudo service docker start
+		section_header 'Installing GPU compute stack'
+		if ! command_exists nvidia-smi; then
+			sudo ubuntu-drivers install --gpgpu nvidia:570-server || sudo ubuntu-drivers install
+		fi
+		if ! command_exists nvcc; then
+			bash "${DOTFILES_DIR}/scripts/install-cuda.sh" --toolkit
+		fi
+		bash "${DOTFILES_DIR}/scripts/install-cuda.sh" --container-toolkit
 
-		sudo chsh $USER -s $(which zsh)
+		sudo chsh "$USER" -s "$(command -v zsh)"
 
 fi
 

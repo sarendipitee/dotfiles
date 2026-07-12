@@ -70,6 +70,21 @@ Export current macOS app preferences:
 ./scripts/capture-defaults.sh e
 ```
 
+## Bootstrap Layout Backup
+
+Create a metadata-only inventory of dotfiles, project repositories, local app
+links, and user systemd layout:
+
+```bash
+./scripts/backup-home-layout.sh
+```
+
+Backup directory contains `manifest.tsv`, Git remotes, untracked-file lists,
+plus `RESTORE.md`. It does not copy file contents, secrets, browser profiles,
+caches, or large mutable state by default. `--include-git-patches` is an
+explicit opt-in and can capture secrets. Use `--inspect` to review scope,
+`--dry-run` to make no writes, and `--help` for opt-in flags.
+
 ## License
 
 MIT

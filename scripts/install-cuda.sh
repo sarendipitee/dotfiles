@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # TF compat chart
 # https://www.tensorflow.org/install/source#gpu
 
@@ -19,10 +20,6 @@ install_cuda_12_5_drivers_ubuntu() {
 
 install_nvidia_drivers_unbutu() {
 	sudo ubuntu-drivers install --gpgpu nvidia:570-server
-}
-
-install_cudnn_() {
-
 }
 
 # https://developer.nvidia.com/cuda-downloads?target_os=Linux&target_arch=x86_64&Distribution=Ubuntu&target_version=24.04&target_type=deb_network
@@ -94,10 +91,45 @@ verify() {
 	docker run --rm --runtime=nvidia --gpus=all nvcr.io/nvidia/cuda:12.8.1-cudnn-runtime-ubuntu24.04 nvidia-smi
 }
 
-install_nvidia_???() {
+install_nvidia_placeholder() {
 	sudo apt-get update
 	sudo apt-get install ca-certificates curl
 	sudo install -m 0755 -d /etc/apt/keyrings
 	sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
 	sudo chmod a+r docker pull nvidia/cuda/etc/apt/keyrings/docker.asc
 }
+
+usage() {
+  cat <<'EOF'
+Usage: install-cuda.sh [--toolkit] [--container-toolkit]
+
+Installs the CUDA 12.8 toolkit and/or NVIDIA Container Toolkit for Ubuntu.
+EOF
+}
+
+main() {
+  local toolkit=false container_toolkit=false
+  if [ "$#" -eq 0 ]; then toolkit=true; container_toolkit=true; fi
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --toolkit) toolkit=true ;;
+      --container-toolkit) container_toolkit=true ;;
+      -h|--help) usage; return 0 ;;
+      *) echo "Unknown option: $1" >&2; usage >&2; return 2 ;;
+    esac
+    shift
+  done
+  if "$toolkit" && ! command -v nvcc >/dev/null 2>&1; then install_cuda_12_8_drivers_ubuntu; fi
+  if "$container_toolkit" && ! command -v nvidia-ctk >/dev/null 2>&1; then
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+    curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null
+    sudo apt-get update
+    sudo apt-get install -y nvidia-container-toolkit
+  fi
+  if command -v nvidia-ctk >/dev/null 2>&1; then
+    sudo nvidia-ctk runtime configure --runtime=docker
+    sudo systemctl restart docker
+  fi
+}
+
+main "$@"
