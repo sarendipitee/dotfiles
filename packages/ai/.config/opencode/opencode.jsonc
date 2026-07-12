@@ -1,31 +1,38 @@
 {
 	"$schema": "https://opencode.ai/config.json",
-	"plugin": [
-		"context-mode",
-		"./plugins/caveman/plugin.js"
-	],
 	"provider": {
-		"zai-coding-plan": {
+		"vllm": {
+			"npm": "@ai-sdk/openai-compatible",
+			"name": "vLLM (local)",
 			"options": {
-				"apiKey": "$ZAI_API_KEY"
+				"baseURL": "http://localhost:8080/v1"
+			},
+			"models": {
+				"local": {
+					"name": "cur local",
+					"limit": {
+						"context": 55000,
+						"output": 8192
+					}
+				},
 			}
 		}
 	},
-	"instructions": [
-		"~/.config/agents/AGENTS.md",
-		"~/.config/opencode/AGENTS.md"
-	],
+	"instructions": [],
 	"mcp": {
 		"notion": {
 			"type": "remote",
 			"url": "https://mcp.notion.com/mcp",
 			"enabled": false
+		},
+		"mcp-agent-mail": {
+			"type": "remote",
+			"url": "http://127.0.0.1:8765/mcp/",
+			"enabled": false
 		}
 	},
 	"skills": {
-		"paths": [
-			"~/.claude/skills"
-		]
+		"paths": []
 	},
 	"permission": {
 		"read": "allow",
