@@ -5,19 +5,16 @@ Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/). S
 ## Quick Start
 
 ```bash
-git clone https://github.com/yourusername/dotfiles.git ~/Projects/dotfiles
-cd ~/Projects/dotfiles
+git clone https://github.com/jondum/dotfiles.git ~/projects/dotfiles
 
-./scripts/provision.sh
-
-stow -v --dotfiles -d packages -t $HOME <package>
+~/projects/dotfiles/scripts/provision.sh
 ```
 
 ## What's Included
 
 | Package | Description |
 |---------|-------------|
-| `shell` | Zsh configuration with antigen, tmux, aliases, functions |
+| `shell` | Zsh configuration with Antidote, tmux, aliases, functions |
 | `git` | Git config with aliases and custom settings |
 | `vim` | Traditional Vim with vim-plug and common plugins |
 | `nvim` | Neovim with LazyVim distribution and 25+ plugins |
@@ -28,8 +25,12 @@ stow -v --dotfiles -d packages -t $HOME <package>
 
 ## Prerequisites
 
-- **GNU Stow** - `brew install stow` or `apt install stow`
-- **Homebrew** (macOS) - Package manager for macOS/Linux
+- Git
+- `sudo` access
+
+Provisioning installs Flox, activates tracked global environment, installs GNU
+Stow from that environment, links packages, initializes Antidote, and configures
+Zsh. On Ubuntu, it also installs and enables OpenSSH server.
 
 ## Repository Structure
 

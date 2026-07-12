@@ -1,6 +1,8 @@
-#!/usr/bin/env zsh
+#!/usr/bin/env bash
 
-OS=$(uname)
+set -Eeo pipefail
+
+OS=$(uname -s)
 
 # This script is idempotent and will restore your local setup to the same state even if run multiple times.
 # In most cases, the script will provide warning messages if skipping certain steps. Each such message will be useful to give you a hint about what to do to force rerunning of that step.
@@ -17,7 +19,24 @@ command_exists() {
 	command -v "${1}" >/dev/null 2>&1
 }
 
-DOTFILES_DIR="$HOME/projects/dotfiles"
+SCRIPT_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")")
+DOTFILES_DIR=$(realpath "${SCRIPT_DIR}/..")
+
+export XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+export XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}"
+export PROJECTS_BASE_DIR="${PROJECTS_BASE_DIR:-$HOME/projects}"
+export PERSONAL_BIN_DIR="${PERSONAL_BIN_DIR:-$HOME/.my/bin}"
+export PERSONAL_AUTOLOAD_DIR="${PERSONAL_AUTOLOAD_DIR:-$HOME/.my/autoload}"
+export HISTFILE="${HISTFILE:-$XDG_STATE_HOME/zsh/history}"
+
+ARCH=$(uname -m)
+if [[ "${ARCH}" == arm* ]]; then
+	export HOMEBREW_PREFIX="/opt/homebrew"
+else
+	export HOMEBREW_PREFIX="/usr/local"
+fi
 
 source "${DOTFILES_DIR}/packages/shell/.config/zsh/colors.sh"
 source "${DOTFILES_DIR}/packages/shell/.config/zsh/functions.sh"
@@ -47,7 +66,7 @@ keep_sudo_alive() {
 # Ask for the administrator password upfront and keep it alive until this script has finished #
 ###############################################################################################
 
-keep_sudo_alive()
+keep_sudo_alive
 
 ###############################
 # Do not allow rootless login #
@@ -72,20 +91,41 @@ if [[ $OS == Darwin ]]; then
   fi
 fi
 
-####################
-# Install dotfiles #
-####################
-section_header "Installing dotfiles into '$(yellow "${DOTFILES_DIR}")'"
-if is_non_zero_string "${DOTFILES_DIR}" && ! is_directory "${DOTFILES_DIR}"; then
-	
-	# Delete the auto-generated .zshrc since that needs to be replaced by the one in the DOTFILES_DIR repo
-	rm -rf "${HOME}/.zshrc"
+section_header "Provisioning dotfiles from '$(yellow "${DOTFILES_DIR}")'"
 
-	# Note: Cloning with https since the ssh keys will not be present at this time
-	clone_repo_into "https://github.com/jondum/dotfiles" "${DOTFILES_DIR}"
+#####################################
+# Install system bootstrap packages #
+#####################################
+if [[ $OS == Linux ]]; then
+	section_header 'Installing Ubuntu system packages'
+	sudo apt-get update
+	sudo apt-get install -y \
+		avahi-daemon \
+		ca-certificates \
+		clang \
+		curl \
+		g++ \
+		git-lfs \
+		libpq-dev \
+		llvm \
+		make \
+		openssh-server \
+		software-properties-common \
+		sudo \
+		ubuntu-drivers-common \
+		watchman \
+		zsh
 
-else
-	warn "skipping cloning the dotfiles repo since '${DOTFILES_DIR}' is either not defined or is already a git repo"
+	sudo chsh -s "$(command -v zsh)" "$USER"
+
+	section_header 'Setting up OpenSSH server'
+	sudo sshd -t
+	sudo systemctl enable --now ssh
+	if command_exists ufw && sudo ufw status | grep -q '^Status: active'; then
+		sudo ufw allow OpenSSH
+	fi
+	sudo systemctl is-active --quiet ssh || error 'OpenSSH server failed to start'
+	success 'OpenSSH server is enabled and running'
 fi
 
 ####################
@@ -93,19 +133,30 @@ fi
 ####################
 section_header "Installing Flox"
 if ! command_exists flox; then
-  sh "${DOTFILES_DIR}/scripts/install-flox.sh"
+  bash "${DOTFILES_DIR}/scripts/install-flox.sh"
   success 'Successfully installed Flox'
 else
   warn "skipping installation of Flox since it's already installed"
 fi
 
-# Activate Flox environment (installs packages from manifest.toml)
-if command_exists flox; then
-  section_header "Activating Flox environment"
-  source "${DOTFILES_DIR}/packages/shell/.config/zsh/env.sh"
-  eval "$(flox activate -d $XDG_DATA_HOME/flox -m run)"
-  success 'Successfully activated Flox environment'
+command_exists flox || error 'Flox installation completed without a usable flox command'
+
+GLOBAL_FLOX_ENV="${DOTFILES_DIR}/packages/flox/envs/global"
+is_file "${GLOBAL_FLOX_ENV}/.flox/env/manifest.toml" || \
+	error "Global Flox environment missing: ${GLOBAL_FLOX_ENV}"
+
+section_header "Activating global Flox environment"
+export FLOX_SHELL=bash
+if ! flox_activation=$(flox activate -d "${GLOBAL_FLOX_ENV}" -m run); then
+	error 'Failed to activate global Flox environment'
 fi
+eval "$flox_activation"
+unset flox_activation
+command_exists stow || error "Global Flox environment activated without required 'stow' command"
+success 'Successfully activated global Flox environment'
+
+section_header 'Creating symlinks in home folder'
+bash "${DOTFILES_DIR}/scripts/create-links.sh"
 
 ####################
 # Install homebrew #
@@ -137,28 +188,6 @@ if [[ $OS == Darwin ]]; then
 fi
 
 if [[ $OS == Linux ]]; then
-
-	section_header 'Installing basic utils (Flox handles most packages)'
-	
-	# Flox activation will handle most packages via manifest.toml
-	# Install only system-level packages via apt
-	sudo apt update
-
-  sudo apt install -y \
-    avahi-daemon \
-    g++ \
-		clang \
-    make \
-    llvm \
-		ca-certificates \
-		curl \
-    git-lfs \
-    libpq-dev \
-    watchman \
-		software-properties-common \
-    zsh \
-    sudo
-
 		section_header 'Installing Docker'
 		for pkg in docker.io docker-doc docker-compose docker-compose-v2 podman-docker containerd runc; do
 			sudo apt-get remove -y "$pkg" || true
@@ -190,8 +219,6 @@ if [[ $OS == Linux ]]; then
 			bash "${DOTFILES_DIR}/scripts/install-cuda.sh" --toolkit
 		fi
 		bash "${DOTFILES_DIR}/scripts/install-cuda.sh" --container-toolkit
-
-		sudo chsh "$USER" -s "$(command -v zsh)"
 
 fi
 
@@ -227,13 +254,6 @@ if command_exists tailscale; then
   fi
 fi
 
-section_header 'Creating symlinks in home folder'
-
-sh "${DOTFILES_DIR}/scripts/create-links.sh"
-
-# Grab rest of env vars and config
-source "${DOTFILES_DIR}/packages/shell/.zshenv"
-
 #################################################################################
 # Ensure that some of the directories corresponding to the env vars are created #
 #################################################################################
@@ -249,15 +269,18 @@ ensure_dir_exists "${XDG_STATE_HOME}"
 ensure_dir_exists "${XDG_CACHE_HOME}/zsh"
 ensure_dir_exists "${XDG_STATE_HOME}/zsh"
 
-echo Creating zsh HISTFILE $HISTFILE
-touch $HISTFILE
+printf 'Creating zsh HISTFILE %s\n' "$HISTFILE"
+touch "$HISTFILE"
 
 ################################
 # Recreate the zsh completions #
 ################################
 section_header 'Recreate zsh completions'
-rm -rf "${XDG_CACHE_HOME}/zcompdump-${ZSH_VERSION}"
-autoload -Uz compinit && compinit -C -d "${XDG_CACHE_HOME}/zcompdump-${ZSH_VERSION}"
+zsh -lic 'rm -f "${XDG_CACHE_HOME}/zcompdump-${ZSH_VERSION}"; autoload -Uz compinit && compinit -C -d "${XDG_CACHE_HOME}/zcompdump-${ZSH_VERSION}"'
+
+section_header 'Validating Zsh, Flox, Stow, and Antidote'
+zsh -lic 'command -v flox >/dev/null && command -v stow >/dev/null && command -v antidote >/dev/null'
+success 'Zsh loaded with Flox, Stow, and Antidote'
 
 #################################
 # Setup ssh scripts/directories #
@@ -281,9 +304,10 @@ fi
 ###############################
 # unfunction clone_omz_plugin_if_not_present
 
-echo "\n"
+printf '\n\n'
 success '** Finished auto installation process: MANUALLY QUIT AND RESTART iTerm2 and Terminal apps **'
-echo "$(yellow "Remember to set the 'RAYCAST_SETTINGS_PASSWORD' env var, and then run the 'capture-raycast-configs.sh' script to import your Raycast configuration into the new machine.")"
+yellow "Remember to set the 'RAYCAST_SETTINGS_PASSWORD' env var, and then run the 'capture-raycast-configs.sh' script to import your Raycast configuration into the new machine."
+printf '\n'
 
 script_end_time=$(date +%s)
 echo "==> Script completed at: $(date)"
