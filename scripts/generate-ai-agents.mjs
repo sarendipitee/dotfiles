@@ -11,6 +11,7 @@ const OPENCODE_DIR = path.join(ROOT, "packages/ai/.config/opencode/agents");
 const CODEX_DIR = path.join(ROOT, "packages/ai/.codex/agents");
 const CODEX_SKILLS_DIR = path.join(ROOT, "packages/ai/.codex/skills");
 const CLAUDE_CODE_DIR = path.join(ROOT, "packages/ai/.claude/agents");
+const OMP_DIR = path.join(ROOT, "packages/ai/.omp/agent/agents");
 
 const TIER_MODELS = {
 	cheap: {
@@ -18,22 +19,26 @@ const TIER_MODELS = {
 		// codex: "gpt-5.3-codex-spark",
 		codex: "gpt-5.6-luna",
 		claude: "haiku",
+		omp: "openai/gpt-5.6-luna",
 	},
 	"medium-cheap": {
 		kilo: "openai/gpt-5.6-luna",
 		//codex: "gpt-5.3-codex-spark",
 		codex: "gpt-5.6-luna",
 		claude: "sonnet",
+		omp: "openai/gpt-5.6-luna",
 	},
 	"medium-high": {
 		kilo: "openai/gpt-5.6-terra",
 		codex: "gpt-5.6-terra",
 		claude: "opus",
+		omp: "openai/gpt-5.6-terra",
 	},
 	frontier: {
 		kilo: "openai/gpt-5.6-sol",
 		codex: "gpt-5.6-sol",
 		claude: "fable",
+		omp: "openai/gpt-5.6-sol",
 	},
 };
 
@@ -162,6 +167,9 @@ function codexModel(tier) {
 function claudeModel(tier) {
 	return TIER_MODELS[tier]?.claude;
 }
+function ompModel(tier) {
+	return TIER_MODELS[tier]?.omp;
+}
 
 function claudeTools(permission) {
 	if (!permission) return null;
@@ -192,6 +200,19 @@ function permissionDenied(permissionValue) {
 function codexSandbox(permission) {
 	if (!permission) return null;
 	return permission.edit === "deny" ? "read-only" : null;
+}
+
+function ompTools(permission) {
+	if (!permission) return null;
+	const tools = [];
+	if (!permissionDenied(permission.read)) tools.push("read");
+	if (!permissionDenied(permission.glob)) tools.push("glob");
+	if (!permissionDenied(permission.grep)) tools.push("grep");
+	if (!permissionDenied(permission.edit)) tools.push("edit");
+	if (!permissionDenied(permission.bash)) tools.push("bash");
+	if (permission.websearch === "allow") tools.push("web_search");
+	if (!permissionDenied(permission.task)) tools.push("task");
+	return tools.length > 0 ? tools : null;
 }
 
 function tomlMultilineLiteral(value) {
@@ -239,6 +260,27 @@ function claudeCodeMarkdown(agent) {
 	return `---\n${dumpYaml(fm)}\n---\n${prompt}`;
 }
 
+function ompMarkdown(agent) {
+	const { name, frontmatter, prompt } = agent;
+
+	const parts = [];
+	parts.push(`name: ${JSON.stringify(name)}`);
+	parts.push(`description: ${JSON.stringify(frontmatter.description)}`);
+
+	const tools = ompTools(frontmatter.permission);
+	if (tools) parts.push(`tools: ${JSON.stringify(tools)}`);
+
+	const model = ompModel(frontmatter.tier);
+	if (model) parts.push(`model: ${JSON.stringify(model)}`);
+
+	if (frontmatter.spawns) parts.push(`spawns: ${JSON.stringify(frontmatter.spawns)}`);
+	if (frontmatter.thinkingLevel)
+		parts.push(`thinking-level: ${JSON.stringify(frontmatter.thinkingLevel)}`);
+	if (frontmatter.blocking) parts.push("blocking: true");
+
+	return `---\n${parts.join("\n")}\n---\n${prompt}`;
+}
+
 function codexToml(agent) {
 	const { name, frontmatter, prompt } = agent;
 
@@ -281,6 +323,7 @@ function generate(agents, check) {
 		outputs[path.join(CODEX_DIR, `${agent.name}.toml`)] = codexToml(agent);
 		outputs[path.join(CLAUDE_CODE_DIR, `${agent.name}.md`)] =
 			claudeCodeMarkdown(agent);
+		outputs[path.join(OMP_DIR, `${agent.name}.md`)] = ompMarkdown(agent);
 	}
 
 	const changed = Object.entries(outputs).filter(([p, c]) => {
@@ -308,6 +351,7 @@ function generate(agents, check) {
 	fs.mkdirSync(OPENCODE_DIR, { recursive: true });
 	fs.mkdirSync(CODEX_DIR, { recursive: true });
 	fs.mkdirSync(CLAUDE_CODE_DIR, { recursive: true });
+	fs.mkdirSync(OMP_DIR, { recursive: true });
 	for (const [filePath, content] of Object.entries(outputs)) {
 		fs.writeFileSync(filePath, content, "utf-8");
 	}
@@ -324,6 +368,9 @@ function generate(agents, check) {
 	);
 	console.log(
 		`Generated ${agents.length} Claude Code agents in ${CLAUDE_CODE_DIR.replace(rootRel, "")}`,
+	);
+	console.log(
+		`Generated ${agents.length} OMP agents      in ${OMP_DIR.replace(rootRel, "")}`,
 	);
 	return true;
 }

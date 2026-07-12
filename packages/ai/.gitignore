@@ -4,5 +4,9 @@
 .config/opencode/agents/
 .codex/agents/
 .claude/agents
+.omp/agent/agents/
+
+.claude/
+.codex/
 
 skills/.system/
