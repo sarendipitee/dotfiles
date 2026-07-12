@@ -8,7 +8,11 @@ if [[ -d "$PERSONAL_AUTOLOAD_DIR" ]]; then
 fi
 
 if command -v zoxide >/dev/null 2>&1; then
-	eval "$(zoxide init zsh)"
+	_zoxide_init="${XDG_CACHE_HOME:-$HOME/.cache}/zoxide-init.zsh"
+	if [[ ! -s "$_zoxide_init" || "$_zoxide_init" -ot "$(command -v zoxide)" ]]; then
+		zoxide init zsh >| "$_zoxide_init" 2>/dev/null
+	fi
+	source "$_zoxide_init"
 fi
 
 source "$ZDOTDIR/completions-opts.zsh"
@@ -46,7 +50,11 @@ export PATH=$HOME/.local/bin:$HOME/.my/bin:$HOME/.my/scripts:$PATH
 # Direnv integration
 export DIRENV_LIB_PATH="${HOME}/.config/direnv/lib"
 if command -v direnv >/dev/null 2>&1; then
-	eval "$(direnv hook zsh)"
+	_direnv_hook="${XDG_CACHE_HOME:-$HOME/.cache}/direnv-hook.zsh"
+	if [[ ! -s "$_direnv_hook" || "$_direnv_hook" -ot "$(command -v direnv)" ]]; then
+		direnv hook zsh >| "$_direnv_hook" 2>/dev/null
+	fi
+	source "$_direnv_hook"
 fi
 
 # Remove duplicate PATH entries while preserving system paths needed by prompt plugins.
