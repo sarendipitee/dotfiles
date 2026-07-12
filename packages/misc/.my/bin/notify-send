@@ -1,0 +1,38 @@
+#!/bin/sh
+set -eu
+
+self="$(readlink -f "$0" 2>/dev/null || printf '%s\n' "$0")"
+real_notify_send=
+
+old_ifs=$IFS
+IFS=:
+for dir in $PATH; do
+	[ -n "$dir" ] || dir=.
+	candidate="$dir/notify-send"
+	[ -x "$candidate" ] || continue
+
+	resolved="$(readlink -f "$candidate" 2>/dev/null || printf '%s\n' "$candidate")"
+	[ "$resolved" = "$self" ] && continue
+
+	real_notify_send="$candidate"
+	break
+done
+IFS=$old_ifs
+
+[ -n "$real_notify_send" ] || exit 0
+
+if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+	exit 0
+fi
+
+if command -v gdbus >/dev/null 2>&1; then
+	if ! gdbus call --session \
+		--dest org.freedesktop.DBus \
+		--object-path /org/freedesktop/DBus \
+		--method org.freedesktop.DBus.NameHasOwner \
+		org.freedesktop.Notifications 2>/dev/null | grep -q true; then
+		exit 0
+	fi
+fi
+
+exec "$real_notify_send" "$@"

@@ -8,8 +8,5 @@
 packages/**/.env
 packages/**/.env.*
 
-packages/misc/.my/bin
-
-
 
 

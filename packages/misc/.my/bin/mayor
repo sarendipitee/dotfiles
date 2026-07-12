@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec gc --city "$HOME/gc" session attach gastown.mayor "$@"
