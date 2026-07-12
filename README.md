@@ -5,10 +5,13 @@ Personal dotfiles managed with [GNU Stow](https://www.gnu.org/software/stow/). S
 ## Quick Start
 
 ```bash
-git clone https://github.com/jondum/dotfiles.git ~/projects/dotfiles
-
-~/projects/dotfiles/scripts/provision.sh
+curl -fsSL https://sarendipitee.github.io/dotfiles/bootstrap.sh | sh
 ```
+
+Bootstrap installs pinned Mise binary, loads published global config, installs
+packages and tools, clones or updates this repository, links configs with Stow,
+and runs machine setup. Bootstrap script and Mise config ship together through
+GitHub Pages. Use HTTPS so script cannot be modified in transit.
 
 ## What's Included
 
@@ -19,35 +22,49 @@ git clone https://github.com/jondum/dotfiles.git ~/projects/dotfiles
 | `vim` | Traditional Vim with vim-plug and common plugins |
 | `nvim` | Neovim with LazyVim distribution and 25+ plugins |
 | `ai` | Claude, OpenCode, and Kilo AI tool configurations |
-| `homebrew` | Brewfile with all Homebrew packages and casks |
+| `mise` | Global Mise tools, system packages, repositories, and bootstrap hooks |
 | `zoxide` | Directory bookmarking tool configuration |
 | `misc` | Miscellaneous scripts and binaries |
 
 ## Prerequisites
 
-- Git
+- curl
 - `sudo` access
 
-Provisioning installs Flox, activates tracked global environment, installs GNU
-Stow from that environment, links packages, initializes Antidote, and configures
-Zsh. On Ubuntu, it also installs and enables OpenSSH server.
+Ubuntu bootstrap installs and enables OpenSSH server, Docker Engine, and
+Tailscale. NVIDIA drivers and CUDA install only when supported NVIDIA display
+hardware is detected. Set component controls before running bootstrap:
 
-Profiles and component overrides:
-
-```bash
-./scripts/provision.sh --profile core
-./scripts/provision.sh --profile server
-./scripts/provision.sh --profile desktop
-./scripts/provision.sh --profile full
-
-./scripts/provision.sh --profile server --without-nvidia
-./scripts/provision.sh --profile core --with-ssh --ssh-key-only
+```sh
+export DOTFILES_WITH_SSH=false
+export DOTFILES_WITH_DOCKER=false
+export DOTFILES_WITH_NVIDIA=false
+export DOTFILES_WITH_TAILSCALE=false
+export DOTFILES_SSH_KEY_ONLY=true
 ```
 
-`full` is default. NVIDIA setup runs only when supported NVIDIA display hardware
-is detected. `--ssh-key-only` requires populated `~/.ssh/authorized_keys` before
-disabling password authentication. Provision logs live under
-`~/.local/state/dotfiles/logs/`.
+`DOTFILES_SSH_KEY_ONLY=true` requires populated `~/.ssh/authorized_keys` before
+password authentication is disabled.
+
+For existing clone development, run `./scripts/provision.sh`. It uses tracked
+Mise config and skips repository reconciliation, preventing SSH/HTTPS remote URL
+differences from blocking local provisioning.
+
+## Global Packages and Tools
+
+Edit `packages/mise/.config/mise/config.toml`, then apply current declarations:
+
+```bash
+mise bootstrap --update
+```
+
+Mise config is Stowed to `~/.config/mise/config.toml`. `[tools]` supports Mise
+backends such as Aqua, GitHub releases, pipx, npm, and language runtimes.
+`[bootstrap.packages]` is limited to operating-system prerequisites,
+machine-global libraries and commands without suitable tool backends, and macOS
+applications. Mise's Brew package manager supplies shared packages on macOS and
+Linux; APT entries cover Ubuntu-only services and build dependencies. No
+generated Brewfile or package lock synchronization step is required.
 
 ## Repository Structure
 
@@ -59,9 +76,11 @@ dotfiles/
 │   ├── vim/           # Vim configuration
 │   ├── nvim/          # Neovim configuration
 │   ├── ai/            # AI tool configs
+│   ├── mise/          # Global Mise bootstrap config
 │   └── ...
 ├── scripts/            # Bootstrap and setup scripts
-│   ├── provision.sh   # Main bootstrap script
+│   ├── provision.sh   # Existing-clone bootstrap wrapper
+│   ├── bootstrap-system.sh # Privileged machine setup
 │   ├── create-links.sh # Stow symlink creation
 │   └── osx-defaults.sh # macOS system defaults
 └── settings/           # Exported macOS preferences

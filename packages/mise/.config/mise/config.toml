@@ -1,0 +1,167 @@
+min_version = "2026.7.5"
+
+[settings]
+experimental = true
+jobs = 8
+
+[tools]
+age = "latest"
+atuin = "latest"
+bat = "latest"
+"cargo:eza" = "latest"
+fd = "latest"
+gh = "latest"
+jq = "latest"
+ripgrep = "latest"
+tmux = "latest"
+uv = "latest"
+pipx = "latest"
+watchexec = "latest"
+yazi = "latest"
+yq = "latest"
+yt-dlp = "latest"
+zoxide = "latest"
+shellcheck = "latest"
+semgrep = "latest"
+neovim = "latest"
+awscli = "latest"
+caddy = "latest"
+cmake = "latest"
+ffmpeg = "latest"
+go = "latest"
+imagemagick = "latest"
+kubectl = "latest"
+k9s = "latest"
+terraform = "latest"
+helm = "latest"
+kustomize = "latest"
+k3d = "latest"
+kind = "latest"
+stern = "latest"
+ctop = "latest"
+argo = "latest"
+argocd = "latest"
+direnv = "latest"
+node = "25"
+python = "3.11"
+java = "temurin-17"
+redis = "latest"
+rust = "latest"
+sqlite = "latest"
+pnpm = "latest"
+dyff = "latest"
+talosctl = "latest"
+supabase = "latest"
+stripe = "latest"
+act = "latest"
+cloudflared = "latest"
+git-lfs = "latest"
+sops = "latest"
+"pipx:commitizen" = "latest"
+"pipx:thefuck" = "latest"
+"pipx:httpie" = "latest"
+"pipx:s3cmd" = "latest"
+"pipx:mitmproxy" = "latest"
+"pipx:git-filter-repo" = "latest"
+"github:predatorray/kubectl-tmux-exec" = "latest"
+"github:gastownhall/gascity" = "latest"
+"github:jakehilborn/displayplacer" = { version = "latest", os = ["macos"] }
+
+[bootstrap.packages]
+# Ubuntu-only operating-system prerequisites and services.
+"apt:ca-certificates" = "latest"
+"apt:openssh-server" = "latest"
+"apt:sudo" = "latest"
+"apt:build-essential" = "latest"
+"apt:clang" = "latest"
+"apt:libpq-dev" = "latest"
+"apt:software-properties-common" = "latest"
+"apt:watchman" = "latest"
+"apt:zsh" = "latest"
+
+# Cross-platform machine-global commands and libraries without suitable Mise
+# tool backends. Mise's Brew manager supports macOS and Linux.
+"brew:autoconf" = "latest"
+"brew:cloc" = "latest"
+"brew:colordiff" = "latest"
+"brew:curl" = "latest"
+"brew:docker" = "latest"
+"brew:et" = "latest"
+"brew:exiftool" = "latest"
+"brew:findutils" = "latest"
+"brew:flac" = "latest"
+"brew:gawk" = "latest"
+"brew:gettext" = "latest"
+"brew:git" = "latest"
+"brew:git-extras" = "latest"
+"brew:gnupg" = "latest"
+"brew:gnu-sed" = "latest"
+"brew:htop" = "latest"
+"brew:icu4c" = "latest"
+"brew:influxdb@2" = "latest"
+"brew:iperf3" = "latest"
+"brew:lame" = "latest"
+"brew:libtool" = "latest"
+"brew:llvm" = "latest"
+"brew:lua" = "latest"
+"brew:luarocks" = "latest"
+"brew:mosh" = "latest"
+"brew:nmap" = "latest"
+"brew:ollama" = "latest"
+"brew:parallel" = "latest"
+"brew:pkgconf" = "latest"
+"brew:sox" = "latest"
+"brew:stow" = "latest"
+"brew:tesseract" = "latest"
+"brew:tree" = "latest"
+"brew:unison" = "latest"
+"brew:wget" = "latest"
+"brew:xz" = "latest"
+"brew:zstd" = "latest"
+
+# macOS applications and fonts.
+"brew-cask:1password" = "latest"
+"brew-cask:1password-cli" = "latest"
+"brew-cask:apparency" = "latest"
+"brew-cask:audacity" = "latest"
+"brew-cask:blackhole-2ch" = "latest"
+"brew-cask:claude-code" = "latest"
+"brew-cask:font-fira-code-nerd-font" = "latest"
+"brew-cask:font-hack-nerd-font" = "latest"
+"brew-cask:font-jetbrains-mono-nerd-font" = "latest"
+"brew-cask:font-meslo-lg-nerd-font" = "latest"
+"brew-cask:font-roboto-mono-nerd-font" = "latest"
+"brew-cask:font-ubuntu-mono-nerd-font" = "latest"
+"brew-cask:font-ubuntu-nerd-font" = "latest"
+"brew-cask:font-victor-mono-nerd-font" = "latest"
+"brew-cask:ghostty" = "latest"
+"brew-cask:goneovim" = "latest"
+"brew-cask:gstreamer-runtime" = "latest"
+"brew-cask:hammerspoon" = "latest"
+"brew-cask:hiddenbar" = "latest"
+"brew-cask:macfuse" = "latest"
+"brew-cask:medis" = "latest"
+"brew-cask:michaelvillar-timer" = "latest"
+"brew-cask:neovide-app" = "latest"
+"brew-cask:openmtp" = "latest"
+"brew-cask:unetbootin" = "latest"
+"brew-cask:xquartz" = "latest"
+
+# Mise's cask installer cannot currently unpack these legacy cask artifact
+# types: cscreen, mdimagesizemdimporter, miniforge, qlimagesize, redis-stack-server.
+
+[bootstrap.repos]
+"~/projects/dotfiles" = { url = "https://github.com/sarendipitee/dotfiles.git", ref = "main" }
+
+[bootstrap.hooks.post-repos]
+run = '''
+PATH="/opt/homebrew/bin:/home/linuxbrew/.linuxbrew/bin:$PATH" \
+  bash "$HOME/projects/dotfiles/scripts/create-links.sh" --backup-known-conflicts
+'''
+
+[bootstrap.user]
+login_shell = "/bin/zsh"
+
+[tasks.bootstrap]
+description = "Configure privileged services and machine-specific state"
+run = 'bash "$HOME/projects/dotfiles/scripts/bootstrap-system.sh"'

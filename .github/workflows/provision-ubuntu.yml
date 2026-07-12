@@ -1,0 +1,45 @@
+name: Provision Ubuntu
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/provision-ubuntu.yml"
+      - "bootstrap.sh"
+      - "packages/mise/**"
+      - "packages/shell/**"
+      - "scripts/bootstrap-system.sh"
+      - "scripts/create-links.sh"
+      - "scripts/install-cuda.sh"
+      - "scripts/provision.sh"
+      - "scripts/tests/provision-smoke.sh"
+
+jobs:
+  ubuntu-full-without-network-auth:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Provision from existing clone
+        env:
+          DOTFILES_WITH_TAILSCALE: "false"
+        run: ./scripts/provision.sh
+
+      - name: Verify idempotent second run
+        env:
+          DOTFILES_WITH_TAILSCALE: "false"
+        run: ./scripts/provision.sh
+
+      - name: Run smoke tests
+        run: ./scripts/tests/provision-smoke.sh
+
+      - name: Verify services and shell
+        run: |
+          sudo systemctl is-active --quiet ssh
+          sudo systemctl is-active --quiet docker
+          sudo docker version >/dev/null
+          zsh -lic 'command -v mise >/dev/null; command -v stow >/dev/null; command -v antidote >/dev/null'

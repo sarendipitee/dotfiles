@@ -11,14 +11,14 @@ dotfiles/
 ├── packages/              # Config packages (one per tool/application)
 │   ├── ai/               # AI tools (Claude, OpenCode, Kilo)
 │   ├── git/              # Git config
-│   ├── flox/             # Flox config (PRIMARY package manager)
-│   ├── homebrew/         # Homebrew Brewfile (**only** for MacOS only packages - Flox for everything else for cross platform)
+│   ├── mise/             # Global tools, packages, repositories, and bootstrap hooks
 │   ├── misc/             # Miscellaneous scripts/binaries
 │   ├── nvim/             # Neovim (LazyVim distribution)
 │   ├── shell/            # Zsh, tmux configuration
 │   └── vim/              # Traditional Vim
 ├── scripts/               # Bootstrap and setup scripts
-│   ├── provision.sh      # Main bootstrap (macOS/Linux)
+│   ├── provision.sh      # Existing-clone bootstrap wrapper
+│   ├── bootstrap-system.sh # Privileged machine setup
 │   ├── create-links.sh   # Stow symlink creation
 │   ├── osx-defaults.sh   # macOS system defaults
 │   └── capture-defaults.sh # Export/import macOS preferences

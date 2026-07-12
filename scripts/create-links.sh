@@ -33,6 +33,7 @@ git -C "$dotfiles_dir" submodule update --init --recursive
 packages=()
 for package_dir in "$packages_dir"/*; do
 	[ -d "$package_dir" ] || continue
+	case "$(basename "$package_dir")" in flox | homebrew) continue ;; esac
 	packages+=("$(basename "$package_dir")")
 done
 

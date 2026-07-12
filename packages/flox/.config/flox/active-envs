@@ -1,4 +1,0 @@
-# Flox environments to activate (one per line, order matters)
-# Available envs: global, nvidia, macbook, gascity, etc
-envs/global
-# envs/nvidia # x86_64-linux only

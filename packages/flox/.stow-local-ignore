@@ -1,5 +1,0 @@
-.stow-local-ignore
-\.flox
-\.gitignore$
-envs
-.*-env

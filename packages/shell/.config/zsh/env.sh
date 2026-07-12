@@ -30,29 +30,13 @@ export DOTFILES_DIR=$PROJECTS_BASE_DIR/dotfiles
 export PERSONAL_BIN_DIR="${HOME}/.my/bin"
 export PERSONAL_AUTOLOAD_DIR="${HOME}/.my/autoload"
 
-# Moving homebrew env vars here itself so that the initial homebrew installation on
-# a vanilla OS can be done/applied into memory immediately
-export ARCH="$(uname -m)"
+export ARCH="${HOSTTYPE:-$(uname -m)}"
 export ARCHFLAGS="-arch ${ARCH}"
-if [[ "${ARCH}" =~ 'arm' ]]; then
-	export HOMEBREW_PREFIX='/opt/homebrew'
-else
-	export HOMEBREW_PREFIX='/usr/local'
-fi
-export HOMEBREW_BUNDLE_FILE="${XDG_CONFIG_HOME}/homebrew/Brewfile"
-export HOMEBREW_NO_ANALYTICS=1
-export HOMEBREW_CLEANUP_MAX_AGE_DAYS=3
-export HOMEBREW_CLEANUP_PERIODIC_FULL_DAYS=3
-export HOMEBREW_BAT=1
-export HOMEBREW_VERBOSE_USING_DOTS=1
 
 # ZSH
 export HISTFILE="$XDG_STATE_HOME"/zsh/history
 export ZSH_CACHE_DIR="${XDG_CACHE_HOME}/zsh"
 export ZDOTDIR="${ZDOTDIR:-${XDG_CONFIG_HOME}/zsh}"
-
-# oh-my-zsh
-export ZSH="$XDG_DATA_HOME"/oh-my-zsh
 
 # Android
 export ANDROID_USER_HOME="$XDG_DATA_HOME"/android
@@ -72,7 +56,6 @@ export RUSTUP_HOME="$XDG_DATA_HOME"/rustup
 
 # gnupg
 export GNUPGHOME="$XDG_DATA_HOME"/gnupg
-export GPG_TTY=$(tty)
 
 # Keras
 export KERAS_HOME="${XDG_STATE_HOME}/keras"
@@ -103,11 +86,6 @@ export NUGET_PACKAGES="$XDG_CACHE_HOME"/NuGetPackages
 
 # Go
 export GOPATH="$XDG_STATE_HOME/projects/go"
-if command -v go &>/dev/null; then
-	export GOROOT=$(go env GOROOT 2>/dev/null)
-elif [ -d /opt/homebrew/opt/go/libexec ]; then
-	export GOROOT=/opt/homebrew/opt/go/libexec
-fi
 
 # Java
 export JAVA_HOME=/opt/homebrew/opt/openjdk/
@@ -124,11 +102,5 @@ export DOCKER_CONFIG="$XDG_CONFIG_HOME"/docker
 # OrbStack shell integration (DOCKER_HOST, PATH, completions)
 source "$HOME/.orbstack/shell/init.zsh" 2>/dev/null || :
 
-# proto
-export PROTO_HOME="$XDG_DATA_HOME/proto"
-
 # dyff
 export KUBECTL_EXTERNAL_DIFF="dyff between --omit-header --set-exit-code"
-
-# fzf - explicitly set to avoid invalid actions like toggle-raw
-export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border"

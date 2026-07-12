@@ -70,7 +70,8 @@ install_container_toolkit() {
 	if ! command -v nvidia-ctk >/dev/null 2>&1; then
 		sudo install -d -m 0755 /usr/share/keyrings
 		curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey |
-			sudo gpg --batch --yes --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
+			gpg --batch --dearmor |
+			sudo tee /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg >/dev/null
 		curl -fsSL https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list |
 			sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' |
 			sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list >/dev/null

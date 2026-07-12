@@ -1,0 +1,45 @@
+name: Publish bootstrap page
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - bootstrap.sh
+      - packages/mise/.config/mise/config.toml
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Pages artifact
+        run: |
+          mkdir -p public/mise
+          cp bootstrap.sh public/bootstrap.sh
+          cp packages/mise/.config/mise/config.toml public/mise/config.toml
+          sha256sum public/mise/config.toml > public/mise/config.toml.sha256
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

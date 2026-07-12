@@ -119,9 +119,6 @@ command_exists bat && export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 export WORDCHARS="${WORDCHARS:s#/#}"
 export WORDCHARS="${WORDCHARS:s#.#}"
 
-# fzf 
-command_exists fzf && source <(fzf --zsh)
-
 # remove empty components to avoid '::' ending up + resulting in './' being in $PATH, etc
 # path=( "${path[@]:#}" )
 # fpath=( "${fpath[@]:#}" )
@@ -130,6 +127,4 @@ command_exists fzf && source <(fzf --zsh)
 
 # remove duplicates from some env vars
 typeset -gU cdpath CPPFLAGS cppflags FPATH fpath infopath LDFLAGS ldflags MANPATH manpath PATH path PKG_CONFIG_PATH
-
-
 

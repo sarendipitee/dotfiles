@@ -16,9 +16,7 @@ ohmyzsh/ohmyzsh path:plugins/npm
 ohmyzsh/ohmyzsh path:plugins/safe-paste
 ohmyzsh/ohmyzsh path:plugins/vi-mode
 ohmyzsh/ohmyzsh path:plugins/zbell
-ohmyzsh/ohmyzsh path:plugins/fzf
 
 # External plugins (with deferred loading where supported)
 zsh-users/zsh-completions
 zsh-users/zsh-syntax-highlighting kind:defer
-
