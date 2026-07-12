@@ -1,0 +1,2 @@
+\.config/vim/(bundle|plugged|sessions|tmp|undo|unused-bundle|view)(/.*)?
+\.config/vim/\.netrwhist$
