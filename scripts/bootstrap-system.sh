@@ -223,13 +223,12 @@ migrate_legacy_omniroute_state() {
 	if [ ! -e "$legacy_dir" ] && [ ! -L "$legacy_dir" ]; then
 		return 0
 	fi
-	if ! python3 - "$HOME" "$XDG_STATE_HOME" \
-		"${DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE:-}" <<'PY'
+	if ! python3 - "$HOME" "$XDG_STATE_HOME" <<'PY'
 import os
 import stat
 import sys
 
-home, state_home, authoritative = sys.argv[1:]
+home, state_home = sys.argv[1:]
 
 
 def fail(message):
@@ -274,9 +273,6 @@ except OSError:
 if not stat.S_ISDIR(home_metadata.st_mode):
     fail("login home is not a safe directory")
 
-if authoritative not in ("", "1"):
-    fail("DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE must be unset or exactly 1")
-
 legacy_database = os.path.join(home, ".omniroute", "storage.sqlite")
 durable_directory = os.path.join(state_home, "omniroute")
 durable_database = os.path.join(durable_directory, "storage.sqlite")
@@ -286,9 +282,6 @@ durable_metadata = lstat_under_home(durable_database, "durable OmniRoute databas
 marker_metadata = lstat_under_home(marker, "OmniRoute migration marker")
 if marker_metadata is not None and not stat.S_ISREG(marker_metadata.st_mode):
     fail("OmniRoute migration marker is unsafe")
-if legacy_metadata is not None and durable_metadata is not None and marker_metadata is None:
-    if authoritative != "1":
-        fail("Legacy and unmarked durable OmniRoute databases both exist. Audit them, then rerun with DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1 ./scripts/provision.sh to preserve durable state as backup and migrate legacy state")
 PY
 	then
 		fatal 'Could not safely authorize legacy OmniRoute state migration'
@@ -298,11 +291,6 @@ PY
 	[ "$login_uid" != 0 ] || fatal 'OmniRoute migration refuses root as login user'
 	[ "$(id -u)" = "$login_uid" ] && [ "$(id -un)" = "$LOGIN_USER" ] ||
 		fatal 'OmniRoute migration must run as login user, not through a root shell'
-	case "${DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE:-}" in
-		'') ;;
-		1) ;;
-		*) fatal 'DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE must be unset or exactly 1' ;;
-	esac
 	command_exists pgrep ||
 		fatal 'OmniRoute migration requires pgrep from procps; install it and retry'
 	command_exists fuser ||
@@ -343,13 +331,6 @@ PY
 		/*) ;;
 		*) fatal 'XDG_STATE_HOME must be an absolute path' ;;
 	esac
-	if { [ -e "$legacy_dir/storage.sqlite" ] || [ -L "$legacy_dir/storage.sqlite" ]; } &&
-		{ [ -e "$durable_dir/storage.sqlite" ] || [ -L "$durable_dir/storage.sqlite" ]; } &&
-		[ ! -e "$durable_dir/.dotfiles-legacy-migration-v1" ] &&
-		[ ! -L "$durable_dir/.dotfiles-legacy-migration-v1" ] &&
-		[ "${DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE:-}" != 1 ]; then
-		fatal 'Legacy and unmarked durable OmniRoute databases both exist. Audit them, then rerun with DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1 to preserve durable state as backup and migrate legacy state'
-	fi
 	converge_path_directories "$mise_bin" "$HOME" "$login_uid" "$legacy_dir" \
 		'Legacy OmniRoute path'
 	converge_path_directories "$mise_bin" "$HOME" "$login_uid" "$XDG_STATE_HOME" \
@@ -369,8 +350,7 @@ PY
 	esac
 
 	if ! "$mise_bin" exec -- python - \
-		"$HOME" "$login_uid" "$legacy_dir" "$durable_dir" "$package_env" \
-		"${DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE:-}" <<'PY'
+		"$HOME" "$login_uid" "$legacy_dir" "$durable_dir" "$package_env" <<'PY'
 import ctypes
 import errno
 import os
@@ -380,7 +360,7 @@ import stat
 import subprocess
 import sys
 
-home, uid_text, legacy_path, destination_path, package_env_path, authoritative = sys.argv[1:]
+home, uid_text, legacy_path, destination_path, package_env_path = sys.argv[1:]
 expected_uid = int(uid_text)
 marker_name = ".dotfiles-legacy-migration-v1"
 marker_content = b"dotfiles-omniroute-legacy-migration-v1\n"
@@ -813,10 +793,6 @@ try:
         fail("legacy OmniRoute storage.sqlite is unsafe")
 finally:
     os.close(legacy_fd)
-
-destination_has_database = safe_exists(os.path.join(destination_path, "storage.sqlite"))
-if destination_has_database and authoritative != "1":
-    fail("legacy and unmarked durable OmniRoute databases both exist; audit them, then rerun with DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1 to preserve durable state as backup and migrate legacy state")
 
 if safe_exists(destination_path) and safe_exists(backup_path):
     fail("unmarked durable OmniRoute state and retained backup both exist")

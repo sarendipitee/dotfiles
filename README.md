@@ -109,16 +109,9 @@ at `${XDG_STATE_HOME:-$HOME/.local/state}/omniroute.pre-legacy-migration-v1`.
 Neither the original legacy tree nor that backup is deleted. A migration marker
 makes reruns idempotent. Unsafe paths, ambiguous state, or partial migration
 state fail closed and may require manual audit before provisioning can continue.
-If both legacy and unmarked durable trees contain `storage.sqlite`, bootstrap
-will not choose between them. After auditing both databases, explicitly choose
-legacy as authoritative while retaining durable state as backup:
-
-```bash
-DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1 ./scripts/provision.sh
-```
-
-Only exact value `1` is accepted. Seed-only durable state without a database
-migrates automatically.
+When both legacy and unmarked durable trees exist, provision automatically uses
+legacy state as authoritative and atomically preserves prior XDG state at the
+backup path before installing the validated legacy SQLite snapshot.
 
 Codex remote control runs only on `aorus` in foreground mode through Mise. Its
 wrapper reads only `OMNIROUTER_API_KEY` from Hindsight's environment file;

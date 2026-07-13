@@ -795,7 +795,6 @@ run_omniroute_migration_case() {
 		MIGRATION_FUSER_STATUS="${MIGRATION_FUSER_STATUS:-1}" \
 		MIGRATION_FUSER_LATE_STATUS="${MIGRATION_FUSER_LATE_STATUS:-}" \
 		MIGRATION_PGREP_CMDLINE="${MIGRATION_PGREP_CMDLINE:-}" \
-		DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE="${DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE:-}" \
 		PATH="$migration_mock_bin:$PATH" \
 		bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$OMNIROUTE_BOOTSTRAP_FUNCTIONS"; command_exists() { [ "$1" = pgrep ] || [ "$1" = fuser ]; }; pgrep() { if [ -n "$MIGRATION_PGREP_CMDLINE" ]; then local pattern="${@: -1}"; [[ "$MIGRATION_PGREP_CMDLINE" =~ $pattern ]]; else return 1; fi; }; migrate_legacy_omniroute_state' \
 		>"$output" 2>&1
@@ -1009,55 +1008,27 @@ divergent_legacy_database_hash=$(shasum -a 256 \
 divergent_legacy_env_hash=$(shasum -a 256 \
 	"$divergent_home/.omniroute/.env" | cut -d' ' -f1)
 : > "$divergent_log"
-assert_migration_rejected "$divergent_home" "$divergent_output" "$divergent_log" \
-	"$migration_storage_key"
-grep -Fq 'DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1' "$divergent_output" ||
-	fail 'Divergent OmniRoute state rejection lacked explicit opt-in guidance'
-[ ! -s "$divergent_log" ] ||
-	fail 'Divergent OmniRoute rejection reached service or package commands'
-[ "$divergent_database_hash" = "$(shasum -a 256 \
-	"$divergent_home/.local/state/omniroute/storage.sqlite" | cut -d' ' -f1)" ] ||
-	fail 'Rejected divergent OmniRoute migration changed durable database'
-[ "$divergent_durable_env_hash" = "$(shasum -a 256 \
-	"$divergent_home/.local/state/omniroute/.env" | cut -d' ' -f1)" ] ||
-	fail 'Rejected divergent OmniRoute migration changed durable environment'
-[ "$divergent_legacy_database_hash" = "$(shasum -a 256 \
-	"$divergent_home/.omniroute/storage.sqlite" | cut -d' ' -f1)" ] ||
-	fail 'Rejected divergent OmniRoute migration changed legacy database'
-[ "$divergent_legacy_env_hash" = "$(shasum -a 256 \
-	"$divergent_home/.omniroute/.env" | cut -d' ' -f1)" ] ||
-	fail 'Rejected divergent OmniRoute migration changed legacy environment'
-assert_mode 755 "$divergent_home/.local/state/omniroute"
-assert_mode 755 "$divergent_home/.local/state/omniroute/.env"
-assert_mode 755 "$divergent_home/.local/state/omniroute/storage.sqlite"
-assert_mode 755 "$divergent_home/.omniroute"
-assert_mode 755 "$divergent_home/.omniroute/.env"
-assert_mode 755 "$divergent_home/.omniroute/storage.sqlite"
-[ ! -e "$divergent_home/.local/state/omniroute.pre-legacy-migration-v1" ] ||
-	fail 'Rejected divergent OmniRoute migration created backup'
-[ ! -e "$divergent_home/.local/state/.omniroute.legacy-migration-v1.tmp" ] ||
-	fail 'Rejected divergent OmniRoute migration created temporary state'
-if DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=true \
-	run_omniroute_migration_case "$divergent_home" "$divergent_output" "$divergent_log"; then
-	fail 'Invalid OmniRoute authoritative opt-in value was accepted'
-fi
-grep -Fq 'must be unset or exactly 1' "$divergent_output" ||
-	fail 'Invalid OmniRoute authoritative opt-in lacked exact-value error'
-[ ! -s "$divergent_log" ] ||
-	fail 'Invalid OmniRoute authoritative opt-in reached service or package commands'
-assert_mode 755 "$divergent_home/.local/state/omniroute"
-assert_mode 755 "$divergent_home/.local/state/omniroute/.env"
-assert_mode 755 "$divergent_home/.local/state/omniroute/storage.sqlite"
-DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1 \
-	run_omniroute_migration_case "$divergent_home" "$divergent_output" "$divergent_log" ||
-	fail 'Explicit legacy-authoritative OmniRoute migration failed'
+run_omniroute_migration_case "$divergent_home" "$divergent_output" "$divergent_log" ||
+	fail 'Legacy-authoritative OmniRoute migration with existing durable state failed'
 grep -Fq 'systemctl --user stop dotfiles-process-compose.service' "$divergent_log" ||
-	fail 'Exact OmniRoute authoritative opt-in did not proceed to service migration'
+	fail 'Automatic OmniRoute migration did not proceed to service migration'
 assert_migration_sqlite_value \
 	"$divergent_home/.local/state/omniroute.pre-legacy-migration-v1/storage.sqlite" \
 	durable_rows durable-authoritative-row
 assert_migration_sqlite_value "$divergent_home/.local/state/omniroute/storage.sqlite" \
 	migration_rows legacy-main-row
+[ "$divergent_database_hash" = "$(shasum -a 256 \
+	"$divergent_home/.local/state/omniroute.pre-legacy-migration-v1/storage.sqlite" | cut -d' ' -f1)" ] ||
+	fail 'Automatic OmniRoute migration changed retained durable database bytes'
+[ "$divergent_durable_env_hash" = "$(shasum -a 256 \
+	"$divergent_home/.local/state/omniroute.pre-legacy-migration-v1/.env" | cut -d' ' -f1)" ] ||
+	fail 'Automatic OmniRoute migration changed retained durable environment bytes'
+[ "$divergent_legacy_database_hash" = "$(shasum -a 256 \
+	"$divergent_home/.omniroute/storage.sqlite" | cut -d' ' -f1)" ] ||
+	fail 'Automatic OmniRoute migration changed legacy source database'
+[ "$divergent_legacy_env_hash" = "$(shasum -a 256 \
+	"$divergent_home/.omniroute/.env" | cut -d' ' -f1)" ] ||
+	fail 'Automatic OmniRoute migration changed legacy source environment'
 
 recovery_home="$tmp_dir/migration-valid-temp-recovery"
 recovery_output="$tmp_dir/migration-valid-temp-recovery.out"
@@ -1096,8 +1067,7 @@ printf 'STORAGE_ENCRYPTION_KEY=%s\n' \
 create_migration_sqlite "$corrupt_backup_home/.local/state/omniroute/storage.sqlite" \
 	durable_rows durable-before-corruption
 : > "$corrupt_backup_log"
-DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1 \
-	run_omniroute_migration_case "$corrupt_backup_home" "$corrupt_backup_output" \
+run_omniroute_migration_case "$corrupt_backup_home" "$corrupt_backup_output" \
 	"$corrupt_backup_log" || fail 'Could not prepare corrupt post-backup recovery case'
 mv "$corrupt_backup_home/.local/state/omniroute" \
 	"$corrupt_backup_home/.local/state/.omniroute.legacy-migration-v1.tmp"
