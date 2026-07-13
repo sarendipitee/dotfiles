@@ -665,6 +665,232 @@ setup_process_compose_function=$(awk '
 ' "$repo_dir/scripts/bootstrap-system.sh")
 [ -n "$setup_process_compose_function" ] || fail 'Could not extract setup_process_compose'
 
+codex_auth_python=$(command -v python3) || fail 'Python 3 is required for Codex auth migration smoke tests'
+codex_auth_root="$tmp_dir/codex-auth"
+codex_auth_secret='codex-auth-secret-must-not-print'
+mkdir -p "$codex_auth_root"
+
+prepare_codex_auth_case() {
+	local case_name="$1"
+	local case_root="$codex_auth_root/$case_name"
+	CODEX_CASE_HOME="$case_root/home"
+	CODEX_CASE_DOTFILES="$CODEX_CASE_HOME/projects/dotfiles"
+
+	mkdir -p \
+		"$CODEX_CASE_HOME/.local/bin" \
+		"$CODEX_CASE_DOTFILES/packages/ai/.codex"
+	cat > "$CODEX_CASE_HOME/.local/bin/mise" <<'EOF'
+#!/usr/bin/env bash
+if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = python ]; then
+	shift 3
+	exec "$CODEX_AUTH_PYTHON" "$@"
+fi
+if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = codex ] &&
+	[ "$4" = login ] && [ "$5" = status ]; then
+	printf '%s\n' 'codex status canonical' >> "$CODEX_AUTH_LOG"
+	[ -f "$HOME/.codex/auth.json" ] && [ ! -L "$HOME/.codex/auth.json" ]
+	exit
+fi
+exit 64
+EOF
+	chmod +x "$CODEX_CASE_HOME/.local/bin/mise"
+}
+
+run_codex_auth_case() {
+	local case_home="$1" case_dotfiles="$2" output="$3"
+	HOME="$case_home" DOTFILES_DIR="$case_dotfiles" LOGIN_USER="$(id -un)" \
+		OS=Linux DOTFILES_HOST=aorus CODEX_AUTH_PYTHON="$codex_auth_python" \
+		CODEX_AUTH_LOG="$codex_auth_root/status.log" \
+		SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
+		bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; migrate_legacy_codex_auth; verify_aorus_codex_login' \
+		>"$output" 2>&1
+}
+
+prepare_codex_auth_case success
+codex_success_home=$CODEX_CASE_HOME
+codex_success_dotfiles=$CODEX_CASE_DOTFILES
+codex_success_source="$codex_success_dotfiles/packages/ai/.codex/auth.json"
+codex_success_expected="$codex_auth_root/success.expected"
+printf '%s\n' "$codex_auth_secret" > "$codex_success_source"
+cp "$codex_success_source" "$codex_success_expected"
+chmod 0600 "$codex_success_source" "$codex_success_expected"
+: > "$codex_auth_root/status.log"
+run_codex_auth_case "$codex_success_home" "$codex_success_dotfiles" \
+	"$codex_auth_root/success.out" || fail 'Historical Codex auth migration failed'
+[ ! -e "$codex_success_source" ] || fail 'Historical Codex auth remained after migration'
+cmp -s "$codex_success_expected" "$codex_success_home/.codex/auth.json" ||
+	fail 'Canonical Codex auth differs from historical credential'
+assert_mode 700 "$codex_success_home/.codex"
+assert_mode 600 "$codex_success_home/.codex/auth.json"
+[ "$(stat -c '%u' "$codex_success_home/.codex/auth.json" 2>/dev/null ||
+	stat -f '%u' "$codex_success_home/.codex/auth.json")" = "$(id -u)" ] ||
+	fail 'Canonical Codex auth ownership is incorrect'
+grep -Fxq 'codex status canonical' "$codex_auth_root/status.log" ||
+	fail 'Codex login status did not inspect canonical authentication'
+[ ! -s "$codex_auth_root/success.out" ] || fail 'Successful Codex auth migration printed output'
+run_codex_auth_case "$codex_success_home" "$codex_success_dotfiles" \
+	"$codex_auth_root/idempotent.out" || fail 'Codex auth migration is not idempotent'
+cmp -s "$codex_success_expected" "$codex_success_home/.codex/auth.json" ||
+	fail 'Idempotent Codex auth migration changed credential'
+
+prepare_codex_auth_case identical
+codex_identical_home=$CODEX_CASE_HOME
+codex_identical_dotfiles=$CODEX_CASE_DOTFILES
+mkdir "$codex_identical_home/.codex"
+printf '%s\n' "$codex_auth_secret" > "$codex_identical_home/.codex/auth.json"
+printf '%s\n' "$codex_auth_secret" > "$codex_identical_dotfiles/packages/ai/.codex/auth.json"
+chmod 0700 "$codex_identical_home/.codex"
+chmod 0600 "$codex_identical_home/.codex/auth.json" \
+	"$codex_identical_dotfiles/packages/ai/.codex/auth.json"
+run_codex_auth_case "$codex_identical_home" "$codex_identical_dotfiles" \
+	"$codex_auth_root/identical.out" || fail 'Identical Codex credentials did not converge'
+[ ! -e "$codex_identical_dotfiles/packages/ai/.codex/auth.json" ] ||
+	fail 'Identical historical Codex credential was not removed'
+
+prepare_codex_auth_case interrupted-hardlink
+codex_interrupted_home=$CODEX_CASE_HOME
+codex_interrupted_dotfiles=$CODEX_CASE_DOTFILES
+codex_interrupted_source="$codex_interrupted_dotfiles/packages/ai/.codex/auth.json"
+mkdir "$codex_interrupted_home/.codex"
+chmod 0775 "$codex_interrupted_home/.codex"
+printf '%s\n' "$codex_auth_secret" > "$codex_interrupted_source"
+chmod 0600 "$codex_interrupted_source"
+ln "$codex_interrupted_source" "$codex_interrupted_home/.codex/auth.json"
+run_codex_auth_case "$codex_interrupted_home" "$codex_interrupted_dotfiles" \
+	"$codex_auth_root/interrupted-hardlink.out" ||
+	fail 'Interrupted same-filesystem Codex auth install did not recover'
+[ ! -e "$codex_interrupted_source" ] ||
+	fail 'Recovered historical Codex credential was not removed'
+assert_mode 700 "$codex_interrupted_home/.codex"
+assert_mode 600 "$codex_interrupted_home/.codex/auth.json"
+[ "$(stat -c '%h' "$codex_interrupted_home/.codex/auth.json" 2>/dev/null ||
+	stat -f '%l' "$codex_interrupted_home/.codex/auth.json")" = 1 ] ||
+	fail 'Recovered canonical Codex credential retained additional hard link'
+
+prepare_codex_auth_case writable-canonical-directory
+codex_writable_home=$CODEX_CASE_HOME
+codex_writable_dotfiles=$CODEX_CASE_DOTFILES
+mkdir "$codex_writable_home/.codex"
+chmod 0775 "$codex_writable_home/.codex"
+printf '%s\n' "$codex_auth_secret" > "$codex_writable_home/.codex/auth.json"
+chmod 0600 "$codex_writable_home/.codex/auth.json"
+run_codex_auth_case "$codex_writable_home" "$codex_writable_dotfiles" \
+	"$codex_auth_root/writable-canonical-directory.out" ||
+	fail 'Writable canonical Codex directory did not converge'
+assert_mode 700 "$codex_writable_home/.codex"
+assert_mode 600 "$codex_writable_home/.codex/auth.json"
+
+prepare_codex_auth_case divergent
+codex_divergent_home=$CODEX_CASE_HOME
+codex_divergent_dotfiles=$CODEX_CASE_DOTFILES
+codex_divergent_source="$codex_divergent_dotfiles/packages/ai/.codex/auth.json"
+mkdir "$codex_divergent_home/.codex"
+printf '%s\n' "${codex_auth_secret}-source" > "$codex_divergent_source"
+printf '%s\n' "${codex_auth_secret}-canonical" > "$codex_divergent_home/.codex/auth.json"
+chmod 0700 "$codex_divergent_home/.codex"
+chmod 0600 "$codex_divergent_source" "$codex_divergent_home/.codex/auth.json"
+cp "$codex_divergent_source" "$codex_auth_root/divergent-source.expected"
+cp "$codex_divergent_home/.codex/auth.json" "$codex_auth_root/divergent-canonical.expected"
+if run_codex_auth_case "$codex_divergent_home" "$codex_divergent_dotfiles" \
+	"$codex_auth_root/divergent.out"; then
+	fail 'Divergent Codex credentials did not fail closed'
+fi
+cmp -s "$codex_auth_root/divergent-source.expected" "$codex_divergent_source" ||
+	fail 'Divergent migration changed historical Codex credential'
+cmp -s "$codex_auth_root/divergent-canonical.expected" \
+	"$codex_divergent_home/.codex/auth.json" ||
+	fail 'Divergent migration changed canonical Codex credential'
+
+prepare_codex_auth_case missing
+codex_missing_home=$CODEX_CASE_HOME
+codex_missing_dotfiles=$CODEX_CASE_DOTFILES
+if run_codex_auth_case "$codex_missing_home" "$codex_missing_dotfiles" \
+	"$codex_auth_root/missing.out"; then
+	fail 'Missing Codex credentials passed login preflight'
+fi
+grep -Fq 'mise exec -- codex login' "$codex_auth_root/missing.out" ||
+	fail 'Missing Codex credentials omitted actionable login command'
+[ ! -e "$codex_missing_home/.codex" ] ||
+	fail 'Missing Codex credentials caused preflight filesystem mutation'
+
+for unsafe_kind in source-symlink source-mode source-hardlink canonical-symlink canonical-mode canonical-hardlink; do
+	prepare_codex_auth_case "$unsafe_kind"
+	codex_unsafe_home=$CODEX_CASE_HOME
+	codex_unsafe_dotfiles=$CODEX_CASE_DOTFILES
+	codex_unsafe_source="$codex_unsafe_dotfiles/packages/ai/.codex/auth.json"
+	codex_unsafe_canonical="$codex_unsafe_home/.codex/auth.json"
+	printf '%s\n' "$codex_auth_secret" > "$codex_auth_root/$unsafe_kind.outside"
+	chmod 0600 "$codex_auth_root/$unsafe_kind.outside"
+	case "$unsafe_kind" in
+		source-symlink)
+			ln -s "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_source"
+			;;
+		source-mode)
+			cp "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_source"
+			chmod 0640 "$codex_unsafe_source"
+			;;
+		source-hardlink)
+			ln "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_source"
+			;;
+		canonical-*)
+			cp "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_source"
+			chmod 0600 "$codex_unsafe_source"
+			mkdir "$codex_unsafe_home/.codex"
+			chmod 0700 "$codex_unsafe_home/.codex"
+			case "$unsafe_kind" in
+				canonical-symlink) ln -s "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_canonical" ;;
+				canonical-mode)
+					cp "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_canonical"
+					chmod 0640 "$codex_unsafe_canonical"
+					;;
+				canonical-hardlink) ln "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_canonical" ;;
+			esac
+			;;
+	esac
+	if run_codex_auth_case "$codex_unsafe_home" "$codex_unsafe_dotfiles" \
+		"$codex_auth_root/$unsafe_kind.out"; then
+		fail "Unsafe Codex auth accepted: $unsafe_kind"
+	fi
+	if grep -Fq "$codex_auth_secret" "$codex_auth_root/$unsafe_kind.out"; then
+		fail "Unsafe Codex auth failure printed credential: $unsafe_kind"
+	fi
+done
+
+codex_auth_wrong_uid=$(( $(id -u) + 1 ))
+for wrong_owner_kind in source canonical; do
+	prepare_codex_auth_case "wrong-owner-$wrong_owner_kind"
+	codex_wrong_owner_home=$CODEX_CASE_HOME
+	codex_wrong_owner_dotfiles=$CODEX_CASE_DOTFILES
+	printf '%s\n' "$codex_auth_secret" > \
+		"$codex_wrong_owner_dotfiles/packages/ai/.codex/auth.json"
+	chmod 0600 "$codex_wrong_owner_dotfiles/packages/ai/.codex/auth.json"
+	if [ "$wrong_owner_kind" = canonical ]; then
+		mkdir "$codex_wrong_owner_home/.codex"
+		chmod 0700 "$codex_wrong_owner_home/.codex"
+		printf '%s\n' "$codex_auth_secret" > "$codex_wrong_owner_home/.codex/auth.json"
+		chmod 0600 "$codex_wrong_owner_home/.codex/auth.json"
+	fi
+	wrong_owner_mock="$codex_auth_root/wrong-owner-$wrong_owner_kind-bin"
+	mkdir "$wrong_owner_mock"
+	cat > "$wrong_owner_mock/id" <<EOF
+#!/usr/bin/env bash
+case "\${1:-}" in
+	-u) printf '%s\\n' '$codex_auth_wrong_uid' ;;
+	-un) printf '%s\\n' '$(id -un)' ;;
+	*) exit 64 ;;
+esac
+EOF
+	chmod +x "$wrong_owner_mock/id"
+	if PATH="$wrong_owner_mock:$PATH" run_codex_auth_case \
+		"$codex_wrong_owner_home" "$codex_wrong_owner_dotfiles" \
+		"$codex_auth_root/wrong-owner-$wrong_owner_kind.out"; then
+		fail "Wrong-owner Codex auth accepted: $wrong_owner_kind"
+	fi
+	if grep -Fq "$codex_auth_secret" "$codex_auth_root/wrong-owner-$wrong_owner_kind.out"; then
+		fail "Wrong-owner Codex auth failure printed credential: $wrong_owner_kind"
+	fi
+done
+
 omniroute_bootstrap_functions=$(awk '
   /^path_owner_uid\(\) \{/ { capture = 1 }
   /^setup_process_compose\(\) \{/ { exit }
@@ -1734,6 +1960,8 @@ HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycl
 grep -Fxq 'mise codex login status' "$lifecycle_log" ||
 	fail 'Aorus Codex login preflight did not use supported status command'
 
+auth_migration_call_line=$(grep -nFx 'migrate_legacy_codex_auth' "$repo_dir/scripts/bootstrap-system.sh" |
+	cut -d: -f1 || true)
 preflight_call_line=$(grep -nFx 'verify_aorus_codex_login' "$repo_dir/scripts/bootstrap-system.sh" |
 	cut -d: -f1 || true)
 setup_state_call_line=$(grep -nFx 'setup_user_state' "$repo_dir/scripts/bootstrap-system.sh" |
@@ -1742,10 +1970,11 @@ migration_call_line=$(grep -nFx 'migrate_legacy_omniroute_state' "$repo_dir/scri
 	cut -d: -f1 || true)
 harden_call_line=$(grep -nFx 'harden_omniroute_env' "$repo_dir/scripts/bootstrap-system.sh" |
 	cut -d: -f1 || true)
-[ -n "$preflight_call_line" ] && [ -n "$setup_state_call_line" ] &&
+[ -n "$auth_migration_call_line" ] && [ -n "$preflight_call_line" ] && [ -n "$setup_state_call_line" ] &&
 	[ -n "$migration_call_line" ] && [ -n "$harden_call_line" ] ||
 	fail 'Could not locate Aorus Codex login preflight ordering'
-[ "$preflight_call_line" -lt "$setup_state_call_line" ] &&
+[ "$auth_migration_call_line" -lt "$preflight_call_line" ] &&
+	[ "$preflight_call_line" -lt "$setup_state_call_line" ] &&
 	[ "$preflight_call_line" -lt "$migration_call_line" ] &&
 	[ "$preflight_call_line" -lt "$harden_call_line" ] ||
 	fail 'Aorus Codex login preflight does not precede filesystem and service migration'

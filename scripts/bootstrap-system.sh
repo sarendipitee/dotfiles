@@ -24,6 +24,314 @@ command_exists() {
 	command -v "$1" >/dev/null 2>&1
 }
 
+migrate_legacy_codex_auth() {
+	local login_uid
+	local mise_bin="$HOME/.local/bin/mise"
+
+	[ "$OS" = Linux ] || return 0
+	[ "$(current_process_compose_profile)" = aorus ] || return 0
+	[ -x "$mise_bin" ] || fatal "Mise executable is missing or not executable: $mise_bin"
+	login_uid=$(id -u "$LOGIN_USER")
+	[ "$(id -u)" = "$login_uid" ] && [ "$(id -un)" = "$LOGIN_USER" ] ||
+		fatal 'Codex auth migration must run as login user, not through a root shell'
+
+	if ! "$mise_bin" exec -- python - "$DOTFILES_DIR" "$HOME" "$login_uid" <<'PY'
+import errno
+import hmac
+import os
+import secrets
+import stat
+import sys
+
+dotfiles_directory, home_directory, uid_text = sys.argv[1:]
+expected_uid = int(uid_text)
+source_path = os.path.join(dotfiles_directory, "packages", "ai", ".codex", "auth.json")
+canonical_directory_path = os.path.join(home_directory, ".codex")
+canonical_path = os.path.join(canonical_directory_path, "auth.json")
+
+
+def fail(message):
+    raise SystemExit(message)
+
+
+def validate_path(root, path, purpose):
+    for value in (root, path):
+        if not os.path.isabs(value) or value != os.path.normpath(value):
+            fail(f"{purpose} path is not absolute and normalized")
+        if any(ord(character) < 32 or ord(character) == 127 for character in value):
+            fail(f"{purpose} path contains control characters")
+    try:
+        if os.path.commonpath((root, path)) != root:
+            fail(f"{purpose} path escapes expected root")
+    except ValueError:
+        fail(f"{purpose} path is invalid")
+
+
+validate_path(dotfiles_directory, source_path, "historical Codex auth")
+validate_path(home_directory, canonical_path, "canonical Codex auth")
+if not hasattr(os, "O_NOFOLLOW"):
+    fail("platform cannot reject credential symlinks")
+
+directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+file_flags = os.O_RDONLY | os.O_NOFOLLOW
+
+
+def open_absolute_directory(path, purpose):
+    descriptor = os.open("/", directory_flags)
+    try:
+        for component in path.split(os.sep)[1:]:
+            if component in ("", ".", ".."):
+                fail(f"{purpose} contains invalid path component")
+            try:
+                next_descriptor = os.open(component, directory_flags, dir_fd=descriptor)
+            except OSError:
+                fail(f"{purpose} contains unsafe or missing directory")
+            os.close(descriptor)
+            descriptor = next_descriptor
+            metadata = os.fstat(descriptor)
+            if not stat.S_ISDIR(metadata.st_mode):
+                fail(f"{purpose} contains non-directory component")
+            if metadata.st_uid not in (0, expected_uid):
+                fail(f"{purpose} contains directory owned by another user")
+            if metadata.st_mode & 0o022:
+                fail(f"{purpose} contains group- or world-writable ancestor")
+        return descriptor
+    except BaseException:
+        os.close(descriptor)
+        raise
+
+
+def open_optional_directory(parent_descriptor, name, purpose):
+    try:
+        descriptor = os.open(name, directory_flags, dir_fd=parent_descriptor)
+    except FileNotFoundError:
+        return None
+    except OSError:
+        fail(f"{purpose} is not a safe directory")
+    metadata = os.fstat(descriptor)
+    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != expected_uid:
+        os.close(descriptor)
+        fail(f"{purpose} is not owned directory")
+    return descriptor
+
+
+def open_optional_auth(directory_descriptor, name, purpose, expected_links=(1,)):
+    if isinstance(expected_links, int):
+        expected_links = (expected_links,)
+    try:
+        descriptor = os.open(name, file_flags, dir_fd=directory_descriptor)
+    except FileNotFoundError:
+        return None
+    except OSError:
+        fail(f"{purpose} is not safe regular file")
+    metadata = os.fstat(descriptor)
+    if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != expected_uid or
+            metadata.st_nlink not in expected_links or stat.S_IMODE(metadata.st_mode) != 0o600):
+        os.close(descriptor)
+        fail(f"{purpose} must be login-user-owned regular file with mode 0600 and one link")
+    return descriptor
+
+
+def descriptors_equal(left_descriptor, right_descriptor):
+    left_metadata = os.fstat(left_descriptor)
+    right_metadata = os.fstat(right_descriptor)
+    if left_metadata.st_size != right_metadata.st_size:
+        return False
+    offset = 0
+    while offset < left_metadata.st_size:
+        length = min(1024 * 1024, left_metadata.st_size - offset)
+        left = os.pread(left_descriptor, length, offset)
+        right = os.pread(right_descriptor, length, offset)
+        if not hmac.compare_digest(left, right):
+            return False
+        if not left:
+            fail("credential changed while being compared")
+        offset += len(left)
+    return True
+
+
+def path_matches_descriptor(directory_descriptor, name, descriptor, purpose, links=1):
+    try:
+        path_metadata = os.stat(name, dir_fd=directory_descriptor, follow_symlinks=False)
+    except OSError:
+        fail(f"{purpose} changed during migration")
+    metadata = os.fstat(descriptor)
+    if ((path_metadata.st_dev, path_metadata.st_ino) != (metadata.st_dev, metadata.st_ino) or
+            not stat.S_ISREG(path_metadata.st_mode) or path_metadata.st_uid != expected_uid or
+            path_metadata.st_nlink != links or stat.S_IMODE(path_metadata.st_mode) != 0o600):
+        fail(f"{purpose} changed during migration")
+
+
+source_parent = open_absolute_directory(os.path.dirname(source_path), "historical Codex auth path")
+home_descriptor = open_absolute_directory(home_directory, "home directory")
+canonical_directory = open_optional_directory(home_descriptor, ".codex", "canonical Codex directory")
+if canonical_directory is not None:
+    os.fchmod(canonical_directory, 0o700)
+    os.fsync(canonical_directory)
+source_descriptor = open_optional_auth(
+    source_parent, "auth.json", "historical Codex auth", (1, 2))
+canonical_descriptor = None
+if canonical_directory is not None:
+    canonical_descriptor = open_optional_auth(
+        canonical_directory, "auth.json", "canonical Codex auth", (1, 2))
+
+try:
+    source_links = os.fstat(source_descriptor).st_nlink if source_descriptor is not None else None
+    canonical_links = (
+        os.fstat(canonical_descriptor).st_nlink if canonical_descriptor is not None else None)
+    interrupted_link = False
+    if source_links == 2 or canonical_links == 2:
+        if source_descriptor is None or canonical_descriptor is None:
+            fail("Codex credential has unexpected additional hard link")
+        source_metadata = os.fstat(source_descriptor)
+        canonical_metadata = os.fstat(canonical_descriptor)
+        interrupted_link = (
+            source_links == 2 and canonical_links == 2 and
+            (source_metadata.st_dev, source_metadata.st_ino) ==
+            (canonical_metadata.st_dev, canonical_metadata.st_ino))
+        if not interrupted_link:
+            fail("Codex credential has unexpected additional hard link")
+
+    if source_descriptor is None and canonical_descriptor is None:
+        raise SystemExit(0)
+
+    if canonical_descriptor is not None:
+        path_matches_descriptor(canonical_directory, "auth.json", canonical_descriptor,
+                                "canonical Codex auth", 2 if interrupted_link else 1)
+        if source_descriptor is not None:
+            if not descriptors_equal(source_descriptor, canonical_descriptor):
+                fail("historical and canonical Codex credentials differ; refusing to overwrite either")
+            path_matches_descriptor(source_parent, "auth.json", source_descriptor,
+                                    "historical Codex auth", 2 if interrupted_link else 1)
+            path_matches_descriptor(canonical_directory, "auth.json", canonical_descriptor,
+                                    "canonical Codex auth", 2 if interrupted_link else 1)
+            os.fsync(canonical_descriptor)
+        os.fchmod(canonical_directory, 0o700)
+        os.fsync(canonical_directory)
+        if source_descriptor is not None:
+            path_matches_descriptor(source_parent, "auth.json", source_descriptor,
+                                    "historical Codex auth", 2 if interrupted_link else 1)
+            path_matches_descriptor(canonical_directory, "auth.json", canonical_descriptor,
+                                    "canonical Codex auth", 2 if interrupted_link else 1)
+            os.unlink("auth.json", dir_fd=source_parent)
+            os.fsync(source_parent)
+            path_matches_descriptor(canonical_directory, "auth.json", canonical_descriptor,
+                                    "canonical Codex auth")
+        raise SystemExit(0)
+
+    if canonical_directory is None:
+        try:
+            os.mkdir(".codex", 0o700, dir_fd=home_descriptor)
+            os.fsync(home_descriptor)
+        except FileExistsError:
+            pass
+        canonical_directory = open_optional_directory(
+            home_descriptor, ".codex", "canonical Codex directory")
+        if canonical_directory is None:
+            fail("could not create canonical Codex directory")
+
+    os.fchmod(canonical_directory, 0o700)
+    try:
+        os.stat("auth.json", dir_fd=canonical_directory, follow_symlinks=False)
+    except FileNotFoundError:
+        pass
+    else:
+        fail("canonical Codex credential appeared during migration")
+    path_matches_descriptor(source_parent, "auth.json", source_descriptor,
+                            "historical Codex auth")
+
+    try:
+        os.link("auth.json", "auth.json", src_dir_fd=source_parent,
+                dst_dir_fd=canonical_directory, follow_symlinks=False)
+        os.fsync(canonical_directory)
+        linked_descriptor = os.open("auth.json", file_flags, dir_fd=canonical_directory)
+        try:
+            linked_metadata = os.fstat(linked_descriptor)
+            source_metadata = os.fstat(source_descriptor)
+            if ((linked_metadata.st_dev, linked_metadata.st_ino) !=
+                    (source_metadata.st_dev, source_metadata.st_ino) or
+                    linked_metadata.st_nlink != 2 or not descriptors_equal(
+                        source_descriptor, linked_descriptor)):
+                fail("could not verify linked canonical Codex credential")
+            os.fsync(linked_descriptor)
+        finally:
+            os.close(linked_descriptor)
+    except OSError as error:
+        if error.errno != errno.EXDEV:
+            fail("could not atomically install canonical Codex credential")
+        temporary_name = f".auth.json.{os.getpid()}.{secrets.token_hex(8)}.tmp"
+        temporary_descriptor = None
+        try:
+            temporary_descriptor = os.open(
+                temporary_name,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
+                0o600,
+                dir_fd=canonical_directory,
+            )
+            offset = 0
+            while True:
+                chunk = os.pread(source_descriptor, 1024 * 1024, offset)
+                if not chunk:
+                    break
+                view = memoryview(chunk)
+                while view:
+                    written = os.write(temporary_descriptor, view)
+                    view = view[written:]
+                offset += len(chunk)
+            os.fchmod(temporary_descriptor, 0o600)
+            os.fsync(temporary_descriptor)
+            os.link(temporary_name, "auth.json", src_dir_fd=canonical_directory,
+                    dst_dir_fd=canonical_directory, follow_symlinks=False)
+            os.fsync(canonical_directory)
+            os.unlink(temporary_name, dir_fd=canonical_directory)
+            temporary_name = None
+            os.fsync(canonical_directory)
+        finally:
+            if temporary_descriptor is not None:
+                os.close(temporary_descriptor)
+            if temporary_name is not None:
+                try:
+                    os.unlink(temporary_name, dir_fd=canonical_directory)
+                except FileNotFoundError:
+                    pass
+
+    source_links = os.fstat(source_descriptor).st_nlink
+    installed_descriptor = open_optional_auth(
+        canonical_directory, "auth.json", "canonical Codex auth", source_links)
+    if installed_descriptor is None:
+        fail("canonical Codex credential disappeared after installation")
+    try:
+        if not descriptors_equal(source_descriptor, installed_descriptor):
+            fail("canonical Codex credential failed verification")
+        os.fsync(installed_descriptor)
+        path_matches_descriptor(source_parent, "auth.json", source_descriptor,
+                                "historical Codex auth",
+                                2 if os.fstat(source_descriptor).st_nlink == 2 else 1)
+        path_matches_descriptor(canonical_directory, "auth.json", installed_descriptor,
+                                "canonical Codex auth",
+                                os.fstat(installed_descriptor).st_nlink)
+        os.unlink("auth.json", dir_fd=source_parent)
+        os.fsync(source_parent)
+        path_matches_descriptor(canonical_directory, "auth.json", installed_descriptor,
+                                "canonical Codex auth")
+        os.fsync(canonical_directory)
+    finally:
+        os.close(installed_descriptor)
+finally:
+    if canonical_descriptor is not None:
+        os.close(canonical_descriptor)
+    if source_descriptor is not None:
+        os.close(source_descriptor)
+    if canonical_directory is not None:
+        os.close(canonical_directory)
+    os.close(home_descriptor)
+    os.close(source_parent)
+PY
+	then
+		fatal 'Could not securely migrate historical Codex authentication'
+	fi
+}
+
 verify_aorus_codex_login() {
 	local login_uid
 	local mise_bin="$HOME/.local/bin/mise"
@@ -1588,6 +1896,7 @@ case "$OS" in
 	*) fatal "Unsupported operating system: $OS" ;;
 esac
 
+migrate_legacy_codex_auth
 verify_aorus_codex_login
 setup_user_state
 migrate_legacy_omniroute_state

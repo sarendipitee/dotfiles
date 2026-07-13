@@ -125,14 +125,22 @@ foreground Docker mode. Its API and database ports bind only to
 Hindsight reads secrets from untracked
 `~/.config/hindsight/hindsight.env` and persists database state under
 `~/.local/share/hindsight`. Neither path belongs in this repository.
-Before provisioning `aorus`, authenticate Codex interactively as the login user:
+Provisioning `aorus` securely migrates historical ignored Codex authentication
+from `packages/ai/.codex/auth.json` into canonical `~/.codex/auth.json`, then
+removes historical copy after verifying canonical credential. Existing matching
+credentials converge idempotently; conflicting credentials fail closed without
+overwriting either file.
+
+Only when no valid credential exists, authenticate Codex interactively as login
+user:
 
 ```bash
 mise exec -- codex login
 ```
 
-Bootstrap checks `mise exec -- codex login status` before changing service or
-OmniRoute state. Failed login status aborts without stopping services or
+Bootstrap migrates authentication and checks `mise exec -- codex login status`
+before changing service or OmniRoute state. Failed login status aborts without
+stopping services or
 modifying migration state, and command output is suppressed to avoid exposing
 authentication details.
 
