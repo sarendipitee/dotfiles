@@ -34,4 +34,8 @@ path=(
 	$path
 )
 
+if [[ -n ${CUDA_HOME-} && -x "$CUDA_HOME/bin/nvcc" ]]; then
+	path=("$CUDA_HOME/bin" $path)
+fi
+
 [ -f "$XDG_DATA_HOME/ghcup/env" ] && source "$XDG_DATA_HOME/ghcup/env"

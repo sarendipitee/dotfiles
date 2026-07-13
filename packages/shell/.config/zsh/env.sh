@@ -33,6 +33,10 @@ export PERSONAL_AUTOLOAD_DIR="${HOME}/.my/autoload"
 export ARCH="${HOSTTYPE:-$(uname -m)}"
 export ARCHFLAGS="-arch ${ARCH}"
 
+if [[ -x "${CUDA_HOME:-/usr/local/cuda}/bin/nvcc" ]]; then
+	export CUDA_HOME="${CUDA_HOME:-/usr/local/cuda}"
+fi
+
 # ZSH
 export HISTFILE="$XDG_STATE_HOME"/zsh/history
 export ZSH_CACHE_DIR="${XDG_CACHE_HOME}/zsh"

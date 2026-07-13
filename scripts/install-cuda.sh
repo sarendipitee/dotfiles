@@ -54,16 +54,32 @@ install_cuda_repository() {
 	TMP_DIR=
 }
 
+find_nvcc() {
+	local cuda_home="${CUDA_HOME:-/usr/local/cuda}"
+	local nvcc="$cuda_home/bin/nvcc"
+
+	if [ -x "$nvcc" ]; then
+		printf '%s\n' "$nvcc"
+		return 0
+	fi
+	command -v nvcc 2>/dev/null
+}
+
 install_cuda_toolkit() {
-	if command -v nvcc >/dev/null 2>&1; then
-		printf 'CUDA toolkit already installed: %s\n' "$(nvcc --version | tail -1)"
+	local nvcc nvcc_version
+
+	if nvcc=$(find_nvcc) && nvcc_version=$("$nvcc" --version); then
+		printf 'CUDA toolkit already installed: %s\n' "$(printf '%s\n' "$nvcc_version" | tail -1)"
 		return
 	fi
 
 	install_cuda_repository
 	sudo apt-get update
 	sudo apt-get install -y cuda-toolkit
-	command -v nvcc >/dev/null 2>&1 || error 'CUDA toolkit installed without nvcc'
+	if ! nvcc=$(find_nvcc) || ! nvcc_version=$("$nvcc" --version); then
+		error 'CUDA toolkit installed without a working nvcc'
+	fi
+	printf 'CUDA toolkit installed: %s\n' "$(printf '%s\n' "$nvcc_version" | tail -1)"
 }
 
 install_container_toolkit() {
@@ -108,4 +124,6 @@ main() {
 	"$container_toolkit" && install_container_toolkit
 }
 
-main "$@"
+if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+	main "$@"
+fi

@@ -54,6 +54,30 @@ if command -v shellcheck >/dev/null 2>&1; then
 		"$repo_dir/packages/process-compose/.local/bin/dotfiles-omniroute"
 fi
 
+cuda_test_home="$tmp_dir/cuda-root/usr/local/cuda"
+cuda_test_mock_bin="$tmp_dir/cuda-mock-bin"
+cuda_test_output="$tmp_dir/cuda-output"
+cuda_test_sudo_log="$tmp_dir/cuda-sudo-log"
+mkdir -p "$cuda_test_home/bin" "$cuda_test_mock_bin"
+cat > "$cuda_test_home/bin/nvcc" <<'EOF'
+#!/usr/bin/env bash
+printf 'Cuda compilation tools, release 13.3, V13.3.42\n'
+EOF
+cat > "$cuda_test_mock_bin/sudo" <<'EOF'
+#!/usr/bin/env bash
+printf 'sudo called\n' >> "$CUDA_TEST_SUDO_LOG"
+exit 97
+EOF
+chmod +x "$cuda_test_home/bin/nvcc" "$cuda_test_mock_bin/sudo"
+CUDA_HOME="$cuda_test_home" CUDA_TEST_SUDO_LOG="$cuda_test_sudo_log" \
+	PATH="$cuda_test_mock_bin:/usr/bin:/bin" \
+	bash -c 'source "$1"; install_cuda_toolkit; install_cuda_toolkit' \
+	_ "$repo_dir/scripts/install-cuda.sh" > "$cuda_test_output"
+[ "$(grep -c '^CUDA toolkit already installed: .*release 13.3, V13.3.42$' \
+	"$cuda_test_output")" -eq 2 ] ||
+	fail 'CUDA toolkit detection is not idempotent outside PATH'
+[ ! -e "$cuda_test_sudo_log" ] || fail 'CUDA toolkit detection attempted reinstall outside PATH'
+
 yq_bin=$(mise which yq 2>/dev/null || command -v yq) ||
 	fail 'yq is required for Process Compose smoke tests'
 process_compose_bin=$(mise which process-compose 2>/dev/null || command -v process-compose) ||
@@ -126,6 +150,9 @@ grep -Fxq '"brew:et" = "latest"' "$repo_dir/packages/mise/.config/mise/config.to
 grep -Fxq 'export PATH="/opt/homebrew/bin:/home/linuxbrew/.linuxbrew/bin:${PATH:-/usr/bin:/bin}"' \
 	"$repo_dir/packages/process-compose/.local/bin/dotfiles-process-compose" ||
 	fail 'Process Compose launcher Homebrew PATH is not deterministic'
+grep -Fq '[[ -x "${CUDA_HOME:-/usr/local/cuda}/bin/nvcc" ]]' \
+	"$repo_dir/packages/process-compose/.local/bin/dotfiles-process-compose" ||
+	fail 'Process Compose launcher does not discover canonical CUDA toolkit'
 tracked_process_compose_runtime=$(git -C "$repo_dir" ls-files packages/process-compose | grep -Ei \
 	'(^|/)(\.env($|\.)|[^/]*(secret|token|credential)[^/]*|state)(/|$)' || true)
 [ -z "$tracked_process_compose_runtime" ] ||
@@ -178,6 +205,12 @@ HOME="$test_home" XDG_STATE_HOME="$test_home/.local/state" \
 [ -L "$test_home/.local/bin/dotfiles-omniroute" ] || fail 'OmniRoute pre-start wrapper was not linked'
 grep -R -q '^legacy zshenv$' "$test_home/.local/state/dotfiles/backups" || fail '.zshenv backup missing'
 grep -q 'mise/shims' "$test_home/.config/zsh/path.sh" || fail 'Mise shims are absent from shell PATH config'
+CUDA_HOME="$cuda_test_home" HOME="$test_home" zsh -c '
+	source "$1"
+	source "$2"
+	[[ "$CUDA_HOME" == "$3" && "$path[1]" == "$3/bin" ]]
+' _ "$test_home/.config/zsh/env.sh" "$test_home/.config/zsh/path.sh" "$cuda_test_home" ||
+	fail 'Canonical CUDA toolkit is absent from shell environment'
 [ ! -L "$test_home/.config/zsh/flox.sh" ] || fail 'Stow did not remove legacy flox.sh link'
 [ ! -L "$test_home/.config/zsh/path.pre-flox.sh" ] || fail 'Stow did not remove legacy pre-Flox PATH link'
 [ ! -L "$test_home/.config/zsh/path.post-flox.sh" ] || fail 'Stow did not remove legacy post-Flox PATH link'
