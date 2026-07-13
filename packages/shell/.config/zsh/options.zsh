@@ -119,12 +119,6 @@ command_exists bat && export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 export WORDCHARS="${WORDCHARS:s#/#}"
 export WORDCHARS="${WORDCHARS:s#.#}"
 
-if command_exists fzf; then
-  zmodload zsh/parameter
-  unset 'options[zle]'
-  eval "$(fzf --zsh)"
-fi
-
 # remove empty components to avoid '::' ending up + resulting in './' being in $PATH, etc
 # path=( "${path[@]:#}" )
 # fpath=( "${fpath[@]:#}" )

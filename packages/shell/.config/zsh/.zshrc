@@ -34,6 +34,16 @@ if [[ ! ${zsh_plugins}.zsh -nt ${zsh_plugins}.txt ]]; then
 fi
 source ${zsh_plugins}.zsh
 
+# Load fzf key bindings/widgets AFTER oh-my-zsh so they override OMZ's
+# history-incremental-search-backward on ^R (and ^T / ALT-C).
+if command -v fzf >/dev/null 2>&1; then
+  _fzf_init="${XDG_CACHE_HOME:-$HOME/.cache}/fzf-init.zsh"
+  if [[ ! -s "$_fzf_init" || "$_fzf_init" -ot "$(command -v fzf)" ]]; then
+    fzf --zsh >| "$_fzf_init" 2>/dev/null
+  fi
+  source "$_fzf_init"
+fi
+
 # Remote session indicator (SSH nesting badge for prompt)
 source "${DOTFILES_DIR:?}/packages/shell/.config/zsh/prompt-remote.zsh"
 
