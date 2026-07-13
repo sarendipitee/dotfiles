@@ -11,9 +11,9 @@ processes:
 
   omniroute:
     description: OmniRoute server
-    command: exec omniroute serve --no-open --no-recovery
+    command: exec ${HOME}/.local/bin/dotfiles-omniroute serve --no-open --no-recovery
     environment:
-      - "DATA_DIR=${HOME}/.local/state/omniroute"
+      - "DATA_DIR=${XDG_STATE_HOME}/omniroute"
       - "OMNIROUTE_SERVER_HOST=127.0.0.1"
     availability:
       restart: always
@@ -28,3 +28,35 @@ processes:
       timeout_seconds: 5
       success_threshold: 1
       failure_threshold: 3
+
+  codex-remote-control:
+    description: Codex remote-control server
+    command: exec ${HOME}/.local/bin/dotfiles-codex-remote-control
+    availability:
+      restart: always
+      backoff_seconds: 5
+    ready_log_line: '"mode":"foreground","status":"(connected|connecting)"'
+    success_exit_codes: [130]
+    shutdown:
+      signal: 2
+      timeout_seconds: 10
+
+  hindsight:
+    description: Hindsight server
+    command: exec /usr/bin/docker run --rm --name hindsight --pull always --env-file ${HOME}/.config/hindsight/hindsight.env -p 127.0.0.1:18888:8888 -p 127.0.0.1:19999:9999 -v ${HOME}/.local/share/hindsight:/home/hindsight/.pg0 ghcr.io/vectorize-io/hindsight:latest
+    availability:
+      restart: always
+      backoff_seconds: 10
+    readiness_probe:
+      http_get:
+        host: 127.0.0.1
+        port: 18888
+        path: /health
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 60
+    shutdown:
+      command: /usr/bin/docker stop -t 30 hindsight
+      timeout_seconds: 40

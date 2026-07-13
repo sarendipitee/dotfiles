@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+fatal() {
+  printf 'dotfiles-omniroute: %s\n' "$*" >&2
+  exit 1
+}
+
+path_owner_uid() {
+  local path="$1"
+  local owner_uid
+  if owner_uid=$(stat -f '%u' "$path" 2>/dev/null); then
+    printf '%s\n' "$owner_uid"
+  else
+    stat -c '%u' "$path"
+  fi
+}
+
+path_mode() {
+  local path="$1"
+  local mode
+  if mode=$(stat -f '%Lp' "$path" 2>/dev/null); then
+    printf '%s\n' "$mode"
+  else
+    stat -c '%a' "$path"
+  fi
+}
+
+validate_path_ancestors() {
+  local current_path=/
+  local mode
+  local owner_uid
+  local path="$1"
+  local path_suffix
+  local user_uid="$2"
+
+  case "$path" in
+    /*) ;;
+    *) fatal 'package .env path must be absolute' ;;
+  esac
+  path_suffix=${path#/}
+  while [[ -n "$path_suffix" ]]; do
+    current_path="${current_path%/}/${path_suffix%%/*}"
+    [[ -e "$current_path" ]] || fatal 'package .env contains a missing path component'
+    [[ ! -L "$current_path" ]] || fatal 'package .env path contains a symlink'
+    owner_uid=$(path_owner_uid "$current_path") || fatal 'cannot inspect package .env path ownership'
+    [[ "$owner_uid" == 0 || "$owner_uid" == "$user_uid" ]] ||
+      fatal 'package .env path contains a component owned by another user'
+    mode=$(path_mode "$current_path") || fatal 'cannot inspect package .env path permissions'
+    (( (8#$mode & 8#022) == 0 )) ||
+      fatal 'package .env path contains a group- or world-writable component'
+    if [[ "$path_suffix" == "${path_suffix#*/}" ]]; then
+      break
+    fi
+    path_suffix=${path_suffix#*/}
+  done
+}
+
+mise_bin="$HOME/.local/bin/mise"
+user_uid=$(id -u)
+[[ "$user_uid" != 0 ]] || fatal 'refusing to run as root'
+[[ -x "$mise_bin" ]] || fatal "Mise executable is missing or not executable: $mise_bin"
+
+install_dir=$("$mise_bin" where npm:omniroute) || fatal 'cannot resolve OmniRoute installation'
+case "$install_dir" in
+  /*) ;;
+  *) fatal 'Mise returned invalid OmniRoute installation path' ;;
+esac
+[[ "$install_dir" != *$'\n'* ]] || fatal 'Mise returned multiple OmniRoute installation paths'
+[[ -d "$install_dir" && ! -L "$install_dir" ]] || fatal 'OmniRoute installation path is unsafe'
+
+package_dir="$install_dir/lib/node_modules/omniroute"
+[[ -d "$package_dir" && ! -L "$package_dir" ]] || fatal 'OmniRoute package path is unsafe'
+[[ "$(realpath "$package_dir")" == "$package_dir" ]] || fatal 'OmniRoute package path contains a symlink'
+package_env="$package_dir/.env"
+[[ -f "$package_env" && ! -L "$package_env" ]] || fatal 'OmniRoute package .env is not a regular file'
+validate_path_ancestors "$package_env" "$user_uid"
+[[ "$(path_owner_uid "$package_env")" == "$user_uid" ]] ||
+  fatal 'OmniRoute package .env is not owned by current user'
+chmod 0600 "$package_env"
+[[ -f "$package_env" && ! -L "$package_env" ]] || fatal 'OmniRoute package .env changed during hardening'
+[[ "$(path_owner_uid "$package_env")" == "$user_uid" ]] ||
+  fatal 'OmniRoute package .env owner changed during hardening'
+[[ "$(path_mode "$package_env")" == 600 ]] || fatal 'OmniRoute package .env mode is not 0600'
+
+exec "$mise_bin" exec -- omniroute "$@"

@@ -58,7 +58,8 @@ jobs = 8
 "cloudflared" = "latest"
 "git-lfs" = "latest"
 "sops" = "latest"
-"npm:omniroute" = "latest"
+"npm:@openai/codex" = "latest"
+"npm:omniroute" = { version = "latest", allow_builds = ["omniroute", "better-sqlite3"] }
 "pipx:commitizen" = "latest"
 "pipx:thefuck" = "latest"
 "pipx:httpie" = "latest"

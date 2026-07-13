@@ -72,12 +72,12 @@ generated Brewfile or package lock synchronization step is required.
 Process definitions live in
 `~/.config/process-compose/process-compose.yaml`. Mise owns Process Compose,
 `yq`, and service binary versions. Service packages come from Mise/bootstrap:
-`brew:et`, `npm:omniroute`, and Node 26. `~/.config/process-compose/hosts.yaml`
-selects processes by host profile:
+`brew:et`, `npm:omniroute`, `npm:@openai/codex`, and Node 26.
+`~/.config/process-compose/hosts.yaml` selects processes by host profile:
 
 ```yaml
 sd-mbp: [eternal-terminal]
-aorus: [eternal-terminal, omniroute]
+aorus: [eternal-terminal, omniroute, codex-remote-control, hindsight]
 ```
 
 Eternal Terminal runs on every declared host and accepts inbound TCP connections
@@ -85,10 +85,42 @@ on port 2022. Allow that port through the host firewall and Tailscale policy for
 clients that need access.
 
 OmniRoute runs only on `aorus`, binds to `127.0.0.1:20128`, and reports health at
-`http://127.0.0.1:20128/api/monitoring/health`. Its mutable state and secrets live
-under `~/.local/state/omniroute` and must never be committed. Loopback binding
+`http://127.0.0.1:20128/api/monitoring/health`. Its database, generated files,
+and durable `.env` live under
+`${XDG_STATE_HOME:-$HOME/.local/state}/omniroute` and must never be committed.
+Bootstrap seeds that `.env` from OmniRoute's package-generated `.env` once,
+then preserves it across Mise upgrades. Existing durable values always win
+because OmniRoute loads `DATA_DIR/.env` before package `.env`. Loopback binding
 keeps its dashboard and API unavailable to remote clients; changing exposure
 requires authentication and matching firewall policy.
+
+Codex remote control runs only on `aorus` in foreground mode through Mise. Its
+wrapper reads only `OMNIROUTER_API_KEY` from Hindsight's environment file;
+other Hindsight secrets never enter Codex's environment. File ownership,
+permissions, ancestors, syntax, and key uniqueness fail closed before Codex
+starts. Its JSON startup line supplies Process Compose readiness, and Process
+Compose sends SIGINT for clean shutdown. Hindsight also runs only on `aorus` in
+foreground Docker mode. Its API and database ports bind only to
+`127.0.0.1:18888` and `127.0.0.1:19999`; health is checked at
+`http://127.0.0.1:18888/health`.
+Hindsight reads secrets from untracked
+`~/.config/hindsight/hindsight.env` and persists database state under
+`~/.local/share/hindsight`. Neither path belongs in this repository.
+
+Mise permits install scripts only for OmniRoute and its `better-sqlite3` native
+dependency. Before starting Process Compose, bootstrap enforces mode `0700` on
+OmniRoute's durable state directory and `0600` on both package and durable
+`.env` files. OmniRoute's Process Compose command uses a pre-start wrapper that
+repeats package `.env` validation and mode convergence on every process start,
+including restarts after Mise upgrades. Symlinked, writable-ancestor, or
+wrong-owner paths fail closed. Hardening runs with login-user authority.
+Invoking bootstrap through a root shell fails before OmniRoute files change.
+Bootstrap also opens an
+in-memory SQLite database to verify `better-sqlite3`; only a missing native
+binding triggers a forced OmniRoute reinstall through Mise, which applies the
+declared `omniroute` and `better-sqlite3` build-script allowlist. Bootstrap
+persists custom `XDG_STATE_HOME` values into generated launchd or systemd user
+service environment configuration so later restarts use identical state paths.
 
 Add process names to host arrays after defining them in `process-compose.yaml`.
 Selection precedence is non-empty `DOTFILES_HOST`, optional
@@ -112,6 +144,17 @@ one native user
 launcher: `io.sarendipitee.process-compose` through launchd on macOS, or
 `dotfiles-process-compose.service` through systemd on Linux. Linux bootstrap
 also enables lingering so user services continue without an interactive login.
+Before starting Process Compose, Linux bootstrap finishes Docker setup, stops
+the existing Process Compose owner, disables and stops legacy per-service
+systemd units for Eternal Terminal, OmniRoute, Codex remote control, and
+Hindsight, then stops any detached Codex remote-control daemon and removes a
+stale `hindsight` container. Legacy Codex rollback configuration is retained,
+but inline OmniRouter keys are atomically replaced with
+`EnvironmentFile=%h/.config/hindsight/hindsight.env` and mode `0600`. Bootstrap
+then waits up to ten minutes for all Aorus processes and Hindsight's HTTP health
+endpoint; provisioning fails if ownership transfer leaves replacements down.
+Fresh Docker group membership requires logout/login and a provisioning rerun
+before Process Compose ownership transfer starts.
 After declaration changes, validate, then restart and inspect launcher:
 
 ```bash

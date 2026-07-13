@@ -32,6 +32,7 @@ host_file="$config_dir/host"
 mise_bin="$HOME/.local/bin/mise"
 
 export PATH="/opt/homebrew/bin:/home/linuxbrew/.linuxbrew/bin:${PATH:-/usr/bin:/bin}"
+export XDG_STATE_HOME="${XDG_STATE_HOME:-$HOME/.local/state}"
 
 if [[ -n "${DOTFILES_HOST:-}" ]]; then
   host="$DOTFILES_HOST"
@@ -64,7 +65,7 @@ fi
 if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -w "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" && ! -L "$XDG_RUNTIME_DIR" ]]; then
   socket_dir="$XDG_RUNTIME_DIR/dpc"
 else
-  socket_dir="${XDG_STATE_HOME:-$HOME/.local/state}/process-compose/run"
+  socket_dir="$XDG_STATE_HOME/process-compose/run"
 fi
 umask 077
 mkdir -p "$socket_dir"
