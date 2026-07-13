@@ -28,7 +28,7 @@ backup_conflicts() {
 }
 
 git_ignore_patterns() {
-	local pkg_rel="$1" pkg_dir="$2" force="$3" tracked prefix esc type path parent
+	local pkg_rel="$1" pkg_dir="$2" force="$3" tracked prefix
 	tracked=$(mktemp)
 	git -C "$dotfiles_dir" ls-files -- "$pkg_rel" > "$tracked" || { rm -f "$tracked"; return; }
 	prefix="$pkg_rel/"
@@ -77,14 +77,25 @@ git_ignore_patterns() {
 	rm -f "$tracked"
 }
 
+os=$(uname -s)
+case "$os" in
+	Darwin) excluded_platform_package=systemd ;;
+	Linux) excluded_platform_package=launchd ;;
+	*)
+		printf 'Unsupported operating system: %s\n' "$os" >&2
+		exit 1
+		;;
+esac
+
 # Initialize git submodules (for antidote, etc.)
 git -C "$dotfiles_dir" submodule update --init --recursive
 
 packages=()
 for package_dir in "$packages_dir"/*; do
 	[ -d "$package_dir" ] || continue
-	case "$(basename "$package_dir")" in flox | homebrew) continue ;; esac
-	packages+=("$(basename "$package_dir")")
+	package=$(basename "$package_dir")
+	case "$package" in flox | homebrew | "$excluded_platform_package") continue ;; esac
+	packages+=("$package")
 done
 
 stow_args=(

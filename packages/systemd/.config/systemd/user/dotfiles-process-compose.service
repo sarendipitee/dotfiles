@@ -1,0 +1,12 @@
+[Unit]
+Description=Dotfiles host-selected services
+Documentation=https://f1bonacc1.github.io/process-compose/
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/dotfiles-process-compose
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

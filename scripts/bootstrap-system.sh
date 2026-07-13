@@ -74,6 +74,52 @@ setup_user_state() {
 	set_ssh_permissions
 }
 
+setup_process_compose() {
+	local launcher="$HOME/.local/bin/dotfiles-process-compose"
+	[ -x "$launcher" ] || fatal "Process Compose launcher is missing or not executable: $launcher"
+	"$launcher" --check
+
+	case "$OS" in
+		Darwin)
+			local domain
+			local label=io.sarendipitee.process-compose
+			local plist="$HOME/Library/LaunchAgents/${label}.plist"
+			domain="gui/$(id -u)"
+			launchctl enable "$domain/$label"
+			launchctl bootout "$domain/$label" >/dev/null 2>&1 || true
+			launchctl bootstrap "$domain" "$plist"
+			;;
+		Linux)
+			local login_uid
+			local legacy_unit
+			local legacy_unit_path
+			local legacy_unit_target
+			local user_systemctl=(systemctl --user)
+			login_uid=$(id -u "$LOGIN_USER")
+			sudo loginctl enable-linger "$LOGIN_USER"
+			if [ "$(id -un)" != "$LOGIN_USER" ]; then
+				user_systemctl=(
+					sudo -u "$LOGIN_USER" env
+					"XDG_RUNTIME_DIR=/run/user/$login_uid"
+					"DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/$login_uid/bus"
+					systemctl --user
+				)
+			fi
+			for legacy_unit in vllm-qwen.service vllm-gemma4.service vllm-step3.service; do
+				"${user_systemctl[@]}" disable --now "$legacy_unit" >/dev/null 2>&1 || true
+				legacy_unit_path="$XDG_CONFIG_HOME/systemd/user/$legacy_unit"
+				legacy_unit_target="$DOTFILES_DIR/packages/systemd/.config/systemd/user/$legacy_unit"
+				if [ -L "$legacy_unit_path" ] && [ "$(readlink -f "$legacy_unit_path")" = "$legacy_unit_target" ]; then
+					rm -f "$legacy_unit_path"
+				fi
+			done
+			"${user_systemctl[@]}" daemon-reload
+			"${user_systemctl[@]}" enable dotfiles-process-compose.service
+			"${user_systemctl[@]}" restart dotfiles-process-compose.service
+			;;
+	esac
+}
+
 setup_ssh_server() {
 	printf '==> Configuring OpenSSH server\n'
 	if [ "${DOTFILES_SSH_KEY_ONLY:-false}" = true ]; then
@@ -176,19 +222,25 @@ setup_tailscale() {
 	sudo systemctl is-active --quiet tailscaled || fatal 'tailscaled failed to start'
 }
 
+case "$OS" in
+	Darwin) ;;
+	Linux)
+		[ -r /etc/os-release ] || fatal '/etc/os-release is required'
+		# shellcheck disable=SC1091
+		source /etc/os-release
+		[ "${ID:-}" = ubuntu ] || fatal "Unsupported Linux distribution: ${ID:-unknown}"
+		case "${VERSION_ID:-}" in 22.04 | 24.04 | 26.04) ;; *) fatal "Unsupported Ubuntu release: ${VERSION_ID:-unknown}" ;; esac
+		;;
+	*) fatal "Unsupported operating system: $OS" ;;
+esac
+
 setup_user_state
+setup_process_compose
 
 if [ "$OS" = Darwin ]; then
 	printf 'macOS system bootstrap complete. Launch installed GUI applications once to finish their setup.\n'
 	exit 0
 fi
-
-[ "$OS" = Linux ] || fatal "Unsupported operating system: $OS"
-[ -r /etc/os-release ] || fatal '/etc/os-release is required'
-# shellcheck disable=SC1091
-source /etc/os-release
-[ "${ID:-}" = ubuntu ] || fatal "Unsupported Linux distribution: ${ID:-unknown}"
-case "${VERSION_ID:-}" in 22.04 | 24.04 | 26.04) ;; *) fatal "Unsupported Ubuntu release: ${VERSION_ID:-unknown}" ;; esac
 
 trap cleanup EXIT
 keep_sudo_alive
@@ -201,7 +253,6 @@ fi
 if [ "${DOTFILES_WITH_TAILSCALE:-true}" = true ]; then setup_tailscale; fi
 if [ "${DOTFILES_WITH_LINUXBREW_CA:-true}" = true ]; then setup_linuxbrew_ca; fi
 
-if command_exists recron; then recron; fi
 if [ -e /var/run/reboot-required ]; then REBOOT_REQUIRED=true; fi
 
 printf 'SSH: %s\n' "$(sudo systemctl is-active ssh 2>/dev/null || printf skipped)"

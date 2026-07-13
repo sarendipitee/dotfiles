@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+usage() {
+  echo "Usage: dotfiles-process-compose [--check]" >&2
+}
+
+check=false
+case "${1:-}" in
+  "") ;;
+  --check) check=true ;;
+  -h|--help)
+    usage
+    exit 0
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac
+
+if (( $# > 1 )); then
+  usage
+  exit 2
+fi
+
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/process-compose"
+compose_file="$config_dir/process-compose.yaml"
+hosts_file="$config_dir/hosts.yaml"
+host_file="$config_dir/host"
+mise_bin="$HOME/.local/bin/mise"
+
+export PATH="/opt/homebrew/bin:/home/linuxbrew/.linuxbrew/bin:${PATH:-/usr/bin:/bin}"
+
+if [[ -n "${DOTFILES_HOST:-}" ]]; then
+  host="$DOTFILES_HOST"
+elif [[ -e "$host_file" ]]; then
+  if [[ ! -f "$host_file" ]]; then
+    echo "dotfiles-process-compose: host profile is not a regular file: $host_file" >&2
+    exit 1
+  fi
+  host=""
+  host_line_count=0
+  while IFS= read -r host_line || [[ -n "$host_line" ]]; do
+    ((host_line_count += 1))
+    if (( host_line_count == 1 )); then
+      host="$host_line"
+    fi
+  done < "$host_file"
+  if (( host_line_count != 1 )) || [[ -z "$host" ]]; then
+    echo "dotfiles-process-compose: host profile must contain exactly one non-empty line: $host_file" >&2
+    exit 1
+  fi
+else
+  host="$(hostname -s)"
+fi
+
+if [[ ! "$host" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+  echo "dotfiles-process-compose: invalid host profile" >&2
+  exit 1
+fi
+
+if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -w "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" && ! -L "$XDG_RUNTIME_DIR" ]]; then
+  socket_dir="$XDG_RUNTIME_DIR/dpc"
+else
+  socket_dir="${XDG_STATE_HOME:-$HOME/.local/state}/process-compose/run"
+fi
+umask 077
+mkdir -p "$socket_dir"
+if [[ ! -d "$socket_dir" || -L "$socket_dir" || ! -O "$socket_dir" ]]; then
+  echo "dotfiles-process-compose: unsafe socket directory: $socket_dir" >&2
+  exit 1
+fi
+chmod 0700 "$socket_dir"
+socket_path="$socket_dir/pc.sock"
+
+if [[ ! -x "$mise_bin" ]]; then
+  echo "dotfiles-process-compose: Mise executable not found: $mise_bin" >&2
+  exit 1
+fi
+
+for config_file in "$compose_file" "$hosts_file"; do
+  if [[ ! -f "$config_file" ]]; then
+    echo "dotfiles-process-compose: config not found: $config_file" >&2
+    exit 1
+  fi
+done
+
+export DOTFILES_PROCESS_COMPOSE_HOST="$host"
+
+yq_cmd=("$mise_bin" exec -- yq)
+if ! "${yq_cmd[@]}" -e '
+  tag == "!!map" and
+  has(strenv(DOTFILES_PROCESS_COMPOSE_HOST)) and
+  (.[strenv(DOTFILES_PROCESS_COMPOSE_HOST)] | tag == "!!seq") and
+  (.[strenv(DOTFILES_PROCESS_COMPOSE_HOST)] |
+  (length == 0 or all_c(tag == "!!str" and test("^[A-Za-z0-9][A-Za-z0-9._-]*$"))))
+' "$hosts_file" >/dev/null 2>&1; then
+  echo "dotfiles-process-compose: unknown host or invalid process list: $host" >&2
+  exit 1
+fi
+
+processes=()
+process_count=0
+while IFS= read -r process; do
+  processes[process_count]="$process"
+  ((process_count += 1))
+done < <("${yq_cmd[@]}" -r '.[strenv(DOTFILES_PROCESS_COMPOSE_HOST)][]' "$hosts_file")
+
+for process in ${processes[@]+"${processes[@]}"}; do
+  export DOTFILES_PROCESS_COMPOSE_PROCESS="$process"
+  if ! "${yq_cmd[@]}" -e '
+    .processes | (tag == "!!map" and has(strenv(DOTFILES_PROCESS_COMPOSE_PROCESS)))
+  ' "$compose_file" >/dev/null 2>&1; then
+    echo "dotfiles-process-compose: undefined process for $host: $process" >&2
+    exit 1
+  fi
+done
+unset DOTFILES_PROCESS_COMPOSE_PROCESS
+
+process_compose_cmd=(
+  "$mise_bin" exec -- process-compose
+  -f "$compose_file"
+  -t=false
+  --disable-dotenv
+  --use-uds
+  --unix-socket "$socket_path"
+)
+
+if [[ "$check" == true ]]; then
+  if (( process_count == 0 )); then
+    "${process_compose_cmd[@]}" --dry-run up
+  else
+    "${process_compose_cmd[@]}" --dry-run up -- "${processes[@]}"
+  fi
+  exit 0
+fi
+
+if (( process_count == 0 )); then
+  exit 0
+fi
+
+printf 'dotfiles-process-compose: socket: %s\n' "$socket_path" >&2
+exec "${process_compose_cmd[@]}" up -- "${processes[@]}"

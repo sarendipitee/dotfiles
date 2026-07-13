@@ -1,0 +1,30 @@
+version: "0.5"
+is_strict: true
+
+processes:
+  eternal-terminal:
+    description: Eternal Terminal server
+    command: exec etserver --port 2022 --logtostdout
+    availability:
+      restart: always
+      backoff_seconds: 5
+
+  omniroute:
+    description: OmniRoute server
+    command: exec omniroute serve --no-open --no-recovery
+    environment:
+      - "DATA_DIR=${HOME}/.local/state/omniroute"
+      - "OMNIROUTE_SERVER_HOST=127.0.0.1"
+    availability:
+      restart: always
+      backoff_seconds: 5
+    readiness_probe:
+      http_get:
+        host: 127.0.0.1
+        port: 20128
+        path: /api/monitoring/health
+      initial_delay_seconds: 5
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 3

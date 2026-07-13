@@ -23,6 +23,7 @@ GitHub Pages. Use HTTPS so script cannot be modified in transit.
 | `nvim` | Neovim with LazyVim distribution and 25+ plugins |
 | `ai` | Claude, OpenCode, and Kilo AI tool configurations |
 | `mise` | Global Mise tools, system packages, repositories, and bootstrap hooks |
+| `process-compose` | Host-selected declarative user services managed by Process Compose |
 | `zoxide` | Directory bookmarking tool configuration |
 | `misc` | Miscellaneous scripts and binaries |
 
@@ -66,6 +67,79 @@ applications. Mise's Brew package manager supplies shared packages on macOS and
 Linux; APT entries cover Ubuntu-only services and build dependencies. No
 generated Brewfile or package lock synchronization step is required.
 
+## Declarative User Services
+
+Process definitions live in
+`~/.config/process-compose/process-compose.yaml`. Mise owns Process Compose,
+`yq`, and service binary versions. Service packages come from Mise/bootstrap:
+`brew:et`, `npm:omniroute`, and Node 26. `~/.config/process-compose/hosts.yaml`
+selects processes by host profile:
+
+```yaml
+sd-mbp: [eternal-terminal]
+aorus: [eternal-terminal, omniroute]
+```
+
+Eternal Terminal runs on every declared host and accepts inbound TCP connections
+on port 2022. Allow that port through the host firewall and Tailscale policy for
+clients that need access.
+
+OmniRoute runs only on `aorus`, binds to `127.0.0.1:20128`, and reports health at
+`http://127.0.0.1:20128/api/monitoring/health`. Its mutable state and secrets live
+under `~/.local/state/omniroute` and must never be committed. Loopback binding
+keeps its dashboard and API unavailable to remote clients; changing exposure
+requires authentication and matching firewall policy.
+
+Add process names to host arrays after defining them in `process-compose.yaml`.
+Selection precedence is non-empty `DOTFILES_HOST`, optional
+`~/.config/process-compose/host`, then `hostname -s`. Use `DOTFILES_HOST` as a
+one-shot override. Put one profile name in the untracked `host` file for a
+persistent native-service override when machine hostname differs. Empty,
+multiline, and unsafe profile values fail validation, as do unknown hosts and
+undefined processes. Machine-specific `host` files and secrets must not be
+committed. Process declarations needing secrets must use explicit Process
+Compose environment configuration or external files outside repository.
+Launcher passes `--disable-dotenv`, preventing implicit `.env` loading.
+Validate declarations:
+
+```bash
+~/.local/bin/dotfiles-process-compose --check
+DOTFILES_HOST=sd-mbp ~/.local/bin/dotfiles-process-compose --check
+```
+
+Run `./scripts/provision.sh` to install packages, link declarations, and activate
+one native user
+launcher: `io.sarendipitee.process-compose` through launchd on macOS, or
+`dotfiles-process-compose.service` through systemd on Linux. Linux bootstrap
+also enables lingering so user services continue without an interactive login.
+After declaration changes, validate, then restart and inspect launcher:
+
+```bash
+# macOS
+launchctl kickstart -k "gui/$(id -u)/io.sarendipitee.process-compose"
+launchctl print "gui/$(id -u)/io.sarendipitee.process-compose"
+
+# Linux
+systemctl --user restart dotfiles-process-compose.service
+systemctl --user status dotfiles-process-compose.service
+```
+
+Process Compose exposes its TUI through a user-only Unix socket. Launcher uses
+`$XDG_RUNTIME_DIR/dpc/pc.sock` when runtime directory is safe and writable;
+otherwise it uses
+`${XDG_STATE_HOME:-$HOME/.local/state}/process-compose/run/pc.sock`. Attach with:
+
+```bash
+socket="${XDG_STATE_HOME:-$HOME/.local/state}/process-compose/run/pc.sock"
+if [[ -n "${XDG_RUNTIME_DIR:-}" && -S "$XDG_RUNTIME_DIR/dpc/pc.sock" ]]; then
+  socket="$XDG_RUNTIME_DIR/dpc/pc.sock"
+fi
+~/.local/bin/mise exec -- process-compose --use-uds --unix-socket "$socket" attach
+```
+
+Privileged and vendor system daemons such as Docker, SSH, Tailscale, and vLLM
+remain native system services.
+
 ## Repository Structure
 
 ```
@@ -77,6 +151,9 @@ dotfiles/
 │   ├── nvim/          # Neovim configuration
 │   ├── ai/            # AI tool configs
 │   ├── mise/          # Global Mise bootstrap config
+│   ├── process-compose/ # Declarative user services and launcher
+│   ├── launchd/       # macOS user launchers
+│   ├── systemd/       # Linux user units
 │   └── ...
 ├── scripts/            # Bootstrap and setup scripts
 │   ├── provision.sh   # Existing-clone bootstrap wrapper

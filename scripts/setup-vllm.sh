@@ -706,7 +706,13 @@ run_privileged visudo -cf "${SUDOERS_FILE}" >/dev/null
 
 section_header 'Disabling legacy per-model vLLM units'
 for legacy_unit in vllm-qwen.service vllm-gemma4.service vllm-step3.service; do
-	run_privileged systemctl disable --now "${legacy_unit}" >/dev/null 2>&1 || true
+	if [[ "$(id -u)" == "0" ]]; then
+		owner_uid="$(id -u "${VLLM_OWNER}")"
+		sudo -u "${VLLM_OWNER}" XDG_RUNTIME_DIR="/run/user/${owner_uid}" \
+			systemctl --user disable --now "${legacy_unit}" >/dev/null 2>&1 || true
+	else
+		systemctl --user disable --now "${legacy_unit}" >/dev/null 2>&1 || true
+	fi
 done
 
 section_header 'Pulling pinned vLLM image and starting service'
