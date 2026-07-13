@@ -18,6 +18,9 @@ fi
 source "$ZDOTDIR/completions-opts.zsh"
 source "$ZDOTDIR/options.zsh"
 
+# Local completions (must be before compinit, which runs inside .zsh_plugins.zsh)
+fpath=( "$ZDOTDIR/completions" $fpath )
+
 # Antidote plugin manager (static loading for speed)
 source "$ZDOTDIR/antidote/antidote.zsh"
 
