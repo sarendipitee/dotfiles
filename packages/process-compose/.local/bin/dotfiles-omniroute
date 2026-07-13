@@ -27,34 +27,70 @@ path_mode() {
   fi
 }
 
-validate_path_ancestors() {
-  local current_path=/
-  local mode
-  local owner_uid
+converge_path_directories() {
   local path="$1"
-  local path_suffix
-  local user_uid="$2"
+  local purpose="$2"
 
-  case "$path" in
-    /*) ;;
-    *) fatal 'package .env path must be absolute' ;;
-  esac
-  path_suffix=${path#/}
-  while [[ -n "$path_suffix" ]]; do
-    current_path="${current_path%/}/${path_suffix%%/*}"
-    [[ -e "$current_path" ]] || fatal 'package .env contains a missing path component'
-    [[ ! -L "$current_path" ]] || fatal 'package .env path contains a symlink'
-    owner_uid=$(path_owner_uid "$current_path") || fatal 'cannot inspect package .env path ownership'
-    [[ "$owner_uid" == 0 || "$owner_uid" == "$user_uid" ]] ||
-      fatal 'package .env path contains a component owned by another user'
-    mode=$(path_mode "$current_path") || fatal 'cannot inspect package .env path permissions'
-    (( (8#$mode & 8#022) == 0 )) ||
-      fatal 'package .env path contains a group- or world-writable component'
-    if [[ "$path_suffix" == "${path_suffix#*/}" ]]; then
-      break
-    fi
-    path_suffix=${path_suffix#*/}
-  done
+  if ! "$mise_bin" exec -- python - "$HOME" "$user_uid" "$path" "$purpose" <<'PY'
+import os
+import stat
+import sys
+
+expected_home, uid_text, path, purpose = sys.argv[1:]
+user_uid = int(uid_text)
+
+def fail(message):
+    raise SystemExit(f"{purpose} {message}")
+
+for name, value in (("expected home", expected_home), ("path", path)):
+    if not os.path.isabs(value):
+        fail(f"{name} must be absolute")
+    if value != os.path.normpath(value):
+        fail(f"{name} must be normalized")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        fail(f"{name} contains control characters")
+
+try:
+    if os.path.commonpath((expected_home, path)) != expected_home:
+        fail("escapes expected home")
+except ValueError:
+    fail("is not under expected home")
+
+flags = os.O_RDONLY | os.O_DIRECTORY
+if not hasattr(os, "O_NOFOLLOW"):
+    fail("cannot reject symlinks on this platform")
+flags |= os.O_NOFOLLOW
+
+current_fd = os.open("/", flags)
+try:
+    for component in path.split(os.sep)[1:]:
+        if component in ("", ".", ".."):
+            fail("contains an invalid path component")
+        try:
+            next_fd = os.open(component, flags, dir_fd=current_fd)
+        except OSError as error:
+            fail(f"contains an unsafe or missing directory: {error.strerror}")
+        os.close(current_fd)
+        current_fd = next_fd
+
+        metadata = os.fstat(current_fd)
+        if not stat.S_ISDIR(metadata.st_mode):
+            fail("contains a non-directory component")
+        if metadata.st_uid not in (0, user_uid):
+            fail("contains a directory owned by another user")
+        if metadata.st_mode & 0o022:
+            if metadata.st_uid != user_uid:
+                fail("contains a writable directory not owned by current user")
+            os.fchmod(current_fd, stat.S_IMODE(metadata.st_mode) & ~0o022)
+            metadata = os.fstat(current_fd)
+        if metadata.st_uid not in (0, user_uid) or metadata.st_mode & 0o022:
+            fail("remains writable or changed during convergence")
+finally:
+    os.close(current_fd)
+PY
+  then
+    fatal "could not securely converge $purpose"
+  fi
 }
 
 mise_bin="$HOME/.local/bin/mise"
@@ -71,11 +107,11 @@ esac
 [[ -d "$install_dir" && ! -L "$install_dir" ]] || fatal 'OmniRoute installation path is unsafe'
 
 package_dir="$install_dir/lib/node_modules/omniroute"
+converge_path_directories "$package_dir" 'package path'
 [[ -d "$package_dir" && ! -L "$package_dir" ]] || fatal 'OmniRoute package path is unsafe'
 [[ "$(realpath "$package_dir")" == "$package_dir" ]] || fatal 'OmniRoute package path contains a symlink'
 package_env="$package_dir/.env"
 [[ -f "$package_env" && ! -L "$package_env" ]] || fatal 'OmniRoute package .env is not a regular file'
-validate_path_ancestors "$package_env" "$user_uid"
 [[ "$(path_owner_uid "$package_env")" == "$user_uid" ]] ||
   fatal 'OmniRoute package .env is not owned by current user'
 chmod 0600 "$package_env"

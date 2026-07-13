@@ -537,12 +537,14 @@ grep -q "$codex_wrapper_secret" "$tmp_dir/codex-wrapper-owner.out" &&
 	fail 'Codex owner rejection printed secret'
 
 wrapper_home="$tmp_dir/wrapper-home"
-wrapper_install="$tmp_dir/wrapper-install"
+wrapper_install="$wrapper_home/.local/share/mise/installs/npm-omniroute/fake"
 wrapper_log="$tmp_dir/wrapper.log"
 wrapper_binding_env="$wrapper_install/lib/node_modules/omniroute/.env"
 wrapper_durable_env="$wrapper_home/.local/state/omniroute/.env"
 mkdir -p "$wrapper_home/.local/bin" "$wrapper_home/.local/state/omniroute" \
 	"$wrapper_install/lib/node_modules/omniroute"
+chmod 0775 "$wrapper_home/.local" "$wrapper_home/.local/share" \
+	"$wrapper_home/.local/share/mise" "$wrapper_home/.local/share/mise/installs"
 cp "$repo_dir/packages/process-compose/.local/bin/dotfiles-omniroute" \
 	"$wrapper_home/.local/bin/dotfiles-omniroute"
 cat > "$wrapper_home/.local/bin/mise" <<'EOF'
@@ -550,6 +552,10 @@ cat > "$wrapper_home/.local/bin/mise" <<'EOF'
 if [ "$1" = where ] && [ "$2" = npm:omniroute ]; then
 	printf '%s\n' "$FAKE_OMNIROUTE_DIR"
 	exit
+fi
+if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = python ]; then
+	shift 3
+	exec /usr/bin/python3 "$@"
 fi
 if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = omniroute ]; then
 	[ "$(stat -f '%Lp' "$FAKE_PACKAGE_ENV" 2>/dev/null || stat -c '%a' "$FAKE_PACKAGE_ENV")" = 600 ] || exit 65
@@ -569,6 +575,10 @@ HOME="$wrapper_home" FAKE_OMNIROUTE_DIR="$wrapper_install" \
 	"$wrapper_home/.local/bin/dotfiles-omniroute" serve --no-open --no-recovery \
 	>"$tmp_dir/wrapper.out" 2>&1 || fail 'OmniRoute pre-start package .env convergence failed'
 assert_mode 600 "$wrapper_binding_env"
+assert_mode 755 "$wrapper_home/.local"
+assert_mode 755 "$wrapper_home/.local/share"
+assert_mode 755 "$wrapper_home/.local/share/mise"
+assert_mode 755 "$wrapper_home/.local/share/mise/installs"
 grep -Fxq 'omniroute serve --no-open --no-recovery' "$wrapper_log" ||
 	fail 'OmniRoute wrapper did not exec exact service command'
 grep -Fxq 'preserved-durable-secret' "$wrapper_durable_env" ||
@@ -590,6 +600,24 @@ assert_mode 644 "$tmp_dir/outside-package-env"
 [ "$(wc -l < "$wrapper_log" | tr -d ' ')" = 1 ] ||
 	fail 'Symlinked OmniRoute package .env reached service exec'
 
+wrapper_outside_install="$tmp_dir/wrapper-outside-install"
+mkdir -p "$wrapper_outside_install/lib/node_modules/omniroute"
+printf '%s\n' 'outside-home-package-secret' > \
+	"$wrapper_outside_install/lib/node_modules/omniroute/.env"
+chmod 0775 "$wrapper_outside_install"
+chmod 0644 "$wrapper_outside_install/lib/node_modules/omniroute/.env"
+if HOME="$wrapper_home" FAKE_OMNIROUTE_DIR="$wrapper_outside_install" \
+	FAKE_PACKAGE_ENV="$wrapper_outside_install/lib/node_modules/omniroute/.env" \
+	FAKE_WRAPPER_LOG="$wrapper_log" \
+	"$wrapper_home/.local/bin/dotfiles-omniroute" serve \
+	>"$tmp_dir/wrapper-outside.out" 2>&1; then
+	fail 'Outside-home OmniRoute package path did not fail before mutation'
+fi
+assert_mode 775 "$wrapper_outside_install"
+assert_mode 644 "$wrapper_outside_install/lib/node_modules/omniroute/.env"
+[ "$(wc -l < "$wrapper_log" | tr -d ' ')" = 1 ] ||
+	fail 'Outside-home OmniRoute package path reached service exec'
+
 setup_process_compose_function=$(awk '
   /^command_exists\(\) \{/ { capture = 1 }
   /^setup_ssh_server\(\) \{/ { exit }
@@ -605,16 +633,22 @@ omniroute_bootstrap_functions=$(awk '
 [ -n "$omniroute_bootstrap_functions" ] || fail 'Could not extract OmniRoute bootstrap functions'
 
 harden_home="$tmp_dir/harden-home"
-harden_install="$tmp_dir/harden-install"
+harden_install="$harden_home/.local/share/mise/installs/npm-omniroute/fake"
 repair_log="$tmp_dir/omniroute-repair.log"
 binding_missing="$tmp_dir/omniroute-binding-missing"
 mkdir -p "$harden_home/.local/bin" "$harden_home/.local/state" \
 	"$harden_install/lib/node_modules/omniroute/dist"
+chmod 0775 "$harden_home/.local" "$harden_home/.local/share" \
+	"$harden_home/.local/share/mise" "$harden_home/.local/share/mise/installs"
 cat > "$harden_home/.local/bin/mise" <<'EOF'
 #!/usr/bin/env bash
 if [ "$1" = where ] && [ "$2" = npm:omniroute ]; then
 	printf '%s\n' "$FAKE_OMNIROUTE_DIR"
 	exit
+fi
+if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = python ]; then
+	shift 3
+	exec /usr/bin/python3 "$@"
 fi
 if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = node ]; then
 	if [ -e "$FAKE_BINDING_MISSING" ]; then
@@ -654,6 +688,10 @@ OMNIROUTE_BOOTSTRAP_FUNCTIONS="$omniroute_bootstrap_functions" \
 	bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$OMNIROUTE_BOOTSTRAP_FUNCTIONS"; harden_omniroute_env' \
 	>"$tmp_dir/harden.out" 2>&1 || fail 'Owned OmniRoute package .env hardening failed'
 assert_mode 600 "$harden_install/lib/node_modules/omniroute/.env"
+assert_mode 755 "$harden_home/.local"
+assert_mode 755 "$harden_home/.local/share"
+assert_mode 755 "$harden_home/.local/share/mise"
+assert_mode 755 "$harden_home/.local/share/mise/installs"
 assert_mode 700 "$harden_home/.local/state/omniroute"
 assert_mode 600 "$harden_home/.local/state/omniroute/.env"
 cmp -s "$harden_install/lib/node_modules/omniroute/.env" \
@@ -702,7 +740,7 @@ grep -Fxq "$custom_xdg_state/omniroute" "$xdg_probe_output" ||
 
 printf '%s\n' 'preserved-durable-value' > "$harden_home/.local/state/omniroute/.env"
 chmod 0644 "$harden_home/.local/state/omniroute/.env"
-harden_install_v2="$tmp_dir/harden-install-v2"
+harden_install_v2="$harden_home/.local/share/mise/installs/npm-omniroute/fake-v2"
 mkdir -p "$harden_install_v2/lib/node_modules/omniroute/dist"
 printf '%s\n' 'replacement-package-value' > "$harden_install_v2/lib/node_modules/omniroute/.env"
 chmod 0644 "$harden_install_v2/lib/node_modules/omniroute/.env"

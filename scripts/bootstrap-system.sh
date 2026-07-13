@@ -94,6 +94,75 @@ path_mode() {
 	fi
 }
 
+converge_path_directories() {
+	local mise_bin="$1"
+	local expected_home="$2"
+	local login_uid="$3"
+	local path="$4"
+	local purpose="$5"
+
+	if ! "$mise_bin" exec -- python - "$expected_home" "$login_uid" "$path" "$purpose" <<'PY'
+import os
+import stat
+import sys
+
+expected_home, uid_text, path, purpose = sys.argv[1:]
+user_uid = int(uid_text)
+
+def fail(message):
+    raise SystemExit(f"{purpose} {message}")
+
+for name, value in (("expected home", expected_home), ("path", path)):
+    if not os.path.isabs(value):
+        fail(f"{name} must be absolute")
+    if value != os.path.normpath(value):
+        fail(f"{name} must be normalized")
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        fail(f"{name} contains control characters")
+
+try:
+    if os.path.commonpath((expected_home, path)) != expected_home:
+        fail("escapes expected home")
+except ValueError:
+    fail("is not under expected home")
+
+flags = os.O_RDONLY | os.O_DIRECTORY
+if not hasattr(os, "O_NOFOLLOW"):
+    fail("cannot reject symlinks on this platform")
+flags |= os.O_NOFOLLOW
+
+current_fd = os.open("/", flags)
+try:
+    for component in path.split(os.sep)[1:]:
+        if component in ("", ".", ".."):
+            fail("contains an invalid path component")
+        try:
+            next_fd = os.open(component, flags, dir_fd=current_fd)
+        except OSError as error:
+            fail(f"contains an unsafe or missing directory: {error.strerror}")
+        os.close(current_fd)
+        current_fd = next_fd
+
+        metadata = os.fstat(current_fd)
+        if not stat.S_ISDIR(metadata.st_mode):
+            fail("contains a non-directory component")
+        if metadata.st_uid not in (0, user_uid):
+            fail("contains a directory owned by another user")
+        if metadata.st_mode & 0o022:
+            if metadata.st_uid != user_uid:
+                fail("contains a writable directory not owned by login user")
+            os.fchmod(current_fd, stat.S_IMODE(metadata.st_mode) & ~0o022)
+            metadata = os.fstat(current_fd)
+        if metadata.st_uid not in (0, user_uid) or metadata.st_mode & 0o022:
+            fail("remains writable or changed during convergence")
+finally:
+    os.close(current_fd)
+PY
+	then
+		fatal "Could not securely converge $purpose"
+	fi
+}
+
 validate_path_ancestors() {
 	local current_path=/
 	local login_uid="$1"
@@ -116,7 +185,8 @@ validate_path_ancestors() {
 		[ "$owner_uid" = 0 ] || [ "$owner_uid" = "$login_uid" ] ||
 			fatal "$purpose contains a path component owned by another user"
 		mode=$(path_mode "$current_path") || fatal "Could not inspect $purpose permissions"
-		(( (8#$mode & 8#022) == 0 )) || fatal "$purpose contains a group- or world-writable path component"
+		(( (8#$mode & 8#022) == 0 )) ||
+			fatal "$purpose contains a group- or world-writable path component"
 		if [ "$path_suffix" = "${path_suffix#*/}" ]; then
 			break
 		fi
@@ -173,11 +243,12 @@ harden_omniroute_env() {
 	[ -d "$install_dir" ] && [ ! -L "$install_dir" ] || fatal 'OmniRoute installation path is not a safe directory'
 
 	package_dir="$install_dir/lib/node_modules/omniroute"
+	converge_path_directories "$mise_bin" "$HOME" "$login_uid" "$package_dir" \
+		'OmniRoute package path'
 	[ -d "$package_dir" ] && [ ! -L "$package_dir" ] || fatal 'OmniRoute package path is not a safe directory'
 	[ "$(realpath "$package_dir")" = "$package_dir" ] || fatal 'OmniRoute package path contains a symlink'
 	package_env="$package_dir/.env"
 	[ -f "$package_env" ] && [ ! -L "$package_env" ] || fatal 'OmniRoute package .env is not a regular file'
-	validate_path_ancestors "$login_uid" "$package_env" 'OmniRoute package .env path'
 	owner_uid=$(path_owner_uid "$package_env") || fatal 'Could not inspect OmniRoute package .env ownership'
 	[ "$owner_uid" = "$login_uid" ] || fatal 'OmniRoute package .env is not owned by login user'
 	chmod 0600 "$package_env"
@@ -186,7 +257,7 @@ harden_omniroute_env() {
 		/*) ;;
 		*) fatal 'XDG_STATE_HOME must be an absolute path' ;;
 	esac
-	validate_path_ancestors "$login_uid" "$XDG_STATE_HOME" 'XDG_STATE_HOME path'
+	converge_path_directories "$mise_bin" "$HOME" "$login_uid" "$XDG_STATE_HOME" 'XDG_STATE_HOME path'
 	[ -d "$XDG_STATE_HOME" ] && [ ! -L "$XDG_STATE_HOME" ] || fatal 'XDG_STATE_HOME is not a safe directory'
 	owner_uid=$(path_owner_uid "$XDG_STATE_HOME") || fatal 'Could not inspect XDG_STATE_HOME ownership'
 	[ "$owner_uid" = "$login_uid" ] || fatal 'XDG_STATE_HOME is not owned by login user'
@@ -196,7 +267,8 @@ harden_omniroute_env() {
 		mkdir "$durable_dir" || fatal 'Could not create OmniRoute state directory'
 	fi
 	[ -d "$durable_dir" ] && [ ! -L "$durable_dir" ] || fatal 'OmniRoute state path is not a directory'
-	validate_path_ancestors "$login_uid" "$durable_dir" 'OmniRoute state directory path'
+	converge_path_directories "$mise_bin" "$HOME" "$login_uid" "$durable_dir" \
+		'OmniRoute state directory path'
 	owner_uid=$(path_owner_uid "$durable_dir") || fatal 'Could not inspect OmniRoute state directory ownership'
 	[ "$owner_uid" = "$login_uid" ] || fatal 'OmniRoute state directory is not owned by login user'
 	chmod 0700 "$durable_dir"
@@ -209,7 +281,6 @@ harden_omniroute_env() {
 			bash "$package_env" "$durable_env" || fatal 'Could not seed durable OmniRoute .env'
 	fi
 	[ -f "$durable_env" ] && [ ! -L "$durable_env" ] || fatal 'Durable OmniRoute .env is not a regular file'
-	validate_path_ancestors "$login_uid" "$durable_env" 'Durable OmniRoute .env path'
 	owner_uid=$(path_owner_uid "$durable_env") || fatal 'Could not inspect durable OmniRoute .env ownership'
 	[ "$owner_uid" = "$login_uid" ] || fatal 'Durable OmniRoute .env is not owned by login user'
 	chmod 0600 "$durable_env"
