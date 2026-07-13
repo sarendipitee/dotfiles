@@ -94,6 +94,32 @@ because OmniRoute loads `DATA_DIR/.env` before package `.env`. Loopback binding
 keeps its dashboard and API unavailable to remote clients; changing exposure
 requires authentication and matching firewall policy.
 
+On Linux profile `aorus`, bootstrap recognizes valid legacy `~/.omniroute`
+state and migrates its whole tree into the XDG state directory before Process
+Compose starts. Legacy `.env` assignments override same-name seeded values,
+including the required `STORAGE_ENCRYPTION_KEY`; secret values are never logged.
+Migration stops managed services, rejects unmanaged OmniRoute processes with
+`pgrep`, and uses `fuser` from `psmisc` immediately before snapshotting to prove
+no process holds the legacy database files open. SQLite's online backup API
+creates and integrity-checks a consistent database snapshot; stale WAL/SHM
+files are never installed.
+Source and destination directories are tightened to mode `0700`, and migrated
+regular files to `0600`. Any previous unmarked XDG state is atomically retained
+at `${XDG_STATE_HOME:-$HOME/.local/state}/omniroute.pre-legacy-migration-v1`.
+Neither the original legacy tree nor that backup is deleted. A migration marker
+makes reruns idempotent. Unsafe paths, ambiguous state, or partial migration
+state fail closed and may require manual audit before provisioning can continue.
+If both legacy and unmarked durable trees contain `storage.sqlite`, bootstrap
+will not choose between them. After auditing both databases, explicitly choose
+legacy as authoritative while retaining durable state as backup:
+
+```bash
+DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1 ./scripts/provision.sh
+```
+
+Only exact value `1` is accepted. Seed-only durable state without a database
+migrates automatically.
+
 Codex remote control runs only on `aorus` in foreground mode through Mise. Its
 wrapper reads only `OMNIROUTER_API_KEY` from Hindsight's environment file;
 other Hindsight secrets never enter Codex's environment. File ownership,
@@ -106,6 +132,16 @@ foreground Docker mode. Its API and database ports bind only to
 Hindsight reads secrets from untracked
 `~/.config/hindsight/hindsight.env` and persists database state under
 `~/.local/share/hindsight`. Neither path belongs in this repository.
+Before provisioning `aorus`, authenticate Codex interactively as the login user:
+
+```bash
+mise exec -- codex login
+```
+
+Bootstrap checks `mise exec -- codex login status` before changing service or
+OmniRoute state. Failed login status aborts without stopping services or
+modifying migration state, and command output is suppressed to avoid exposing
+authentication details.
 
 Mise permits install scripts only for OmniRoute and its `better-sqlite3` native
 dependency. Before starting Process Compose, bootstrap enforces mode `0700` on
@@ -153,6 +189,13 @@ but inline OmniRouter keys are atomically replaced with
 `EnvironmentFile=%h/.config/hindsight/hindsight.env` and mode `0600`. Bootstrap
 then waits up to ten minutes for all Aorus processes and Hindsight's HTTP health
 endpoint; provisioning fails if ownership transfer leaves replacements down.
+On `aorus`, bootstrap also recognizes the root-owned legacy
+`/etc/systemd/system/etserver.service`, validates its loaded path, owner, mode,
+link count, ancestors, login user, and Homebrew `etserver --cfgfile` command,
+then disables and stops it before Process Compose takes port `2022`. Unexpected
+or unsafe units fail closed. Unit file remains in place for rollback. Readiness
+timeouts report only declared process name, running state, readiness state,
+restart count, and exit code; commands, environment, and logs remain hidden.
 Fresh Docker group membership requires logout/login and a provisioning rerun
 before Process Compose ownership transfer starts.
 After declaration changes, validate, then restart and inspect launcher:

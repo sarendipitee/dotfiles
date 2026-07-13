@@ -4,7 +4,7 @@ set -Eeo pipefail
 
 repo_dir=$(realpath "$(dirname "${BASH_SOURCE[0]}")/../..")
 tmp_dir=$(mktemp -d "$HOME/.dotfiles-provision-smoke.XXXXXX")
-trap 'rm -rf "$tmp_dir"' EXIT
+trap '[ "${DOTFILES_KEEP_SMOKE_TMP:-false}" = true ] || rm -rf "$tmp_dir"' EXIT
 
 fail() {
 	printf 'FAIL: %s\n' "$*" >&2
@@ -317,8 +317,9 @@ grep -Fxq -- "$expected_sd_mbp" "$fake_process_compose_log" ||
 	fail 'sd-mbp Process Compose argv did not select only eternal-terminal'
 grep -Fxq "$test_home/.local/state" "$fake_xdg_state_log" ||
 	fail 'Process Compose launcher did not export default XDG_STATE_HOME'
-grep -Eq -- '<--(port|address|server)(=|>)' "$fake_process_compose_log" &&
+if grep -Eq -- '<--(port|address|server)(=|>)' "$fake_process_compose_log"; then
 	fail 'Process Compose launcher configured a TCP server'
+fi
 assert_mode 700 "$runtime_dir/dpc"
 [ ! -e "$test_home/.local/state/process-compose/run" ] ||
 	fail 'Writable owned XDG_RUNTIME_DIR unexpectedly used state-directory socket fallback'
@@ -476,10 +477,12 @@ HOME="$codex_wrapper_home" EXPECTED_API_KEY="$codex_wrapper_secret" \
 	"$codex_wrapper_home/.local/bin/dotfiles-codex-remote-control" \
 	>"$tmp_dir/codex-wrapper.out" 2>&1 || fail 'Codex wrapper did not pass isolated OmniRouter key'
 grep -Fxq child-ok "$codex_wrapper_log" || fail 'Codex wrapper did not exec expected child'
-grep -q "$codex_wrapper_secret" "$tmp_dir/codex-wrapper.out" &&
+if grep -q "$codex_wrapper_secret" "$tmp_dir/codex-wrapper.out"; then
 	fail 'Codex wrapper printed OmniRouter key'
-grep -Eq 'must-not-reach-child|also-private' "$tmp_dir/codex-wrapper.out" &&
+fi
+if grep -Eq 'must-not-reach-child|also-private' "$tmp_dir/codex-wrapper.out"; then
 	fail 'Codex wrapper printed Hindsight secret'
+fi
 
 printf 'OMNIROUTER_API_KEY=%s\nOMNIROUTER_API_KEY=duplicate\n' \
 	"$codex_wrapper_secret" > "$codex_wrapper_env"
@@ -488,8 +491,9 @@ if HOME="$codex_wrapper_home" "$codex_wrapper_home/.local/bin/dotfiles-codex-rem
 	>"$tmp_dir/codex-wrapper-duplicate.out" 2>&1; then
 	fail 'Codex wrapper accepted duplicate OmniRouter keys'
 fi
-grep -q "$codex_wrapper_secret" "$tmp_dir/codex-wrapper-duplicate.out" &&
+if grep -q "$codex_wrapper_secret" "$tmp_dir/codex-wrapper-duplicate.out"; then
 	fail 'Codex duplicate-key rejection printed secret'
+fi
 
 printf 'export OMNIROUTER_API_KEY=%s\n' "$codex_wrapper_secret" > "$codex_wrapper_env"
 chmod 0600 "$codex_wrapper_env"
@@ -540,8 +544,9 @@ if HOME="$codex_wrapper_home" "$codex_wrapper_home/.local/bin/dotfiles-codex-rem
 	>"$tmp_dir/codex-wrapper-symlink.out" 2>&1; then
 	fail 'Codex wrapper accepted symlinked Hindsight environment'
 fi
-grep -q "$codex_wrapper_secret" "$tmp_dir/codex-wrapper-symlink.out" &&
+if grep -q "$codex_wrapper_secret" "$tmp_dir/codex-wrapper-symlink.out"; then
 	fail 'Codex symlink rejection printed secret'
+fi
 
 rm "$codex_wrapper_env"
 printf 'OMNIROUTER_API_KEY=%s\n' "$codex_wrapper_secret" > "$codex_wrapper_env"
@@ -566,8 +571,9 @@ if HOME="$codex_wrapper_home" PATH="$codex_owner_mock:$PATH" \
 	>"$tmp_dir/codex-wrapper-owner.out" 2>&1; then
 	fail 'Codex wrapper accepted wrong-owner Hindsight environment'
 fi
-grep -q "$codex_wrapper_secret" "$tmp_dir/codex-wrapper-owner.out" &&
+if grep -q "$codex_wrapper_secret" "$tmp_dir/codex-wrapper-owner.out"; then
 	fail 'Codex owner rejection printed secret'
+fi
 
 wrapper_home="$tmp_dir/wrapper-home"
 wrapper_install="$wrapper_home/.local/share/mise/installs/npm-omniroute/fake"
@@ -616,8 +622,9 @@ grep -Fxq 'omniroute serve --no-open --no-recovery' "$wrapper_log" ||
 	fail 'OmniRoute wrapper did not exec exact service command'
 grep -Fxq 'preserved-durable-secret' "$wrapper_durable_env" ||
 	fail 'OmniRoute wrapper overwrote durable .env'
-grep -q 'recreated-package-secret' "$tmp_dir/wrapper.out" &&
+if grep -q 'recreated-package-secret' "$tmp_dir/wrapper.out"; then
 	fail 'OmniRoute wrapper printed package secret contents'
+fi
 
 rm "$wrapper_binding_env"
 printf '%s\n' 'outside-package-secret' > "$tmp_dir/outside-package-env"
@@ -664,6 +671,662 @@ omniroute_bootstrap_functions=$(awk '
   capture { print }
 ' "$repo_dir/scripts/bootstrap-system.sh")
 [ -n "$omniroute_bootstrap_functions" ] || fail 'Could not extract OmniRoute bootstrap functions'
+
+migration_python=$(command -v python3) || fail 'Python 3 is required for OmniRoute migration smoke tests'
+migration_mock_bin="$tmp_dir/migration-mock-bin"
+migration_python_path="$tmp_dir/migration-python-path"
+mkdir -p "$migration_mock_bin" "$migration_python_path"
+cat > "$migration_mock_bin/systemctl" <<'EOF'
+#!/usr/bin/env bash
+printf 'systemctl %s\n' "$*" >> "$MIGRATION_LOG"
+if [ "$1" = --user ] && [ "$2" = show ] && [ "$3" = --property=LoadState ] &&
+	[ "$4" = --value ]; then
+	printf '%s\n' loaded
+	exit
+fi
+if [ "$1" = --user ] && [ "$2" = stop ]; then
+	exit
+fi
+if [ "$1" = --user ] && [ "$2" = is-active ]; then
+	exit 1
+fi
+exit 64
+EOF
+cat > "$migration_mock_bin/fuser" <<'EOF'
+#!/usr/bin/env bash
+printf 'fuser %s\n' "$*" >> "$MIGRATION_LOG"
+count=0
+if [ -f "$MIGRATION_FUSER_COUNT_FILE" ]; then
+	read -r count < "$MIGRATION_FUSER_COUNT_FILE"
+fi
+count=$((count + 1))
+printf '%s\n' "$count" > "$MIGRATION_FUSER_COUNT_FILE"
+status="${MIGRATION_FUSER_STATUS:-1}"
+if [ -n "${MIGRATION_FUSER_LATE_STATUS:-}" ] && [ "$count" -ge 2 ]; then
+	status="$MIGRATION_FUSER_LATE_STATUS"
+fi
+exit "$status"
+EOF
+cat > "$migration_python_path/sitecustomize.py" <<'PY'
+import ctypes
+import errno
+import os
+
+original_cdll = ctypes.CDLL
+
+
+class RenameNoReplace:
+    argtypes = None
+    restype = None
+
+    def __call__(self, _old_fd, source, _new_fd, destination, _flags):
+        source_path = os.fsdecode(source)
+        destination_path = os.fsdecode(destination)
+        if os.path.lexists(destination_path):
+            ctypes.set_errno(errno.EEXIST)
+            return -1
+        os.rename(source_path, destination_path)
+        return 0
+
+
+class LibcProxy:
+    def __init__(self, library):
+        self._library = library
+        self.renameat2 = RenameNoReplace()
+
+    def __getattr__(self, name):
+        return getattr(self._library, name)
+
+
+def patched_cdll(name, *args, **kwargs):
+    library = original_cdll(name, *args, **kwargs)
+    return LibcProxy(library) if name is None else library
+
+
+ctypes.CDLL = patched_cdll
+PY
+chmod +x "$migration_mock_bin/systemctl" "$migration_mock_bin/fuser"
+
+prepare_omniroute_migration_case() {
+	local case_home="$1" legacy_env="$2"
+	local install_dir="$case_home/.local/share/mise/installs/npm-omniroute/fake"
+	mkdir -p "$case_home/.local/bin" "$case_home/.local/state" "$case_home/.omniroute" \
+		"$install_dir/lib/node_modules/omniroute"
+	printf '%s\n' "$legacy_env" > "$case_home/.omniroute/.env"
+	"$migration_python" - "$case_home/.omniroute/storage.sqlite" <<'PY'
+import sqlite3
+import sys
+
+connection = sqlite3.connect(sys.argv[1])
+connection.execute("CREATE TABLE migration_rows (value TEXT NOT NULL)")
+connection.execute("INSERT INTO migration_rows VALUES ('legacy-main-row')")
+connection.commit()
+connection.close()
+PY
+	printf '%s\n' 'PACKAGE_GENERATED=package-value' > \
+		"$install_dir/lib/node_modules/omniroute/.env"
+	cat > "$case_home/.local/bin/mise" <<'EOF'
+#!/usr/bin/env bash
+printf 'mise %s\n' "$*" >> "$MIGRATION_LOG"
+if [ "$1" = where ] && [ "$2" = npm:omniroute ]; then
+	printf '%s\n' "$FAKE_OMNIROUTE_DIR"
+	exit
+fi
+if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = python ]; then
+	shift 3
+	PYTHONPATH="$MIGRATION_PYTHON_PATH" exec "$MIGRATION_PYTHON" "$@"
+fi
+exit 64
+EOF
+	chmod +x "$case_home/.local/bin/mise"
+}
+
+run_omniroute_migration_case() {
+	local case_home="$1" output="$2" log="$3"
+	local install_dir="$case_home/.local/share/mise/installs/npm-omniroute/fake"
+	local fuser_count_file="$log.fuser-count"
+	rm -f "$fuser_count_file"
+	OMNIROUTE_BOOTSTRAP_FUNCTIONS="$omniroute_bootstrap_functions" \
+		HOME="$case_home" LOGIN_USER="$(id -un)" OS=Linux DOTFILES_HOST=aorus \
+		XDG_STATE_HOME="$case_home/.local/state" FAKE_OMNIROUTE_DIR="$install_dir" \
+		MIGRATION_LOG="$log" MIGRATION_PYTHON="$migration_python" \
+		MIGRATION_PYTHON_PATH="$migration_python_path" \
+		MIGRATION_FUSER_COUNT_FILE="$fuser_count_file" \
+		MIGRATION_FUSER_STATUS="${MIGRATION_FUSER_STATUS:-1}" \
+		MIGRATION_FUSER_LATE_STATUS="${MIGRATION_FUSER_LATE_STATUS:-}" \
+		MIGRATION_PGREP_CMDLINE="${MIGRATION_PGREP_CMDLINE:-}" \
+		DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE="${DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE:-}" \
+		PATH="$migration_mock_bin:$PATH" \
+		bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$OMNIROUTE_BOOTSTRAP_FUNCTIONS"; command_exists() { [ "$1" = pgrep ] || [ "$1" = fuser ]; }; pgrep() { if [ -n "$MIGRATION_PGREP_CMDLINE" ]; then local pattern="${@: -1}"; [[ "$MIGRATION_PGREP_CMDLINE" =~ $pattern ]]; else return 1; fi; }; migrate_legacy_omniroute_state' \
+		>"$output" 2>&1
+}
+
+create_migration_sqlite() {
+	local database_path="$1" table_name="$2" value="$3"
+	"$migration_python" - "$database_path" "$table_name" "$value" <<'PY'
+import sqlite3
+import sys
+
+database_path, table_name, value = sys.argv[1:]
+if not table_name.isidentifier():
+    raise SystemExit("invalid fixture table")
+connection = sqlite3.connect(database_path)
+connection.execute(f"CREATE TABLE {table_name} (value TEXT NOT NULL)")
+connection.execute(f"INSERT INTO {table_name} VALUES (?)", (value,))
+connection.commit()
+connection.close()
+PY
+}
+
+assert_migration_sqlite_value() {
+	local database_path="$1" table_name="$2" expected="$3"
+	"$migration_python" - "$database_path" "$table_name" "$expected" <<'PY' ||
+import sqlite3
+import sys
+
+database_path, table_name, expected = sys.argv[1:]
+if not table_name.isidentifier():
+    raise SystemExit(1)
+connection = sqlite3.connect(f"file:{database_path}?mode=ro", uri=True)
+values = connection.execute(f"SELECT value FROM {table_name}").fetchall()
+integrity = connection.execute("PRAGMA integrity_check").fetchall()
+connection.close()
+raise SystemExit(0 if values == [(expected,)] and integrity == [("ok",)] else 1)
+PY
+		fail "Unexpected SQLite fixture contents: $database_path"
+}
+
+assert_migration_secret_absent() {
+	local output="$1" secret="$2"
+	if grep -Fq "$secret" "$output"; then
+		fail 'OmniRoute migration printed secret contents'
+	fi
+}
+
+assert_migration_rejected() {
+	local case_home="$1" output="$2" log="$3" secret="$4"
+	if run_omniroute_migration_case "$case_home" "$output" "$log"; then
+		fail "Unsafe OmniRoute migration case succeeded: $(basename "$case_home")"
+	fi
+	assert_migration_secret_absent "$output" "$secret"
+}
+
+migration_storage_key=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+migration_legacy_api=legacy-api-secret-value
+migration_legacy_jwt=legacy-jwt-secret-value
+migration_legacy_password=legacy-password-secret-value
+migration_legacy_salt=legacy-machine-salt-value
+migration_legacy_env="STORAGE_ENCRYPTION_KEY=$migration_storage_key
+API_KEY_SECRET=$migration_legacy_api
+JWT_SECRET=$migration_legacy_jwt
+INITIAL_PASSWORD=$migration_legacy_password
+MACHINE_ID_SALT=$migration_legacy_salt"
+migration_home="$tmp_dir/migration-success"
+migration_output="$tmp_dir/migration-success.out"
+migration_log="$tmp_dir/migration-success.log"
+prepare_omniroute_migration_case "$migration_home" "$migration_legacy_env"
+mkdir -p "$migration_home/.omniroute/nested/deeper" \
+	"$migration_home/.local/state/omniroute/old-nested"
+wal_fixture_dir="$tmp_dir/migration-wal-fixture"
+mkdir "$wal_fixture_dir"
+"$migration_python" - "$wal_fixture_dir/source.sqlite" \
+	"$migration_home/.omniroute" <<'PY'
+import os
+import shutil
+import sqlite3
+import sys
+
+source, destination = sys.argv[1:]
+connection = sqlite3.connect(source)
+connection.execute("PRAGMA journal_mode=WAL")
+connection.execute("PRAGMA wal_autocheckpoint=0")
+connection.execute("CREATE TABLE migration_rows (value TEXT NOT NULL)")
+connection.execute("INSERT INTO migration_rows VALUES ('committed-main-row')")
+connection.commit()
+connection.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+connection.execute("INSERT INTO migration_rows VALUES ('committed-wal-row')")
+connection.commit()
+for suffix in ("", "-wal", "-shm"):
+    shutil.copyfile(source + suffix, os.path.join(destination, "storage.sqlite" + suffix))
+connection.close()
+PY
+printf '%s\n' 'arbitrary-state' > "$migration_home/.omniroute/arbitrary.dat"
+printf '%s\n' 'deep-state' > "$migration_home/.omniroute/nested/deeper/state.bin"
+cat > "$migration_home/.local/state/omniroute/.env" <<'EOF'
+# generated seed
+STORAGE_ENCRYPTION_KEY=
+STORAGE_ENCRYPTION_KEY=seed-storage-value
+API_KEY_SECRET=seed-api-one
+API_KEY_SECRET=seed-api-two
+JWT_SECRET=seed-jwt-value
+INITIAL_PASSWORD=
+MACHINE_ID_SALT=seed-machine-salt
+GENERATED_ONLY=generated-only-value
+EOF
+printf '%s\n' 'old-durable-state' > "$migration_home/.local/state/omniroute/old-nested/state.dat"
+chmod -R 0755 "$migration_home/.omniroute" "$migration_home/.local/state/omniroute"
+: > "$migration_log"
+run_omniroute_migration_case "$migration_home" "$migration_output" "$migration_log" ||
+	fail 'Valid legacy OmniRoute state migration failed'
+for secret in \
+	"$migration_storage_key" \
+	"$migration_legacy_api" \
+	"$migration_legacy_jwt" \
+	"$migration_legacy_password" \
+	"$migration_legacy_salt"; do
+	assert_migration_secret_absent "$migration_output" "$secret"
+done
+migration_durable="$migration_home/.local/state/omniroute"
+migration_backup="$migration_home/.local/state/omniroute.pre-legacy-migration-v1"
+grep -Fxq 'dotfiles-omniroute-legacy-migration-v1' \
+	"$migration_durable/.dotfiles-legacy-migration-v1" || fail 'OmniRoute migration marker missing'
+cmp -s "$migration_home/.omniroute/arbitrary.dat" "$migration_durable/arbitrary.dat" ||
+	fail 'OmniRoute migration lost arbitrary regular state'
+[ ! -e "$migration_durable/storage.sqlite-wal" ] ||
+	fail 'OmniRoute migration installed stale SQLite WAL'
+[ ! -e "$migration_durable/storage.sqlite-shm" ] ||
+	fail 'OmniRoute migration installed stale SQLite SHM'
+"$migration_python" - "$migration_durable/storage.sqlite" <<'PY' ||
+import sqlite3
+import sys
+
+connection = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True)
+rows = connection.execute("SELECT value FROM migration_rows ORDER BY rowid").fetchall()
+integrity = connection.execute("PRAGMA integrity_check").fetchall()
+connection.close()
+raise SystemExit(0 if rows == [("committed-main-row",), ("committed-wal-row",)] and
+                 integrity == [("ok",)] else 1)
+PY
+	fail 'OmniRoute SQLite snapshot lost committed main/WAL rows or failed integrity'
+cmp -s "$migration_home/.omniroute/nested/deeper/state.bin" \
+	"$migration_durable/nested/deeper/state.bin" || fail 'OmniRoute migration lost nested state'
+grep -Fxq 'GENERATED_ONLY=generated-only-value' "$migration_durable/.env" ||
+	fail 'OmniRoute migration lost generated seed secrets'
+for assignment in \
+	"STORAGE_ENCRYPTION_KEY=$migration_storage_key" \
+	"API_KEY_SECRET=$migration_legacy_api" \
+	"JWT_SECRET=$migration_legacy_jwt" \
+	"INITIAL_PASSWORD=$migration_legacy_password" \
+	"MACHINE_ID_SALT=$migration_legacy_salt"; do
+	[ "$(grep -Fxc "$assignment" "$migration_durable/.env")" -eq 1 ] ||
+		fail "OmniRoute migration did not converge $assignment exactly once"
+done
+for obsolete_value in \
+	seed-storage-value seed-api-one seed-api-two seed-jwt-value seed-machine-salt; do
+	! grep -Fq "$obsolete_value" "$migration_durable/.env" ||
+		fail 'OmniRoute migration retained replaced generated secret'
+done
+[ -f "$migration_backup/old-nested/state.dat" ] || fail 'OmniRoute migration backup missing'
+grep -Fxq 'old-durable-state' "$migration_backup/old-nested/state.dat" ||
+	fail 'OmniRoute migration backup did not preserve old durable state'
+while IFS= read -r directory; do
+	assert_mode 700 "$directory"
+done < <(find "$migration_durable" -type d)
+while IFS= read -r state_file; do
+	assert_mode 600 "$state_file"
+done < <(find "$migration_durable" -type f)
+process_stop_line=$(grep -nFx 'systemctl --user stop dotfiles-process-compose.service' \
+	"$migration_log" | cut -d: -f1)
+legacy_stop_line=$(grep -nFx 'systemctl --user stop omniroute.service' \
+	"$migration_log" | cut -d: -f1)
+migration_where_line=$(grep -nFx 'mise where npm:omniroute' "$migration_log" | cut -d: -f1)
+[ "$process_stop_line" -lt "$migration_where_line" ] &&
+	[ "$legacy_stop_line" -lt "$migration_where_line" ] ||
+	fail 'OmniRoute state migration began before managed services stopped'
+
+: > "$migration_log"
+run_omniroute_migration_case "$migration_home" "$migration_output" "$migration_log" ||
+	fail 'OmniRoute migration rerun was not idempotent'
+grep -Fxq 'old-durable-state' "$migration_backup/old-nested/state.dat" ||
+	fail 'OmniRoute migration rerun changed retained backup'
+[ "$(find "$migration_home/.local/state" -maxdepth 1 -name 'omniroute.pre-legacy-migration-v1*' | wc -l | tr -d ' ')" = 1 ] ||
+	fail 'OmniRoute migration rerun created another backup'
+[ ! -e "$migration_home/.local/state/.omniroute.legacy-migration-v1.tmp" ] ||
+	fail 'OmniRoute migration rerun left temporary state'
+
+divergent_home="$tmp_dir/migration-divergent"
+divergent_output="$tmp_dir/migration-divergent.out"
+divergent_log="$tmp_dir/migration-divergent.log"
+prepare_omniroute_migration_case "$divergent_home" "$migration_legacy_env"
+mkdir "$divergent_home/.local/state/omniroute"
+printf 'STORAGE_ENCRYPTION_KEY=%s\nDURABLE_ONLY=preserved\n' \
+	abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd \
+	> "$divergent_home/.local/state/omniroute/.env"
+create_migration_sqlite "$divergent_home/.local/state/omniroute/storage.sqlite" \
+	durable_rows durable-authoritative-row
+chmod 0755 "$divergent_home/.local/state/omniroute" \
+	"$divergent_home/.local/state/omniroute/.env" \
+	"$divergent_home/.local/state/omniroute/storage.sqlite" \
+	"$divergent_home/.omniroute" \
+	"$divergent_home/.omniroute/.env" \
+	"$divergent_home/.omniroute/storage.sqlite"
+divergent_database_hash=$(shasum -a 256 \
+	"$divergent_home/.local/state/omniroute/storage.sqlite" | cut -d' ' -f1)
+divergent_durable_env_hash=$(shasum -a 256 \
+	"$divergent_home/.local/state/omniroute/.env" | cut -d' ' -f1)
+divergent_legacy_database_hash=$(shasum -a 256 \
+	"$divergent_home/.omniroute/storage.sqlite" | cut -d' ' -f1)
+divergent_legacy_env_hash=$(shasum -a 256 \
+	"$divergent_home/.omniroute/.env" | cut -d' ' -f1)
+: > "$divergent_log"
+assert_migration_rejected "$divergent_home" "$divergent_output" "$divergent_log" \
+	"$migration_storage_key"
+grep -Fq 'DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1' "$divergent_output" ||
+	fail 'Divergent OmniRoute state rejection lacked explicit opt-in guidance'
+[ ! -s "$divergent_log" ] ||
+	fail 'Divergent OmniRoute rejection reached service or package commands'
+[ "$divergent_database_hash" = "$(shasum -a 256 \
+	"$divergent_home/.local/state/omniroute/storage.sqlite" | cut -d' ' -f1)" ] ||
+	fail 'Rejected divergent OmniRoute migration changed durable database'
+[ "$divergent_durable_env_hash" = "$(shasum -a 256 \
+	"$divergent_home/.local/state/omniroute/.env" | cut -d' ' -f1)" ] ||
+	fail 'Rejected divergent OmniRoute migration changed durable environment'
+[ "$divergent_legacy_database_hash" = "$(shasum -a 256 \
+	"$divergent_home/.omniroute/storage.sqlite" | cut -d' ' -f1)" ] ||
+	fail 'Rejected divergent OmniRoute migration changed legacy database'
+[ "$divergent_legacy_env_hash" = "$(shasum -a 256 \
+	"$divergent_home/.omniroute/.env" | cut -d' ' -f1)" ] ||
+	fail 'Rejected divergent OmniRoute migration changed legacy environment'
+assert_mode 755 "$divergent_home/.local/state/omniroute"
+assert_mode 755 "$divergent_home/.local/state/omniroute/.env"
+assert_mode 755 "$divergent_home/.local/state/omniroute/storage.sqlite"
+assert_mode 755 "$divergent_home/.omniroute"
+assert_mode 755 "$divergent_home/.omniroute/.env"
+assert_mode 755 "$divergent_home/.omniroute/storage.sqlite"
+[ ! -e "$divergent_home/.local/state/omniroute.pre-legacy-migration-v1" ] ||
+	fail 'Rejected divergent OmniRoute migration created backup'
+[ ! -e "$divergent_home/.local/state/.omniroute.legacy-migration-v1.tmp" ] ||
+	fail 'Rejected divergent OmniRoute migration created temporary state'
+if DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=true \
+	run_omniroute_migration_case "$divergent_home" "$divergent_output" "$divergent_log"; then
+	fail 'Invalid OmniRoute authoritative opt-in value was accepted'
+fi
+grep -Fq 'must be unset or exactly 1' "$divergent_output" ||
+	fail 'Invalid OmniRoute authoritative opt-in lacked exact-value error'
+[ ! -s "$divergent_log" ] ||
+	fail 'Invalid OmniRoute authoritative opt-in reached service or package commands'
+assert_mode 755 "$divergent_home/.local/state/omniroute"
+assert_mode 755 "$divergent_home/.local/state/omniroute/.env"
+assert_mode 755 "$divergent_home/.local/state/omniroute/storage.sqlite"
+DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1 \
+	run_omniroute_migration_case "$divergent_home" "$divergent_output" "$divergent_log" ||
+	fail 'Explicit legacy-authoritative OmniRoute migration failed'
+grep -Fq 'systemctl --user stop dotfiles-process-compose.service' "$divergent_log" ||
+	fail 'Exact OmniRoute authoritative opt-in did not proceed to service migration'
+assert_migration_sqlite_value \
+	"$divergent_home/.local/state/omniroute.pre-legacy-migration-v1/storage.sqlite" \
+	durable_rows durable-authoritative-row
+assert_migration_sqlite_value "$divergent_home/.local/state/omniroute/storage.sqlite" \
+	migration_rows legacy-main-row
+
+recovery_home="$tmp_dir/migration-valid-temp-recovery"
+recovery_output="$tmp_dir/migration-valid-temp-recovery.out"
+recovery_log="$tmp_dir/migration-valid-temp-recovery.log"
+prepare_omniroute_migration_case "$recovery_home" "$migration_legacy_env"
+: > "$recovery_log"
+run_omniroute_migration_case "$recovery_home" "$recovery_output" "$recovery_log" ||
+	fail 'Could not prepare valid OmniRoute recovery state'
+mv "$recovery_home/.local/state/omniroute" \
+	"$recovery_home/.local/state/.omniroute.legacy-migration-v1.tmp"
+run_omniroute_migration_case "$recovery_home" "$recovery_output" "$recovery_log" ||
+	fail 'Valid OmniRoute temporary state was not promoted'
+assert_migration_sqlite_value "$recovery_home/.local/state/omniroute/storage.sqlite" \
+	migration_rows legacy-main-row
+[ ! -e "$recovery_home/.local/state/.omniroute.legacy-migration-v1.tmp" ] ||
+	fail 'Valid OmniRoute temporary state remained after promotion'
+
+mv "$divergent_home/.local/state/omniroute" \
+	"$divergent_home/.local/state/.omniroute.legacy-migration-v1.tmp"
+run_omniroute_migration_case "$divergent_home" "$divergent_output" "$divergent_log" ||
+	fail 'Post-backup OmniRoute migration interruption was not recovered'
+assert_migration_sqlite_value "$divergent_home/.local/state/omniroute/storage.sqlite" \
+	migration_rows legacy-main-row
+assert_migration_sqlite_value \
+	"$divergent_home/.local/state/omniroute.pre-legacy-migration-v1/storage.sqlite" \
+	durable_rows durable-authoritative-row
+
+corrupt_backup_home="$tmp_dir/migration-corrupt-post-backup"
+corrupt_backup_output="$tmp_dir/migration-corrupt-post-backup.out"
+corrupt_backup_log="$tmp_dir/migration-corrupt-post-backup.log"
+prepare_omniroute_migration_case "$corrupt_backup_home" "$migration_legacy_env"
+mkdir "$corrupt_backup_home/.local/state/omniroute"
+printf 'STORAGE_ENCRYPTION_KEY=%s\n' \
+	abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd \
+	> "$corrupt_backup_home/.local/state/omniroute/.env"
+create_migration_sqlite "$corrupt_backup_home/.local/state/omniroute/storage.sqlite" \
+	durable_rows durable-before-corruption
+: > "$corrupt_backup_log"
+DOTFILES_OMNIROUTE_LEGACY_AUTHORITATIVE=1 \
+	run_omniroute_migration_case "$corrupt_backup_home" "$corrupt_backup_output" \
+	"$corrupt_backup_log" || fail 'Could not prepare corrupt post-backup recovery case'
+mv "$corrupt_backup_home/.local/state/omniroute" \
+	"$corrupt_backup_home/.local/state/.omniroute.legacy-migration-v1.tmp"
+printf '%s\n' 'not-a-sqlite-database' \
+	> "$corrupt_backup_home/.local/state/omniroute.pre-legacy-migration-v1/storage.sqlite"
+corrupt_backup_hash=$(shasum -a 256 \
+	"$corrupt_backup_home/.local/state/omniroute.pre-legacy-migration-v1/storage.sqlite" |
+	cut -d' ' -f1)
+: > "$corrupt_backup_log"
+assert_migration_rejected "$corrupt_backup_home" "$corrupt_backup_output" \
+	"$corrupt_backup_log" "$migration_storage_key"
+grep -Fq 'retained OmniRoute backup storage.sqlite' "$corrupt_backup_output" ||
+	fail 'Corrupt retained OmniRoute backup rejection lacked actionable error'
+[ -d "$corrupt_backup_home/.local/state/.omniroute.legacy-migration-v1.tmp" ] ||
+	fail 'Corrupt backup recovery did not retain valid temporary state'
+[ -d "$corrupt_backup_home/.local/state/omniroute.pre-legacy-migration-v1" ] ||
+	fail 'Corrupt backup recovery did not retain backup'
+[ ! -e "$corrupt_backup_home/.local/state/omniroute" ] ||
+	fail 'Corrupt backup recovery promoted temporary state'
+[ -d "$corrupt_backup_home/.omniroute" ] ||
+	fail 'Corrupt backup recovery removed legacy source state'
+[ "$corrupt_backup_hash" = "$(shasum -a 256 \
+	"$corrupt_backup_home/.local/state/omniroute.pre-legacy-migration-v1/storage.sqlite" |
+	cut -d' ' -f1)" ] || fail 'Corrupt backup recovery changed retained database bytes'
+
+holder_home="$tmp_dir/migration-open-holder"
+holder_output="$tmp_dir/migration-open-holder.out"
+holder_log="$tmp_dir/migration-open-holder.log"
+prepare_omniroute_migration_case "$holder_home" "$migration_legacy_env"
+"$migration_python" - "$holder_home/.omniroute/storage.sqlite" <<'PY' &
+import sys
+import time
+
+descriptor = open(sys.argv[1], "rb")
+time.sleep(60)
+descriptor.close()
+PY
+holder_pid=$!
+sleep 1
+: > "$holder_log"
+MIGRATION_FUSER_STATUS=0 \
+	assert_migration_rejected "$holder_home" "$holder_output" "$holder_log" \
+	"$migration_storage_key"
+kill "$holder_pid"
+wait "$holder_pid" 2>/dev/null || true
+grep -Fq 'open file holder remains' "$holder_output" ||
+	fail 'Open OmniRoute database holder rejection lacked actionable error'
+[ ! -e "$holder_home/.local/state/omniroute" ] ||
+	fail 'Open-holder rejection created durable OmniRoute state'
+
+node_process_home="$tmp_dir/migration-node-process"
+node_process_output="$tmp_dir/migration-node-process.out"
+node_process_log="$tmp_dir/migration-node-process.log"
+prepare_omniroute_migration_case "$node_process_home" "$migration_legacy_env"
+: > "$node_process_log"
+MIGRATION_PGREP_CMDLINE='node /home/saren/.local/share/mise/installs/npm-omniroute/3.8.46/lib/node_modules/omniroute/dist/index.js serve' \
+	assert_migration_rejected "$node_process_home" "$node_process_output" \
+	"$node_process_log" "$migration_storage_key"
+grep -Fq 'OmniRoute process remains active' "$node_process_output" ||
+	fail 'Node OmniRoute process rejection lacked actionable error'
+if grep -Eq '^(mise|fuser) ' "$node_process_log"; then
+	fail 'Node OmniRoute process rejection reached package or snapshot commands'
+fi
+[ ! -e "$node_process_home/.local/state/omniroute" ] ||
+	fail 'Node OmniRoute process rejection created durable state'
+[ ! -e "$node_process_home/.local/state/.omniroute.legacy-migration-v1.tmp" ] ||
+	fail 'Node OmniRoute process rejection created temporary state'
+
+late_holder_home="$tmp_dir/migration-late-holder"
+late_holder_output="$tmp_dir/migration-late-holder.out"
+late_holder_log="$tmp_dir/migration-late-holder.log"
+prepare_omniroute_migration_case "$late_holder_home" "$migration_legacy_env"
+: > "$late_holder_log"
+MIGRATION_FUSER_STATUS=1 MIGRATION_FUSER_LATE_STATUS=0 \
+	assert_migration_rejected "$late_holder_home" "$late_holder_output" \
+	"$late_holder_log" "$migration_storage_key"
+grep -Fq 'open file holder remains' "$late_holder_output" ||
+	fail 'Late OmniRoute database holder rejection lacked actionable error'
+[ "$(grep -c '^fuser ' "$late_holder_log")" -eq 2 ] ||
+	fail 'Late OmniRoute holder was not checked after initial validation'
+[ ! -e "$late_holder_home/.local/state/omniroute" ] ||
+	fail 'Late-holder rejection installed durable OmniRoute state'
+[ ! -e "$late_holder_home/.local/state/.omniroute.legacy-migration-v1.tmp" ] ||
+	fail 'Late-holder rejection left OmniRoute snapshot state'
+[ ! -e "$late_holder_home/.local/state/omniroute.pre-legacy-migration-v1" ] ||
+	fail 'Late-holder rejection installed OmniRoute backup'
+
+for incomplete_kind in marker-only missing-env missing-db invalid-key; do
+	incomplete_home="$tmp_dir/migration-incomplete-$incomplete_kind"
+	incomplete_output="$tmp_dir/migration-incomplete-$incomplete_kind.out"
+	incomplete_log="$tmp_dir/migration-incomplete-$incomplete_kind.log"
+	prepare_omniroute_migration_case "$incomplete_home" "$migration_legacy_env"
+	incomplete_temp="$incomplete_home/.local/state/.omniroute.legacy-migration-v1.tmp"
+	mkdir "$incomplete_temp"
+	printf '%s\n' 'dotfiles-omniroute-legacy-migration-v1' \
+		> "$incomplete_temp/.dotfiles-legacy-migration-v1"
+	case "$incomplete_kind" in
+		marker-only) ;;
+		missing-env)
+			create_migration_sqlite "$incomplete_temp/storage.sqlite" migration_rows temp-row
+			;;
+		missing-db)
+			printf 'STORAGE_ENCRYPTION_KEY=%s\n' "$migration_storage_key" \
+				> "$incomplete_temp/.env"
+			;;
+		invalid-key)
+			printf '%s\n' 'STORAGE_ENCRYPTION_KEY=invalid' > "$incomplete_temp/.env"
+			create_migration_sqlite "$incomplete_temp/storage.sqlite" migration_rows temp-row
+			;;
+	esac
+	: > "$incomplete_log"
+	assert_migration_rejected "$incomplete_home" "$incomplete_output" \
+		"$incomplete_log" "$migration_storage_key"
+done
+
+for unsafe_kind in symlink special hardlink; do
+	unsafe_home="$tmp_dir/migration-$unsafe_kind"
+	unsafe_output="$tmp_dir/migration-$unsafe_kind.out"
+	unsafe_log="$tmp_dir/migration-$unsafe_kind.log"
+	prepare_omniroute_migration_case "$unsafe_home" "$migration_legacy_env"
+	case "$unsafe_kind" in
+		symlink)
+			printf '%s\n' 'symlink-target-secret' > "$unsafe_home/symlink-target"
+			ln -s "$unsafe_home/symlink-target" "$unsafe_home/.omniroute/unsafe-entry"
+			unsafe_secret=symlink-target-secret
+			;;
+		special)
+			mkfifo "$unsafe_home/.omniroute/unsafe-entry"
+			unsafe_secret="$migration_storage_key"
+			;;
+		hardlink)
+			printf '%s\n' 'hardlink-secret-value' > "$unsafe_home/.omniroute/hardlink-source"
+			ln "$unsafe_home/.omniroute/hardlink-source" "$unsafe_home/.omniroute/hardlink-copy"
+			unsafe_secret=hardlink-secret-value
+			;;
+	esac
+	: > "$unsafe_log"
+	assert_migration_rejected "$unsafe_home" "$unsafe_output" "$unsafe_log" "$unsafe_secret"
+done
+
+for invalid_kind in duplicate missing empty malformed; do
+	invalid_home="$tmp_dir/migration-key-$invalid_kind"
+	invalid_output="$tmp_dir/migration-key-$invalid_kind.out"
+	invalid_log="$tmp_dir/migration-key-$invalid_kind.log"
+	case "$invalid_kind" in
+		duplicate) invalid_env="STORAGE_ENCRYPTION_KEY=$migration_storage_key
+STORAGE_ENCRYPTION_KEY=abcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd" ;;
+		missing) invalid_env='API_KEY_SECRET=missing-storage-key-secret' ;;
+		empty) invalid_env='STORAGE_ENCRYPTION_KEY=' ;;
+		malformed) invalid_env='STORAGE_ENCRYPTION_KEY=not-a-64-hex-key' ;;
+	esac
+	prepare_omniroute_migration_case "$invalid_home" "$invalid_env"
+	: > "$invalid_log"
+	assert_migration_rejected "$invalid_home" "$invalid_output" "$invalid_log" "$migration_storage_key"
+done
+
+missing_pgrep_home="$tmp_dir/migration-missing-pgrep"
+missing_pgrep_output="$tmp_dir/migration-missing-pgrep.out"
+missing_pgrep_log="$tmp_dir/migration-missing-pgrep.log"
+prepare_omniroute_migration_case "$missing_pgrep_home" "$migration_legacy_env"
+chmod 0755 "$missing_pgrep_home/.omniroute" \
+	"$missing_pgrep_home/.omniroute/.env" \
+	"$missing_pgrep_home/.omniroute/storage.sqlite"
+: > "$missing_pgrep_log"
+if OMNIROUTE_BOOTSTRAP_FUNCTIONS="$omniroute_bootstrap_functions" \
+	HOME="$missing_pgrep_home" LOGIN_USER="$(id -un)" OS=Linux DOTFILES_HOST=aorus \
+	XDG_STATE_HOME="$missing_pgrep_home/.local/state" \
+	FAKE_OMNIROUTE_DIR="$missing_pgrep_home/.local/share/mise/installs/npm-omniroute/fake" \
+	MIGRATION_LOG="$missing_pgrep_log" MIGRATION_PYTHON="$migration_python" \
+	MIGRATION_PYTHON_PATH="$migration_python_path" PATH="$migration_mock_bin:$PATH" \
+	bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$OMNIROUTE_BOOTSTRAP_FUNCTIONS"; command_exists() { return 1; }; migrate_legacy_omniroute_state' \
+	>"$missing_pgrep_output" 2>&1; then
+	fail 'OmniRoute migration without pgrep did not fail closed'
+fi
+grep -Fq 'requires pgrep' "$missing_pgrep_output" ||
+	fail 'OmniRoute migration without pgrep lacked actionable error'
+assert_migration_secret_absent "$missing_pgrep_output" "$migration_storage_key"
+[ ! -s "$missing_pgrep_log" ] ||
+	fail 'OmniRoute migration without pgrep reached service or package commands'
+assert_mode 755 "$missing_pgrep_home/.omniroute"
+assert_mode 755 "$missing_pgrep_home/.omniroute/.env"
+assert_mode 755 "$missing_pgrep_home/.omniroute/storage.sqlite"
+[ ! -e "$missing_pgrep_home/.local/state/omniroute" ] ||
+	fail 'OmniRoute migration without pgrep mutated durable state'
+
+backup_conflict_home="$tmp_dir/migration-backup-conflict"
+prepare_omniroute_migration_case "$backup_conflict_home" "$migration_legacy_env"
+mkdir -p "$backup_conflict_home/.local/state/omniroute" \
+	"$backup_conflict_home/.local/state/omniroute.pre-legacy-migration-v1"
+printf '%s\n' 'seed=value' > "$backup_conflict_home/.local/state/omniroute/.env"
+: > "$tmp_dir/migration-backup-conflict.log"
+assert_migration_rejected "$backup_conflict_home" "$tmp_dir/migration-backup-conflict.out" \
+	"$tmp_dir/migration-backup-conflict.log" "$migration_storage_key"
+
+incomplete_home="$tmp_dir/migration-incomplete-temp"
+prepare_omniroute_migration_case "$incomplete_home" "$migration_legacy_env"
+mkdir "$incomplete_home/.local/state/.omniroute.legacy-migration-v1.tmp"
+printf '%s\n' 'incomplete' > \
+	"$incomplete_home/.local/state/.omniroute.legacy-migration-v1.tmp/storage.sqlite"
+: > "$tmp_dir/migration-incomplete-temp.log"
+assert_migration_rejected "$incomplete_home" "$tmp_dir/migration-incomplete-temp.out" \
+	"$tmp_dir/migration-incomplete-temp.log" "$migration_storage_key"
+
+wrong_owner_home="$tmp_dir/migration-wrong-owner"
+wrong_owner_bin="$tmp_dir/migration-wrong-owner-bin"
+prepare_omniroute_migration_case "$wrong_owner_home" "$migration_legacy_env"
+mkdir "$wrong_owner_bin"
+cat > "$wrong_owner_bin/id" <<'EOF'
+#!/usr/bin/env bash
+case "$1" in
+	-u) printf '%s\n' "$MIGRATION_WRONG_UID" ;;
+	-un) printf '%s\n' "$LOGIN_USER" ;;
+	*) exit 64 ;;
+esac
+EOF
+chmod +x "$wrong_owner_bin/id"
+wrong_owner_uid=$(( $(id -u) + 1 ))
+if OMNIROUTE_BOOTSTRAP_FUNCTIONS="$omniroute_bootstrap_functions" \
+	HOME="$wrong_owner_home" LOGIN_USER="$(id -un)" OS=Linux DOTFILES_HOST=aorus \
+	XDG_STATE_HOME="$wrong_owner_home/.local/state" \
+	FAKE_OMNIROUTE_DIR="$wrong_owner_home/.local/share/mise/installs/npm-omniroute/fake" \
+	MIGRATION_LOG="$tmp_dir/migration-wrong-owner.log" MIGRATION_PYTHON="$migration_python" \
+	MIGRATION_PYTHON_PATH="$migration_python_path" MIGRATION_WRONG_UID="$wrong_owner_uid" \
+	PATH="$wrong_owner_bin:$migration_mock_bin:$PATH" \
+	bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$OMNIROUTE_BOOTSTRAP_FUNCTIONS"; command_exists() { [ "$1" = pgrep ] || [ "$1" = fuser ]; }; pgrep() { return 1; }; converge_path_directories() { return 0; }; migrate_legacy_omniroute_state' \
+	>"$tmp_dir/migration-wrong-owner.out" 2>&1; then
+	fail 'Wrong-owner legacy OmniRoute state did not fail closed'
+fi
+assert_migration_secret_absent "$tmp_dir/migration-wrong-owner.out" "$migration_storage_key"
 
 harden_home="$tmp_dir/harden-home"
 harden_install="$harden_home/.local/share/mise/installs/npm-omniroute/fake"
@@ -729,7 +1392,9 @@ assert_mode 700 "$harden_home/.local/state/omniroute"
 assert_mode 600 "$harden_home/.local/state/omniroute/.env"
 cmp -s "$harden_install/lib/node_modules/omniroute/.env" \
 	"$harden_home/.local/state/omniroute/.env" || fail 'Durable OmniRoute .env was not seeded'
-grep -q 'smoke-secret-value' "$tmp_dir/harden.out" && fail 'OmniRoute .env hardening printed secret contents'
+if grep -q 'smoke-secret-value' "$tmp_dir/harden.out"; then
+	fail 'OmniRoute .env hardening printed secret contents'
+fi
 [ ! -s "$repair_log" ] || fail 'Healthy OmniRoute binding triggered unnecessary rebuild'
 
 custom_xdg_state="$harden_home/custom-state"
@@ -828,8 +1493,9 @@ if OMNIROUTE_BOOTSTRAP_FUNCTIONS="$omniroute_bootstrap_functions" \
 	>"$tmp_dir/harden-symlink.out" 2>&1; then
 	fail 'Symlinked durable OmniRoute .env did not fail safely'
 fi
-grep -q 'symlink-secret-value' "$tmp_dir/harden-symlink.out" &&
+if grep -q 'symlink-secret-value' "$tmp_dir/harden-symlink.out"; then
 	fail 'OmniRoute symlink rejection printed secret contents'
+fi
 assert_mode 644 "$tmp_dir/outside-env"
 
 mkdir "$tmp_dir/outside-state"
@@ -874,8 +1540,9 @@ if OMNIROUTE_BOOTSTRAP_FUNCTIONS="$omniroute_bootstrap_functions" \
 	>"$tmp_dir/harden-owner.out" 2>&1; then
 	fail 'Wrong-owner durable OmniRoute .env did not fail safely'
 fi
-grep -q 'wrong-owner-secret-value' "$tmp_dir/harden-owner.out" &&
+if grep -q 'wrong-owner-secret-value' "$tmp_dir/harden-owner.out"; then
 	fail 'OmniRoute ownership rejection printed secret contents'
+fi
 assert_mode 644 "$harden_home/.local/state/omniroute/.env"
 
 lifecycle_home="$tmp_dir/lifecycle-home"
@@ -892,7 +1559,19 @@ printf 'launcher %s\n' "$*" >> "$LIFECYCLE_LOG"
 EOF
 cat > "$lifecycle_home/.local/bin/mise" <<'EOF'
 #!/usr/bin/env bash
+if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = codex ] &&
+	[ "$4" = login ] && [ "$5" = status ]; then
+	printf 'mise codex login status\n' >> "$LIFECYCLE_LOG"
+	printf '%s\n' 'redacted-login-status-output' 'redacted-login-status-error' >&2
+	[ "${MOCK_CODEX_LOGGED_IN:-true}" = true ]
+	exit
+fi
 if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = python ]; then
+	if [ "${MOCK_ET_VALIDATION_BYPASS:-false}" = true ] &&
+		[[ "${5:-}" == */etserver.service ]]; then
+		[ "${MOCK_ET_VALIDATION_FAIL:-false}" != true ]
+		exit
+	fi
 	shift 3
 	exec "$REAL_PYTHON" "$@"
 fi
@@ -912,8 +1591,8 @@ if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = process-compose ]; then
   {"name":"hindsight","is_running":true,"has_ready_probe":true,"is_ready":"Ready"}
 ]
 JSON
-	else
-		printf '%s\n' '[{"name":"hindsight","is_running":false,"has_ready_probe":true,"is_ready":"Not Ready"}]'
+else
+		printf '%s\n' '[{"name":"hindsight","is_running":false,"has_ready_probe":true,"is_ready":"Not Ready","restarts":7,"exit_code":42,"command":"readiness-secret-command","environment":["READINESS_SECRET=value"],"logs":"readiness-secret-log"}]'
 	fi
 	exit
 fi
@@ -969,6 +1648,10 @@ EOF
 cat > "$lifecycle_mock_bin/sudo" <<'EOF'
 #!/usr/bin/env bash
 printf 'sudo %s\n' "$*" >> "$LIFECYCLE_LOG"
+if [ "${1:-}" = systemctl ]; then
+	shift
+	exec systemctl "$@"
+fi
 if [ "${1:-}" = docker ] && [ "${2:-}" = ps ]; then
 	[ ! -e "$MOCK_HINDSIGHT_STATE" ] || printf '%s\n' 0123456789ab
 	exit
@@ -994,6 +1677,39 @@ EOF
 cat > "$lifecycle_mock_bin/systemctl" <<'EOF'
 #!/usr/bin/env bash
 printf 'systemctl %s\n' "$*" >> "$LIFECYCLE_LOG"
+if [ "$1" = show ] && [ "$2" = --property=LoadState ] && [ "$3" = --value ] &&
+	[ "$4" = etserver.service ]; then
+	if [ "${MOCK_SYSTEM_ET:-absent}" = present ]; then
+		printf '%s\n' loaded
+	else
+		printf '%s\n' not-found
+	fi
+	exit
+fi
+if [ "$1" = show ] && [ "$3" = --value ] && [ "$4" = etserver.service ]; then
+	case "$2" in
+		--property=FragmentPath) printf '%s\n' "${MOCK_ET_UNIT:-/etc/systemd/system/etserver.service}" ;;
+		--property=User) printf '%s\n' "${MOCK_ET_USER:-tester}" ;;
+		--property=ExecStart)
+			printf '%s\n' "${MOCK_ET_EXEC_START:-/home/linuxbrew/.linuxbrew/opt/et/bin/etserver --cfgfile /home/linuxbrew/.linuxbrew/etc/et.cfg}"
+			;;
+		*) exit 64 ;;
+	esac
+	exit
+fi
+if [ "$1" = disable ] && [ "$2" = --now ] && [ "$3" = etserver.service ]; then
+	[ "${MOCK_ET_DISABLE_FAIL:-false}" != true ] || exit 1
+	: > "$MOCK_ET_DISABLED_STATE"
+	exit
+fi
+if [ "$1" = is-active ] && [ "$2" = etserver.service ]; then
+	[ -e "$MOCK_ET_DISABLED_STATE" ] && printf '%s\n' inactive || printf '%s\n' active
+	exit 3
+fi
+if [ "$1" = is-enabled ] && [ "$2" = etserver.service ]; then
+	[ -e "$MOCK_ET_DISABLED_STATE" ] && printf '%s\n' disabled || printf '%s\n' enabled
+	exit 1
+fi
 if [ "$1" = --user ] && [ "$2" = show ] && [ "$3" = --property=LoadState ] &&
 	[ "$4" = --value ]; then
 	if [ "${MOCK_LEGACY_UNITS:-absent}" = present ]; then
@@ -1014,6 +1730,122 @@ fi
 EOF
 chmod +x "$lifecycle_home/.local/bin/dotfiles-process-compose" \
 	"$lifecycle_home/.local/bin/mise" "$lifecycle_mock_bin"/*
+
+preflight_marker="$tmp_dir/codex-preflight-marker"
+printf '%s\n' unchanged > "$preflight_marker"
+chmod 0644 "$preflight_marker"
+: > "$lifecycle_log"
+if HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
+	LOGIN_USER=tester OS=Linux DOTFILES_HOST=aorus REAL_PYTHON="$real_python" \
+	MOCK_CODEX_LOGGED_IN=false SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
+	bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; verify_aorus_codex_login' \
+	>"$tmp_dir/codex-login-preflight.out" 2>&1; then
+	fail 'Aorus Codex login preflight accepted logged-out state'
+fi
+grep -Fq 'mise exec -- codex login' "$tmp_dir/codex-login-preflight.out" ||
+	fail 'Aorus Codex login preflight omitted actionable login command'
+if grep -Fq 'redacted-login-status' "$tmp_dir/codex-login-preflight.out"; then
+	fail 'Aorus Codex login preflight exposed Codex status output'
+fi
+[ "$(cat "$preflight_marker")" = unchanged ] || fail 'Logged-out Codex preflight changed file content'
+assert_mode 644 "$preflight_marker"
+if [ "$(wc -l < "$lifecycle_log" | tr -d ' ')" != 1 ] ||
+	! grep -Fxq 'mise codex login status' "$lifecycle_log"; then
+	fail 'Logged-out Codex preflight ran mutation commands'
+fi
+[ ! -e "$lifecycle_home/.local/state" ] || fail 'Logged-out Codex preflight created state'
+
+: > "$lifecycle_log"
+HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
+	LOGIN_USER=tester OS=Linux DOTFILES_HOST=aorus REAL_PYTHON="$real_python" \
+	MOCK_CODEX_LOGGED_IN=true SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
+	bash -c 'eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; verify_aorus_codex_login' ||
+	fail 'Aorus Codex login preflight rejected logged-in state'
+grep -Fxq 'mise codex login status' "$lifecycle_log" ||
+	fail 'Aorus Codex login preflight did not use supported status command'
+
+preflight_call_line=$(grep -nFx 'verify_aorus_codex_login' "$repo_dir/scripts/bootstrap-system.sh" |
+	cut -d: -f1 || true)
+setup_state_call_line=$(grep -nFx 'setup_user_state' "$repo_dir/scripts/bootstrap-system.sh" |
+	cut -d: -f1 || true)
+migration_call_line=$(grep -nFx 'migrate_legacy_omniroute_state' "$repo_dir/scripts/bootstrap-system.sh" |
+	cut -d: -f1 || true)
+harden_call_line=$(grep -nFx 'harden_omniroute_env' "$repo_dir/scripts/bootstrap-system.sh" |
+	cut -d: -f1 || true)
+[ -n "$preflight_call_line" ] && [ -n "$setup_state_call_line" ] &&
+	[ -n "$migration_call_line" ] && [ -n "$harden_call_line" ] ||
+	fail 'Could not locate Aorus Codex login preflight ordering'
+[ "$preflight_call_line" -lt "$setup_state_call_line" ] &&
+	[ "$preflight_call_line" -lt "$migration_call_line" ] &&
+	[ "$preflight_call_line" -lt "$harden_call_line" ] ||
+	fail 'Aorus Codex login preflight does not precede filesystem and service migration'
+
+legacy_et_unit="$tmp_dir/etserver.service"
+legacy_et_original="$tmp_dir/etserver.service.original"
+et_disabled_state="$tmp_dir/etserver.disabled"
+printf '%s\n' '[Service]' 'User=tester' \
+	'ExecStart=/home/linuxbrew/.linuxbrew/opt/et/bin/etserver --cfgfile /home/linuxbrew/.linuxbrew/etc/et.cfg' \
+	> "$legacy_et_unit"
+chmod 0644 "$legacy_et_unit"
+cp "$legacy_et_unit" "$legacy_et_original"
+: > "$lifecycle_log"
+HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
+	LOGIN_USER=tester OS=Linux DOTFILES_HOST=aorus REAL_PYTHON="$real_python" \
+	MOCK_SYSTEM_ET=present MOCK_ET_UNIT="$legacy_et_unit" MOCK_ET_DISABLED_STATE="$et_disabled_state" \
+	MOCK_ET_VALIDATION_BYPASS=true SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
+	bash -c 'eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; migrate_system_etserver_service "$MOCK_ET_UNIT"' ||
+	fail 'Valid legacy system Eternal Terminal unit migration failed'
+[ -e "$et_disabled_state" ] || fail 'Legacy system Eternal Terminal unit was not disabled'
+cmp -s "$legacy_et_unit" "$legacy_et_original" ||
+	fail 'Legacy system Eternal Terminal unit file was modified'
+assert_mode 644 "$legacy_et_unit"
+grep -Fxq 'sudo systemctl disable --now etserver.service' "$lifecycle_log" ||
+	fail 'Legacy system Eternal Terminal unit was not stopped and disabled'
+
+rm -f "$et_disabled_state"
+: > "$lifecycle_log"
+HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
+	LOGIN_USER=tester OS=Linux DOTFILES_HOST=aorus REAL_PYTHON="$real_python" \
+	MOCK_SYSTEM_ET=absent MOCK_ET_UNIT="$legacy_et_unit" MOCK_ET_DISABLED_STATE="$et_disabled_state" \
+	MOCK_ET_VALIDATION_BYPASS=true SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
+	bash -c 'eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; migrate_system_etserver_service "$MOCK_ET_UNIT"' ||
+	fail 'Missing legacy system Eternal Terminal unit did not converge'
+if grep -Fq 'disable --now etserver.service' "$lifecycle_log"; then
+	fail 'Missing legacy system Eternal Terminal unit was disabled'
+fi
+
+for et_failure_case in unsafe wrong-user disable; do
+	rm -f "$et_disabled_state"
+	: > "$lifecycle_log"
+	et_validation_fail=false
+	et_user=tester
+	et_disable_fail=false
+	case "$et_failure_case" in
+		unsafe) et_validation_fail=true ;;
+		wrong-user) et_user=root ;;
+		disable) et_disable_fail=true ;;
+	esac
+	if HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
+		LOGIN_USER=tester OS=Linux DOTFILES_HOST=aorus REAL_PYTHON="$real_python" \
+		MOCK_SYSTEM_ET=present MOCK_ET_UNIT="$legacy_et_unit" MOCK_ET_USER="$et_user" \
+		MOCK_ET_DISABLED_STATE="$et_disabled_state" MOCK_ET_VALIDATION_BYPASS=true \
+		MOCK_ET_VALIDATION_FAIL="$et_validation_fail" MOCK_ET_DISABLE_FAIL="$et_disable_fail" \
+		SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
+		bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; migrate_system_etserver_service "$MOCK_ET_UNIT"' \
+		>"$tmp_dir/etserver-$et_failure_case.out" 2>&1; then
+		fail "Legacy system Eternal Terminal migration accepted $et_failure_case case"
+	fi
+	cmp -s "$legacy_et_unit" "$legacy_et_original" ||
+		fail "Legacy system Eternal Terminal $et_failure_case failure modified unit"
+done
+
+et_migration_line=$(grep -nFx $'\tmigrate_system_etserver_service' \
+	"$repo_dir/scripts/bootstrap-system.sh" | cut -d: -f1 || true)
+process_restart_line=$(grep -nF $'\t\t\t"${user_systemctl[@]}" restart dotfiles-process-compose.service' \
+	"$repo_dir/scripts/bootstrap-system.sh" | cut -d: -f1 || true)
+[ -n "$et_migration_line" ] && [ -n "$process_restart_line" ] &&
+	[ "$et_migration_line" -lt "$process_restart_line" ] ||
+	fail 'System Eternal Terminal migration does not precede Process Compose restart'
 
 : > "$lifecycle_log"
 darwin_native_state="$lifecycle_home/state & custom"
@@ -1090,10 +1922,12 @@ grep -Fxq 'EnvironmentFile=%h/.config/hindsight/hindsight.env' "$legacy_codex_un
 	fail 'Legacy Codex unit rollback environment file missing'
 grep -Fq 'Environment=UNRELATED=value' "$legacy_codex_unit" ||
 	fail 'Legacy Codex unit sanitizer removed unrelated environment'
-grep -Fq 'OMNIROUTER_API_KEY=legacy-inline-secret-value' "$legacy_codex_unit" &&
+if grep -Fq 'OMNIROUTER_API_KEY=legacy-inline-secret-value' "$legacy_codex_unit"; then
 	fail 'Legacy Codex unit retained inline OmniRouter key'
-grep -Fq 'legacy-inline-secret-value' "$lifecycle_log" &&
+fi
+if grep -Fq 'legacy-inline-secret-value' "$lifecycle_log"; then
 	fail 'Legacy Codex unit migration printed inline secret'
+fi
 [ ! -e "$hindsight_container_state" ] || fail 'Stale Hindsight container was not removed'
 linger_line=$(grep -nFx 'sudo loginctl enable-linger tester' "$lifecycle_log" | cut -d: -f1 || true)
 selector_check_line=$(grep -nFx 'launcher --check' "$lifecycle_log" | cut -d: -f1 || true)
@@ -1145,8 +1979,9 @@ HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$stopped_
 [ ! -e "$hindsight_container_state" ] || fail 'Stopped Hindsight container was not removed'
 grep -Fxq 'sudo docker rm hindsight' "$stopped_container_log" ||
 	fail 'Stopped Hindsight container cleanup omitted remove'
-grep -Fq 'sudo docker stop' "$stopped_container_log" &&
+if grep -Fq 'sudo docker stop' "$stopped_container_log"; then
 	fail 'Stopped Hindsight container cleanup issued unnecessary stop'
+fi
 
 : > "$lifecycle_log"
 HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
@@ -1162,8 +1997,9 @@ for legacy_unit in \
 	hindsight.service \
 	homebrew.et.service \
 	omniroute.service; do
-	grep -Fxq "systemctl --user disable --now $legacy_unit" "$lifecycle_log" &&
+	if grep -Fxq "systemctl --user disable --now $legacy_unit" "$lifecycle_log"; then
 		fail "Linux lifecycle tried to disable absent $legacy_unit"
+	fi
 done
 grep -Fxq 'mise codex remote-control --json stop' "$lifecycle_log" ||
 	fail 'Linux lifecycle did not accept detached Codex not-running status'
@@ -1184,8 +2020,9 @@ if HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifec
 	>"$tmp_dir/legacy-codex-symlink.out" 2>&1; then
 	fail 'Legacy Codex unit sanitizer accepted symlink'
 fi
-grep -Fq 'symlink-secret-value' "$tmp_dir/legacy-codex-symlink.out" &&
+if grep -Fq 'symlink-secret-value' "$tmp_dir/legacy-codex-symlink.out"; then
 	fail 'Legacy Codex unit symlink rejection printed secret'
+fi
 assert_mode 644 "$legacy_codex_outside"
 
 rm "$legacy_codex_unit"
@@ -1207,8 +2044,9 @@ if HOME="$legacy_codex_symlink_home" PATH="$lifecycle_mock_bin:$PATH" \
 	>"$tmp_dir/legacy-codex-ancestor-symlink.out" 2>&1; then
 	fail 'Legacy Codex unit sanitizer accepted symlinked ancestor'
 fi
-grep -Fq 'ancestor-symlink-secret-value' "$tmp_dir/legacy-codex-ancestor-symlink.out" &&
+if grep -Fq 'ancestor-symlink-secret-value' "$tmp_dir/legacy-codex-ancestor-symlink.out"; then
 	fail 'Legacy Codex unit ancestor symlink rejection printed secret'
+fi
 assert_mode 644 "$legacy_codex_ancestor_unit"
 grep -Fq 'OMNIROUTER_API_KEY=ancestor-symlink-secret-value' "$legacy_codex_ancestor_unit" ||
 	fail 'Legacy Codex unit ancestor symlink rejection mutated target'
@@ -1247,6 +2085,13 @@ if HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifec
 fi
 grep -q 'did not become ready' "$tmp_dir/readiness-failure.out" ||
 	fail 'Aorus replacement readiness failure was unclear'
+grep -Fxq 'Process readiness: name=hindsight state=stopped readiness=not-ready restarts=7 exit_code=42' \
+	"$tmp_dir/readiness-failure.out" ||
+	fail 'Aorus readiness failure omitted safe process diagnostics'
+if grep -Eq 'readiness-secret|READINESS_SECRET|command=|environment=|logs=' \
+	"$tmp_dir/readiness-failure.out"; then
+	fail 'Aorus readiness diagnostics exposed command, environment, or logs'
+fi
 
 if HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
 	LOGIN_USER=tester DOTFILES_HOST=aorus XDG_CONFIG_HOME="$lifecycle_home/.config" \
