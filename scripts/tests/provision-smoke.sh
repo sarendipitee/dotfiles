@@ -1052,6 +1052,10 @@ linux_native_state="$lifecycle_home/state % \"quoted\" \$(touch $linux_injection
 legacy_codex_unit="$lifecycle_home/.config/systemd/user/codex-remote-control.service"
 hindsight_container_state="$tmp_dir/hindsight-container.state"
 mkdir -p "$(dirname "$legacy_codex_unit")"
+chmod 0775 \
+	"$lifecycle_home/.config" \
+	"$lifecycle_home/.config/systemd" \
+	"$lifecycle_home/.config/systemd/user"
 cat > "$legacy_codex_unit" <<'EOF'
 [Unit]
 Description=Legacy Codex remote control
@@ -1078,6 +1082,9 @@ escaped_linux_state=${escaped_linux_state//%/%%}
 grep -Fxq "Environment=\"XDG_STATE_HOME=$escaped_linux_state\"" "$linux_native_dropin" ||
 	fail 'Generated systemd environment did not escape custom XDG_STATE_HOME safely'
 [ ! -e "$linux_injection_marker" ] || fail 'Custom XDG_STATE_HOME triggered parent-shell injection'
+assert_mode 755 "$lifecycle_home/.config"
+assert_mode 755 "$lifecycle_home/.config/systemd"
+assert_mode 755 "$lifecycle_home/.config/systemd/user"
 assert_mode 600 "$legacy_codex_unit"
 grep -Fxq 'EnvironmentFile=%h/.config/hindsight/hindsight.env' "$legacy_codex_unit" ||
 	fail 'Legacy Codex unit rollback environment file missing'
@@ -1180,6 +1187,31 @@ fi
 grep -Fq 'symlink-secret-value' "$tmp_dir/legacy-codex-symlink.out" &&
 	fail 'Legacy Codex unit symlink rejection printed secret'
 assert_mode 644 "$legacy_codex_outside"
+
+rm "$legacy_codex_unit"
+legacy_codex_symlink_home="$tmp_dir/legacy-codex-symlink-home"
+legacy_codex_symlink_target="$tmp_dir/legacy-codex-symlink-target"
+mkdir -p "$legacy_codex_symlink_home" "$legacy_codex_symlink_target/systemd/user"
+legacy_codex_ancestor_unit="$legacy_codex_symlink_target/systemd/user/codex-remote-control.service"
+printf '%s\n' '[Service]' 'Environment=OMNIROUTER_API_KEY=ancestor-symlink-secret-value' > \
+	"$legacy_codex_ancestor_unit"
+chmod 0644 "$legacy_codex_ancestor_unit"
+ln -s "$legacy_codex_symlink_target" "$legacy_codex_symlink_home/.config"
+if HOME="$legacy_codex_symlink_home" PATH="$lifecycle_mock_bin:$PATH" \
+	LIFECYCLE_LOG="$lifecycle_log" LOGIN_USER=tester \
+	XDG_CONFIG_HOME="$legacy_codex_symlink_home/.config" REAL_PYTHON="$real_python" \
+	MOCK_LEGACY_UNITS=absent MOCK_CODEX_UNIT="$legacy_codex_ancestor_unit" \
+	MOCK_HINDSIGHT_STATE="$hindsight_container_state" \
+	SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
+	bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; sanitize_legacy_codex_remote_control_unit' \
+	>"$tmp_dir/legacy-codex-ancestor-symlink.out" 2>&1; then
+	fail 'Legacy Codex unit sanitizer accepted symlinked ancestor'
+fi
+grep -Fq 'ancestor-symlink-secret-value' "$tmp_dir/legacy-codex-ancestor-symlink.out" &&
+	fail 'Legacy Codex unit ancestor symlink rejection printed secret'
+assert_mode 644 "$legacy_codex_ancestor_unit"
+grep -Fq 'OMNIROUTER_API_KEY=ancestor-symlink-secret-value' "$legacy_codex_ancestor_unit" ||
+	fail 'Legacy Codex unit ancestor symlink rejection mutated target'
 
 readiness_state=$(mktemp -d /tmp/dotfiles-readiness.XXXXXX)
 readiness_socket="$readiness_state/process-compose/run/pc.sock"

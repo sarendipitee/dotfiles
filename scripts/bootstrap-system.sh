@@ -163,37 +163,6 @@ PY
 	fi
 }
 
-validate_path_ancestors() {
-	local current_path=/
-	local login_uid="$1"
-	local mode
-	local owner_uid
-	local path="$2"
-	local path_suffix
-	local purpose="$3"
-
-	case "$path" in
-		/*) ;;
-		*) fatal "$purpose must be an absolute path" ;;
-	esac
-	path_suffix=${path#/}
-	while [ -n "$path_suffix" ]; do
-		current_path="${current_path%/}/${path_suffix%%/*}"
-		[ -e "$current_path" ] || fatal "$purpose contains a missing path component"
-		[ ! -L "$current_path" ] || fatal "$purpose contains a symlink"
-		owner_uid=$(path_owner_uid "$current_path") || fatal "Could not inspect $purpose ownership"
-		[ "$owner_uid" = 0 ] || [ "$owner_uid" = "$login_uid" ] ||
-			fatal "$purpose contains a path component owned by another user"
-		mode=$(path_mode "$current_path") || fatal "Could not inspect $purpose permissions"
-		(( (8#$mode & 8#022) == 0 )) ||
-			fatal "$purpose contains a group- or world-writable path component"
-		if [ "$path_suffix" = "${path_suffix#*/}" ]; then
-			break
-		fi
-		path_suffix=${path_suffix#*/}
-	done
-}
-
 omniroute_binding_works() {
 	local mise_bin="$1"
 	local package_dir="$2"
@@ -385,7 +354,7 @@ sanitize_legacy_codex_remote_control_unit() {
 	fi
 	[ -f "$expected_path" ] && [ ! -L "$expected_path" ] ||
 		fatal 'Legacy Codex remote-control unit is not a regular file'
-	validate_path_ancestors "$login_uid" "$(dirname "$expected_path")" \
+	converge_path_directories "$mise_bin" "$HOME" "$login_uid" "$(dirname "$expected_path")" \
 		'Legacy Codex remote-control unit directory path'
 	owner_uid=$(path_owner_uid "$expected_path") ||
 		fatal 'Could not inspect legacy Codex remote-control unit ownership'
