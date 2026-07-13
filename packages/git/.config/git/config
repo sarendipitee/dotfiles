@@ -76,9 +76,9 @@
 	gpgsign = false
 [credential "https://github.com"]
 	helper = 
-	helper = !/home/saren/projects/dotfiles/packages/flox/envs/global/.flox/run/x86_64-linux.global.run/bin/gh auth git-credential
+	helper = !gh auth git-credential
 [credential "https://gist.github.com"]
 	helper = 
-	helper = !/home/saren/projects/dotfiles/packages/flox/envs/global/.flox/run/x86_64-linux.global.run/bin/gh auth git-credential
+	helper = !gh auth git-credential
 [beads]
 	role = maintainer

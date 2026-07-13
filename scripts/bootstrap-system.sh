@@ -147,6 +147,20 @@ setup_nvidia() {
 	fi
 }
 
+setup_linuxbrew_ca() {
+	local brew="/home/linuxbrew/.linuxbrew/bin/brew"
+	local cert="/home/linuxbrew/.linuxbrew/etc/openssl@3/cert.pem"
+	[ -x "$brew" ] || return 0
+	[ -e "$cert" ] && return 0
+	printf '==> Linking Linuxbrew OpenSSL CA certificates\n'
+	"$brew" postinstall openssl@3 2>&1 | tail -5 || true
+	if [ ! -e "$cert" ]; then
+		printf 'WARNING: openssl postinstall did not create %s; falling back to system CA bundle\n' "$cert" >&2
+		mkdir -p "$(dirname "$cert")"
+		cp -f /etc/ssl/certs/ca-certificates.crt "$cert"
+	fi
+}
+
 setup_tailscale() {
 	printf '==> Configuring Tailscale\n'
 	if ! command_exists tailscale; then
@@ -185,6 +199,7 @@ if [ "${DOTFILES_WITH_NVIDIA:-auto}" = true ] || { [ "${DOTFILES_WITH_NVIDIA:-au
 	setup_nvidia
 fi
 if [ "${DOTFILES_WITH_TAILSCALE:-true}" = true ]; then setup_tailscale; fi
+if [ "${DOTFILES_WITH_LINUXBREW_CA:-true}" = true ]; then setup_linuxbrew_ca; fi
 
 if command_exists recron; then recron; fi
 if [ -e /var/run/reboot-required ]; then REBOOT_REQUIRED=true; fi
