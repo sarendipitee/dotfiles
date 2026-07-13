@@ -45,7 +45,10 @@
 ^\.config/kilo/node_modules/
 ^\.config/kilo/package\.(json|lock\.json)$
 ^\.config/kilo/\.gitignore$
-^agents*
+^\.codex/tmp$
+^\.codex/memories$
+^\.codex/skills$
+^\.codex/visualizations$
 ^skills*
 ^skills.unused*
 ^\.gitignore$
