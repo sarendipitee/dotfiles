@@ -1,146 +1,138 @@
-# AGENTS.md - Agent Instructions for Dotfiles Repository
+# AGENTS.md — Dotfiles Repository
 
-## Repository Overview
+## Scope
 
-This is a dotfiles repository using **GNU Stow** for symlink management. Configuration files are organized into packages under `packages/` and symlinked to `$HOME` using Stow.
+Personal macOS and Ubuntu configuration managed with GNU Stow. Tracked package
+contents mirror paths under `$HOME`; Stow owns all links.
 
-## Directory Structure
+## Repository Map
 
+```text
+packages/
+  ai/                AI agent definitions and tool configuration
+  shell/             Zsh, tmux, aliases, functions, XDG environment
+  mise/              Global tools, packages, repositories, bootstrap hooks
+  process-compose/   Declarative per-user services and launch wrappers
+  systemd/           Linux user-service configuration
+  launchd/           macOS user-service configuration
+  git/, vim/, nvim/  Editor and Git configuration
+  ghostty/, lazygit/, mitmproxy/, misc/, zoxide/
+  flox/, homebrew/   Environment and package-manager support; not Stowed
+scripts/
+  create-links.sh        Platform-aware Stow orchestration
+  provision.sh           Existing-clone bootstrap entry point
+  bootstrap-system.sh    Privileged machine setup
+  generate-ai-agents.mjs Agent-definition generator
+settings/defaults/       Exported macOS application preferences
 ```
-dotfiles/
-├── packages/              # Config packages (one per tool/application)
-│   ├── ai/               # AI tools (Claude, OpenCode, Kilo)
-│   ├── git/              # Git config
-│   ├── mise/             # Global tools, packages, repositories, and bootstrap hooks
-│   ├── misc/             # Miscellaneous scripts/binaries
-│   ├── nvim/             # Neovim (LazyVim distribution)
-│   ├── shell/            # Zsh, tmux configuration
-│   └── vim/              # Traditional Vim
-├── scripts/               # Bootstrap and setup scripts
-│   ├── provision.sh      # Existing-clone bootstrap wrapper
-│   ├── bootstrap-system.sh # Privileged machine setup
-│   ├── create-links.sh   # Stow symlink creation
-│   ├── osx-defaults.sh   # macOS system defaults
-│   └── capture-defaults.sh # Export/import macOS preferences
-└── settings/              # Exported macOS app preferences
-    └── defaults/          # ~70+ .defaults files
+
+## Rules
+
+- Edit source only under `packages/`; never edit resulting files under `$HOME`.
+- Preserve home-relative layout. `packages/ghostty/.config/ghostty/config`
+  becomes `~/.config/ghostty/config`.
+- Use `scripts/create-links.sh`; it initializes submodules, excludes
+  platform-incompatible packages, preflights Stow, and handles the `ai`
+  package's generated definitions. Do not create symlinks manually.
+- Use `--dotfiles` with any direct Stow command. Names beginning with `dot-`
+  map to dotfiles.
+- Keep generated state, caches, sessions, databases, logs, machine-specific
+  files, and secrets outside tracked package contents. Respect each package's
+  `.stow-local-ignore` and `.gitignore`.
+- Never store API keys, tokens, private keys, or durable service `.env` files
+  in this repository.
+- Read adjacent configuration before changing it; reuse its existing pattern.
+
+## Platform and Provisioning
+
+- `scripts/provision.sh` is for an existing checkout. It links packages and
+  runs privileged bootstrap. It can change system packages and services.
+- Fresh-machine bootstrap is documented in `README.md`.
+- `scripts/create-links.sh` Stows every supported package. On Linux it excludes
+  `launchd`; on macOS it excludes `systemd`; it always excludes `flox` and
+  `homebrew`.
+- `scripts/bootstrap-system.sh` changes host state. Do not run it for routine
+  configuration edits.
+- macOS defaults belong in `settings/defaults/` and are applied through
+  `scripts/osx-defaults.sh`.
+
+## Package-Specific Guidance
+
+### Shell
+
+`packages/shell/.config/zsh/` is modular:
+
+- `.zshenv` loads first.
+- `.zshrc` configures interactive shells.
+- `env.sh` defines XDG and tool environment variables.
+- `path.sh`, `aliases.sh`, `functions.sh`, and `colors.sh` have focused roles.
+
+Keep XDG paths consistent:
+
+```sh
+XDG_CONFIG_HOME=$HOME/.config
+XDG_DATA_HOME=$HOME/.local/share
+XDG_STATE_HOME=$HOME/.local/state
+XDG_CACHE_HOME=$HOME/.cache
 ```
 
-## Key Conventions
+Reuse helpers from `functions.sh`, including `clone_repo_into`,
+`ensure_dir_exists`, `is_macos`, `is_linux`, `is_windows`, and
+`set_ssh_folder_permissions`.
 
-### Stow Usage
+### AI Definitions
 
-- All configs use GNU Stow with `--dotfiles` flag for proper dotfile handling
-- Package directory: `packages/`
-- Target directory: `$HOME`
-- Symlink command: `stow -v --dotfiles -d packages -t $HOME <package>`
-
-### XDG Base Directory Specification
-
-The repository follows XDG conventions. Key environment variables are set in `packages/shell/.config/zsh/env.sh`:
-
-- `XDG_CONFIG_HOME=$HOME/.config`
-- `XDG_DATA_HOME=$HOME/.local/share`
-- `XDG_STATE_HOME=$HOME/.local/state`
-- `XDG_CACHE_HOME=$HOME/.cache`
-
-### Zsh Configuration (Modular)
-
-Located in `packages/shell/.config/zsh/`:
-
-- `.zshenv` - Environment variables (sourced first)
-- `.zshrc` - Interactive shell config
-- `env.sh` - All XDG and tool-specific environment variables
-- `aliases.sh` - Shell aliases
-- `functions.sh` - Helper functions (clone_repo_into, ensure_dir_exists, OS detection)
-- `path.sh` - PATH modifications
-- `colors.sh` - Color definitions
-
-### Neovim Plugin Organization
-
-Located in `packages/nvim/.config/nvim/`:
-
-- `lua/plugins/` - 32 plugin configurations
-- `lua/themes/` - 20+ color schemes
-- `lua/plugins/lang/` - Language-specific plugins
-
-## Common Tasks
-
-### Adding a New Package
-
-1. Create directory: `mkdir -p packages/<tool>/.config/<tool>`
-2. Add config files in the appropriate subdirectory
-3. Create `.stow-local-ignore` if needed to exclude runtime files
-4. Run: `stow -v --dotfiles -d packages -t $HOME <tool>`
-
-### Modifying Existing Configs
-
-1. **Read first** - Understand existing conventions through source
-2. **Follow patterns** - Match existing code style, naming, and structure
-3. **Edit in place** - Modify files in `packages/<tool>/`, not in `$HOME`
-4. **Test symlinks** - Run stow command to verify symlinks work
-
-### Working with AI Tool Configs
-
-Located in `packages/ai/`:
-
-- `.claude/CLAUDE.md` - Instructions for Claude assistant
-- `.config/opencode/` - OpenCode configuration
-- `.config/kilo/` - Kilo configuration
-- `.stow-local-ignore` excludes runtime files (sessions, cache, logs)
-
-## Security Guidelines
-
-- **Never commit secrets** - Check `.gitignore` files before committing
-- **Runtime files** - Each package may have `.stow-local-ignore` to exclude generated files
-- **SSH keys** - `scripts/provision.sh` sets proper SSH permissions; never modify keys
-- **API keys/tokens** - Store in environment variables, not in config files
-
-## Helper Functions
-
-Available in `packages/shell/.config/zsh/functions.sh`:
-
-- `clone_repo_into <repo> <dir>` - Git clone with error handling
-- `ensure_dir_exists <dir>` - Create directory safely
-- `is_macos()`, `is_linux()`, `is_windows()` - OS detection
-- `set_ssh_folder_permissions` - Fix SSH key permissions
-
-## Scripts Overview
-
-| Script | Purpose | Safe to Run |
-|--------|---------|-------------|
-| `provision.sh` | Full bootstrap for new machine | Yes - idempotent |
-| `create-links.sh` | Create stow symlinks | Yes - idempotent |
-| `osx-defaults.sh` | Apply macOS preferences | Interactive prompts |
-| `capture-defaults.sh` | Export/import app preferences | Safe |
-
-## File Modification Guidelines
-
-1. **Always read files before editing** - Understand context and conventions
-2. **Preserve existing style** - Match indentation, quoting, naming conventions
-3. **Use edit tool** - Not sed/awk for file modifications
-4. **Batch related changes** - Group related edits in one message
-5. **Verify after changes** - Run stow to test symlinks if modifying configs
-
-## What NOT to Do
-
-- Don't create symlinks manually - use Stow
-- Don't add runtime files to packages (bundle directories, undo files, etc.)
-- Don't modify `provision.sh` without understanding the full bootstrap flow
-- Don't commit without checking `.gitignore` exclusions
-- Don't add documentation files (*.md) unless explicitly requested
-- Don't use `cd` in bash commands - use `workdir` parameter instead
-
-## Testing Changes
-
-After modifying configurations:
+`packages/ai/agents/*.yml` is source of truth for shared agent definitions.
+Do not edit rendered files in `.claude/agents`, `.codex/agents`,
+`.config/kilo/agents`, `.config/opencode/agents`, or `.omp/agent/agents`.
 
 ```bash
-stow -v --dotfiles -d packages -t $HOME <package>
-
-find $HOME -xtype l 2>/dev/null
-
-zsh -c "source ~/.zshenv && echo 'OK'"
-
-nvim --headless "+qa" 2>&1 | head -20
+node scripts/generate-ai-agents.mjs
+node scripts/generate-ai-agents.mjs --check
 ```
+
+Generated definitions are intentionally force-included by `create-links.sh`
+despite being in runtime-oriented directories.
+
+### Services
+
+`packages/process-compose/.config/process-compose/` defines portable user
+services. Host selection is intentionally machine-local or environment-driven;
+do not commit host-specific selection files or secrets. Validate declarations
+without starting services:
+
+```bash
+~/.local/bin/dotfiles-process-compose --check
+```
+
+After a deliberate service-definition change, restart the native launcher:
+
+```bash
+# Linux
+systemctl --user restart dotfiles-process-compose.service
+systemctl --user status dotfiles-process-compose.service
+
+# macOS
+launchctl kickstart -k "gui/$(id -u)/io.sarendipitee.process-compose"
+launchctl print "gui/$(id -u)/io.sarendipitee.process-compose"
+```
+
+## Safe Validation
+
+Run checks matched to changed surface:
+
+```bash
+# Shell scripts
+bash -n scripts/create-links.sh scripts/provision.sh scripts/bootstrap-system.sh
+
+# Generated AI definitions
+node scripts/generate-ai-agents.mjs --check
+
+# One package, no links changed
+stow --simulate --verbose --dotfiles --no-folding \
+  --dir packages --target "$HOME" <package>
+```
+
+For a full link update, run `./scripts/create-links.sh`; this modifies `$HOME`
+only after a successful Stow preflight. Use `./scripts/provision.sh` only when
+machine provisioning is intended.
