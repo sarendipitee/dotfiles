@@ -182,14 +182,14 @@ launcher: `io.sarendipitee.process-compose` through launchd on macOS, or
 `dotfiles-process-compose.service` through systemd on Linux. Linux bootstrap
 also enables lingering so user services continue without an interactive login.
 Before starting Process Compose, Linux bootstrap finishes Docker setup, stops
-the existing Process Compose owner, disables and stops legacy per-service
-systemd units for Eternal Terminal, OmniRoute, Codex remote control, and
-Hindsight, then stops any detached Codex remote-control daemon and removes a
-stale `hindsight` container. Legacy Codex rollback configuration is retained,
-but inline OmniRouter keys are atomically replaced with
-`EnvironmentFile=%h/.config/hindsight/hindsight.env` and mode `0600`. Bootstrap
-then waits up to ten minutes for all Aorus processes and Hindsight's HTTP health
-endpoint; provisioning fails if ownership transfer leaves replacements down.
+the existing Process Compose owner, disables and stops known legacy per-service
+user units, and removes stale named containers. On Aorus it validates and
+retires the former root `vllm.service` controller only after Process Compose
+proves the replacement ready. Hindsight, vLLM, and NanoClaw are Process Compose
+processes; their untracked data and secret files remain outside this repository.
+Bootstrap waits up to ten minutes for declared Aorus processes and Hindsight's
+HTTP health endpoint; provisioning fails if ownership transfer leaves a
+replacement down.
 On `aorus`, bootstrap also recognizes the root-owned legacy
 `/etc/systemd/system/etserver.service`, validates its loaded path, owner, mode,
 link count, ancestors, login user, and Homebrew `etserver --cfgfile` command,
@@ -199,6 +199,19 @@ timeouts report only declared process name, running state, readiness state,
 restart count, and exit code; commands, environment, and logs remain hidden.
 Fresh Docker group membership requires logout/login and a provisioning rerun
 before Process Compose ownership transfer starts.
+
+`nanoclaw` is a per-user profile for accounts that need a claw without
+starting competing host services. After linking the `mise`, `systemd`, and
+`process-compose` packages into that account, run as the target user:
+
+```bash
+~/.local/bin/dotfiles-nanoclaw-user enable
+```
+
+It writes a user-systemd drop-in selecting `DOTFILES_HOST=nanoclaw`, enables
+linger, installs NanoClaw's Node 22 build runtime, and starts only that user's
+Process Compose NanoClaw process. Disable it with
+`~/.local/bin/dotfiles-nanoclaw-user disable`.
 After declaration changes, validate, then restart and inspect launcher:
 
 ```bash
@@ -224,8 +237,8 @@ fi
 ~/.local/bin/mise exec -- process-compose --use-uds --unix-socket "$socket" attach
 ```
 
-Privileged and vendor system daemons such as Docker, SSH, Tailscale, and vLLM
-remain native system services.
+Privileged system daemons such as Docker, SSH, and Tailscale remain native.
+vLLM is a Process Compose process on Aorus.
 
 ## Repository Structure
 

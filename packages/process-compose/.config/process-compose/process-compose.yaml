@@ -83,7 +83,7 @@ processes:
 
   nanoclaw:
     description: NanoClaw and OneCLI stack
-    command: exec ${HOME}/.local/bin/dotfiles-nanoclaw-compose up
+    command: exec ${HOME}/.local/bin/dotfiles-nanoclaw-compose
     availability:
       restart: always
       backoff_seconds: 10

@@ -136,14 +136,14 @@ hosts_file="$repo_dir/packages/process-compose/.config/process-compose/hosts.yam
   (.processes.vllm.readiness_probe.http_get.path == "/v1/models") and
   (.processes.vllm.readiness_probe.initial_delay_seconds == 10) and
   (.processes.vllm.readiness_probe.failure_threshold == 60) and
-  (.processes.vllm.shutdown.command == "/usr/bin/docker stop -t 120 vllm") and
   (.processes.vllm.shutdown.timeout_seconds == 130) and
-  (.processes.nanoclaw.depends_on.vllm.condition == "process_healthy")
+  (.processes.nanoclaw.command == "exec ${HOME}/.local/bin/dotfiles-nanoclaw-compose") and
+  (.processes.nanoclaw.depends_on == null)
 ' "$compose_file" >/dev/null ||
 	fail 'Canonical Process Compose config is invalid'
 "$yq_bin" -e '
   tag == "!!map" and
-  (length == 2) and
+  (length == 3) and
   (."sd-mbp" | length == 1) and
   (."sd-mbp"[0] == "eternal-terminal") and
   (.aorus | length == 6) and
@@ -152,12 +152,16 @@ hosts_file="$repo_dir/packages/process-compose/.config/process-compose/hosts.yam
   (.aorus[2] == "codex-remote-control") and
   (.aorus[3] == "hindsight") and
   (.aorus[4] == "vllm") and
-  (.aorus[5] == "nanoclaw")
+  (.aorus[5] == "nanoclaw") and
+  (.nanoclaw | length == 1) and
+  (.nanoclaw[0] == "nanoclaw")
 ' "$hosts_file" >/dev/null ||
 	fail 'Process Compose host mapping is invalid'
 
 grep -Fxq '"node" = "26"' "$repo_dir/packages/mise/.config/mise/config.toml" ||
 	fail 'Mise does not pin Node 26'
+grep -Fxq '"npm:node-gyp" = "latest"' "$repo_dir/packages/mise/.config/mise/config.toml" ||
+	fail 'Mise does not install node-gyp for NanoClaw native modules'
 grep -Fxq '"npm:@openai/codex" = "latest"' "$repo_dir/packages/mise/.config/mise/config.toml" ||
 	fail 'Mise does not install latest scoped Codex package'
 grep -Fxq '"npm:omniroute" = { version = "latest", allow_builds = ["omniroute", "better-sqlite3"] }' \
