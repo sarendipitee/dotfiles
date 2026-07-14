@@ -14,14 +14,16 @@ man_glob() {
 
 compctl -K man_glob -x 'C[-1,-P]' -m - 'R[-*l*,;]' -g '*.(man|[0-9nlpo](|[a-z]))' + -g '*(-/)' -- man
 
-# Turn on autocomplete predictions
-autoload -U incremental-complete-word predict-on
-zle -N incremental-complete-word
-zle -N predict-on
-zle -N predict-off
-bindkey '^Xi' incremental-complete-word
-bindkey '^Xp' predict-on
-bindkey '^X^P' predict-off
+# Turn on autocomplete predictions when ZLE is available.
+if [[ -o interactive && -t 0 && -t 1 ]]; then
+	autoload -Uz incremental-complete-word predict-on predict-off
+	zle -N incremental-complete-word
+	zle -N predict-on
+	zle -N predict-off
+	bindkey '^Xi' incremental-complete-word
+	bindkey '^Xp' predict-on
+	bindkey '^X^P' predict-off
+fi
 
 
 zstyle ':completion:*:*:docker:*' option-stacking yes

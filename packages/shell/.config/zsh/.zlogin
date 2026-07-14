@@ -16,8 +16,6 @@
 # useful command to print sourcing order
 # zsh -o SOURCE_TRACE -lic ''
 
-# execute 'FIRST_INSTALL=true zsh' to debug the load order of the custom zsh configuration files
-test -n "${FIRST_INSTALL+1}" && echo "loading ${0}"
 
 # type is_directory &> /dev/null 2>&1 || source "${HOME}/.profile"
 

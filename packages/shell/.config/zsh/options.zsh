@@ -14,8 +14,6 @@
 # https://htr3n.github.io/2018/07/faster-zsh/
 # https://blog.mattclemente.com/2020/06/26/oh-my-zsh-slow-to-load/
 
-# execute 'FIRST_INSTALL=true zsh' to debug the load order of the custom zsh configuration files
-test -n "${FIRST_INSTALL+1}" && echo "loading ${0}"
 
 
 # Uncomment the following line to use case-sensitive completion.

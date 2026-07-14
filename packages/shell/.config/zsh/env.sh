@@ -1,5 +1,3 @@
-# execute 'FIRST_INSTALL=true zsh' to debug the load order of the custom zsh configuration files
-test -n "${FIRST_INSTALL+1}" && echo "loading ${0}"
 
 export LANG='en_US.UTF-8'
 export LANGUAGE='en_US.UTF-8'
