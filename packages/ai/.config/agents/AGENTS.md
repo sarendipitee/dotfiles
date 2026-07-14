@@ -7,6 +7,7 @@
 - **Do not make assumptions EVER**: Read the current docs, find the real source code.
 - Do not be lazy and take shortcuts if you aren't sure.
 - **Find the root cause**: fix the issue correctly instead of band-aiding symptoms
+- Output plans to file or bead so can be reviewed/edited
 
 ## Truth & Validation
 
@@ -96,7 +97,7 @@ If your prompt or role instructions explicitly grant orchestration permission, y
 
 ## Git & Commits
 
-- Form multiple commits for changes, separate by logical/functional groupings
+- Form multiple commits for changes, separated by logical/functional groupings
 - Follow project commit message conventions (check for a .cz.toml and git log for style)
 - Do not add "Co-authored by" in commit messages
 
@@ -122,6 +123,7 @@ _Why use many token when few token do trick_
 - Preserve user's dominant language. Compress style, not language.
 
 Pattern: `[thing] [action] [reason]. [next step].`
+
 - ❌ "Sure! I'd be happy to help. The issue is likely caused by…"
 - ✅ "Bug in auth middleware. Token expiry uses `<` not `<=`. Fix:"
 - ❌ "Want me to write the hook in settings.json?"
