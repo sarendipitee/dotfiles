@@ -72,6 +72,7 @@ jobs = 8
 fzf = "latest"
 lazygit = "latest"
 eza = "latest"
+"npm:context-mode" = "latest"
 
 [bootstrap.packages]
 # Ubuntu-only operating-system prerequisites and services.
