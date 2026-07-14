@@ -3,13 +3,37 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: dotfiles-process-compose [--check]" >&2
+  echo "Usage: dotfiles-process-compose [--check | process <get|logs|restart|start|stop> <name>]" >&2
 }
 
 check=false
+control_operation=""
+control_process=""
 case "${1:-}" in
   "") ;;
-  --check) check=true ;;
+  --check)
+    check=true
+    if (( $# != 1 )); then
+      usage
+      exit 2
+    fi
+    ;;
+  process)
+    if (( $# != 3 )); then
+      usage
+      exit 2
+    fi
+    case "$2" in
+      get|logs|restart|start|stop)
+        control_operation="$2"
+        control_process="$3"
+        ;;
+      *)
+        usage
+        exit 2
+        ;;
+    esac
+    ;;
   -h|--help)
     usage
     exit 0
@@ -19,11 +43,6 @@ case "${1:-}" in
     exit 2
     ;;
 esac
-
-if (( $# > 1 )); then
-  usage
-  exit 2
-fi
 
 config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/process-compose"
 compose_file="$config_dir/process-compose.yaml"
@@ -123,6 +142,24 @@ for process in ${processes[@]+"${processes[@]}"}; do
   fi
 done
 unset DOTFILES_PROCESS_COMPOSE_PROCESS
+
+if [[ -n "$control_operation" ]]; then
+  is_managed_process=false
+  for process in ${processes[@]+"${processes[@]}"}; do
+    if [[ "$process" == "$control_process" ]]; then
+      is_managed_process=true
+      break
+    fi
+  done
+  if [[ "$is_managed_process" != true ]]; then
+    echo "dotfiles-process-compose: process is not managed for $host: $control_process" >&2
+    exit 1
+  fi
+  exec "$mise_bin" exec -- process-compose \
+    --use-uds \
+    --unix-socket "$socket_path" \
+    process "$control_operation" "$control_process"
+fi
 
 process_compose_cmd=(
   "$mise_bin" exec -- process-compose
