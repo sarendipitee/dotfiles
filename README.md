@@ -113,35 +113,31 @@ When both legacy and unmarked durable trees exist, provision automatically uses
 legacy state as authoritative and atomically preserves prior XDG state at the
 backup path before installing the validated legacy SQLite snapshot.
 
-Codex remote control runs only on `aorus` in foreground mode through Mise. Its
-wrapper reads only `OMNIROUTER_API_KEY` from Hindsight's environment file;
-other Hindsight secrets never enter Codex's environment. File ownership,
-permissions, ancestors, syntax, and key uniqueness fail closed before Codex
-starts. Its JSON startup line supplies Process Compose readiness, and Process
-Compose sends SIGINT for clean shutdown. Hindsight also runs only on `aorus` in
-foreground Docker mode. Its API and database ports bind only to
+Codex remote control runs only on `aorus` as a daemon launched by Process
+Compose. Its wrapper invokes the standalone Codex binary at
+`~/.codex/packages/standalone/current/codex`; this enables
+`codex remote-control pair` to mint manual pairing codes through the daemon
+control socket. The wrapper reads only `OMNIROUTER_API_KEY` from Hindsight's
+environment file; other Hindsight secrets never enter Codex's environment.
+File ownership, permissions, ancestors, syntax, and key uniqueness fail closed
+before Codex starts. Hindsight also runs only on `aorus` in foreground Docker
+mode. Its API and database ports bind only to
 `127.0.0.1:18888` and `127.0.0.1:19999`; health is checked at
 `http://127.0.0.1:18888/health`.
 Hindsight reads secrets from untracked
 `~/.config/hindsight/hindsight.env` and persists database state under
 `~/.local/share/hindsight`. Neither path belongs in this repository.
-Provisioning `aorus` securely migrates historical ignored Codex authentication
-from `packages/ai/.codex/auth.json` into canonical `~/.codex/auth.json`, then
-removes historical copy after verifying canonical credential. Existing matching
-credentials converge idempotently; conflicting credentials fail closed without
-overwriting either file.
-
-Only when no valid credential exists, authenticate Codex interactively as login
-user:
+Provisioning `aorus` requires an existing Codex login before it changes service
+or OmniRoute state. When no valid credential exists, authenticate Codex
+interactively as login user:
 
 ```bash
 mise exec -- codex login
 ```
 
-Bootstrap migrates authentication and checks `mise exec -- codex login status`
-before changing service or OmniRoute state. Failed login status aborts without
-stopping services or
-modifying migration state, and command output is suppressed to avoid exposing
+Bootstrap checks `mise exec -- codex login status` before changing service or
+OmniRoute state. Failed login status aborts without stopping services or
+modifying OmniRoute state, and command output is suppressed to avoid exposing
 authentication details.
 
 Mise permits install scripts only for OmniRoute and its `better-sqlite3` native

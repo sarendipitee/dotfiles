@@ -111,11 +111,10 @@ hosts_file="$repo_dir/packages/process-compose/.config/process-compose/hosts.yam
   (.processes.omniroute.readiness_probe.http_get.port == 20128) and
   (.processes.omniroute.readiness_probe.http_get.path == "/api/monitoring/health") and
   (.processes."codex-remote-control".command == "exec ${HOME}/.local/bin/dotfiles-codex-remote-control") and
-  (.processes."codex-remote-control".availability.restart == "always") and
+  (.processes."codex-remote-control".availability.restart == "on_failure") and
   (.processes."codex-remote-control".availability.backoff_seconds == 5) and
-  (.processes."codex-remote-control".ready_log_line == "\"mode\":\"foreground\",\"status\":\"(connected|connecting)\"") and
-  ((.processes."codex-remote-control".success_exit_codes | length) == 1) and
-  (.processes."codex-remote-control".success_exit_codes[0] == 130) and
+  ((.processes."codex-remote-control" | has("ready_log_line")) | not) and
+  ((.processes."codex-remote-control" | has("success_exit_codes")) | not) and
   (.processes."codex-remote-control".shutdown.signal == 2) and
   (.processes."codex-remote-control".shutdown.timeout_seconds == 10) and
   (.processes.hindsight.command == "exec /usr/bin/docker run --rm --name hindsight --pull always --env-file ${HOME}/.config/hindsight/hindsight.env -p 127.0.0.1:18888:8888 -p 127.0.0.1:19999:9999 -v ${HOME}/.local/share/hindsight:/home/hindsight/.pg0 ghcr.io/vectorize-io/hindsight:latest") and
@@ -690,7 +689,8 @@ codex_wrapper_secret='codex-wrapper-secret-value'
 codex_wrapper_python=$(mise which python 2>/dev/null || command -v python3) ||
 	fail 'Python is required for Codex wrapper smoke tests'
 export CODEX_WRAPPER_PYTHON="$codex_wrapper_python"
-mkdir -p "$codex_wrapper_home/.local/bin" "$codex_wrapper_home/.config/hindsight"
+mkdir -p "$codex_wrapper_home/.local/bin" "$codex_wrapper_home/.config/hindsight" \
+	"$codex_wrapper_home/.codex/packages/standalone/rust-test"
 cp "$repo_dir/packages/process-compose/.local/bin/dotfiles-codex-remote-control" \
 	"$codex_wrapper_home/.local/bin/dotfiles-codex-remote-control"
 cat > "$codex_wrapper_home/.local/bin/mise" <<'EOF'
@@ -699,14 +699,19 @@ if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = python ]; then
 	shift 3
 	exec "$CODEX_WRAPPER_PYTHON" "$@"
 fi
-[ "$#" -eq 5 ] && [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = codex ] &&
-	[ "$4" = remote-control ] && [ "$5" = --json ] || exit 64
+exit 64
+EOF
+cat > "$codex_wrapper_home/.codex/packages/standalone/rust-test/codex" <<'EOF'
+#!/usr/bin/env bash
+[ "$#" -eq 2 ] && [ "$1" = remote-control ] && [ "$2" = start ] || exit 64
 [ "$OMNIROUTER_API_KEY" = "$EXPECTED_API_KEY" ] || exit 65
 [ -z "${HINDSIGHT_DATABASE_URL+x}${HINDSIGHT_API_KEY+x}" ] || exit 66
 printf '%s\n' child-ok > "$CODEX_WRAPPER_LOG"
 EOF
+ln -s rust-test "$codex_wrapper_home/.codex/packages/standalone/current"
 chmod +x "$codex_wrapper_home/.local/bin/mise" \
-	"$codex_wrapper_home/.local/bin/dotfiles-codex-remote-control"
+	"$codex_wrapper_home/.local/bin/dotfiles-codex-remote-control" \
+	"$codex_wrapper_home/.codex/packages/standalone/rust-test/codex"
 printf 'HINDSIGHT_DATABASE_URL=must-not-reach-child\nOMNIROUTER_API_KEY=%s\nHINDSIGHT_API_KEY=also-private\n' \
 	"$codex_wrapper_secret" > "$codex_wrapper_env"
 chmod 0600 "$codex_wrapper_env"

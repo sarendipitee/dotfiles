@@ -55,10 +55,12 @@ validate_ancestors() {
 [[ "$HOME" == /* ]] || fatal 'HOME must be absolute'
 [[ "$(realpath "$HOME")" == "$HOME" ]] || fatal 'HOME must be canonical non-symlink path'
 mise_bin="$HOME/.local/bin/mise"
+standalone_codex="$HOME/.codex/packages/standalone/current/codex"
 env_file="$HOME/.config/hindsight/hindsight.env"
 login_uid=$(id -u)
 
 [[ -x "$mise_bin" ]] || fatal "Mise executable missing: $mise_bin"
+[[ -x "$standalone_codex" ]] || fatal "Codex standalone executable missing: $standalone_codex"
 [[ -f "$env_file" && ! -L "$env_file" ]] || fatal 'Hindsight environment must be regular non-symlink file'
 validate_ancestors "$env_file"
 [[ "$(path_owner_uid "$env_file")" == "$login_uid" ]] || fatal 'Hindsight environment has wrong owner'
@@ -120,4 +122,4 @@ PY
 
 export OMNIROUTER_API_KEY="$api_key"
 unset api_key
-exec "$mise_bin" exec -- codex remote-control --json
+exec "$standalone_codex" remote-control start
