@@ -1,0 +1,10 @@
+min_version = "2026.7.5"
+
+[tools]
+"jq" = "latest"
+"bun" = "latest"
+"node" = "22"
+"pnpm" = "latest"
+"npm:node-gyp" = "latest"
+"process-compose" = "latest"
+"yq" = "latest"
