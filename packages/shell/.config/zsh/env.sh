@@ -18,6 +18,13 @@ export XDG_CONFIG_HOME=$HOME/.config
 export XDG_STATE_HOME=$HOME/.local/state
 export XDG_CACHE_HOME=$HOME/.cache
 
+# Process Compose client/server socket shared with dotfiles-process-compose.
+if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -w "$XDG_RUNTIME_DIR" && -O "$XDG_RUNTIME_DIR" && ! -L "$XDG_RUNTIME_DIR" ]]; then
+	export PC_SOCKET_PATH="$XDG_RUNTIME_DIR/dpc/pc.sock"
+else
+	export PC_SOCKET_PATH="$XDG_STATE_HOME/process-compose/run/pc.sock"
+fi
+
 # All development codebases are cloned into a subfolder of this folder
 export PROJECTS_BASE_DIR="${HOME}/projects"
 

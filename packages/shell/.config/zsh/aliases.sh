@@ -123,6 +123,9 @@ alias mrd="MOON_OUTPUT_STYLE=stream mr dev"
 # Opencode
 alias oc="opencode"
 
+# Process Compose
+alias pc='process-compose'
+
 #pnpm
 alias p="pnpm"
 alias px="pnpm dlx"
