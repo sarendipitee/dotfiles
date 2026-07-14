@@ -60,3 +60,30 @@ processes:
     shutdown:
       command: /usr/bin/docker stop -t 30 hindsight
       timeout_seconds: 40
+
+  vllm:
+    description: vLLM OpenAI-compatible inference server
+    command: exec ${HOME}/.local/bin/dotfiles-vllm-docker
+    availability:
+      restart: always
+      backoff_seconds: 10
+    readiness_probe:
+      http_get:
+        host: 127.0.0.1
+        port: 8080
+        path: /v1/models
+      initial_delay_seconds: 10
+      period_seconds: 10
+      timeout_seconds: 5
+      success_threshold: 1
+      failure_threshold: 60
+    shutdown:
+      command: /usr/bin/docker stop -t 120 vllm
+      timeout_seconds: 130
+
+  nanoclaw:
+    description: NanoClaw and OneCLI stack
+    command: exec ${HOME}/.local/bin/dotfiles-nanoclaw-compose up
+    availability:
+      restart: always
+      backoff_seconds: 10

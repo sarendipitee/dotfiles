@@ -24,313 +24,6 @@ command_exists() {
 	command -v "$1" >/dev/null 2>&1
 }
 
-migrate_legacy_codex_auth() {
-	local login_uid
-	local mise_bin="$HOME/.local/bin/mise"
-
-	[ "$OS" = Linux ] || return 0
-	[ "$(current_process_compose_profile)" = aorus ] || return 0
-	[ -x "$mise_bin" ] || fatal "Mise executable is missing or not executable: $mise_bin"
-	login_uid=$(id -u "$LOGIN_USER")
-	[ "$(id -u)" = "$login_uid" ] && [ "$(id -un)" = "$LOGIN_USER" ] ||
-		fatal 'Codex auth migration must run as login user, not through a root shell'
-
-	if ! "$mise_bin" exec -- python - "$DOTFILES_DIR" "$HOME" "$login_uid" <<'PY'
-import errno
-import hmac
-import os
-import secrets
-import stat
-import sys
-
-dotfiles_directory, home_directory, uid_text = sys.argv[1:]
-expected_uid = int(uid_text)
-source_path = os.path.join(dotfiles_directory, "packages", "ai", ".codex", "auth.json")
-canonical_directory_path = os.path.join(home_directory, ".codex")
-canonical_path = os.path.join(canonical_directory_path, "auth.json")
-
-
-def fail(message):
-    raise SystemExit(message)
-
-
-def validate_path(root, path, purpose):
-    for value in (root, path):
-        if not os.path.isabs(value) or value != os.path.normpath(value):
-            fail(f"{purpose} path is not absolute and normalized")
-        if any(ord(character) < 32 or ord(character) == 127 for character in value):
-            fail(f"{purpose} path contains control characters")
-    try:
-        if os.path.commonpath((root, path)) != root:
-            fail(f"{purpose} path escapes expected root")
-    except ValueError:
-        fail(f"{purpose} path is invalid")
-
-
-validate_path(dotfiles_directory, source_path, "historical Codex auth")
-validate_path(home_directory, canonical_path, "canonical Codex auth")
-if not hasattr(os, "O_NOFOLLOW"):
-    fail("platform cannot reject credential symlinks")
-
-directory_flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-file_flags = os.O_RDONLY | os.O_NOFOLLOW
-
-
-def open_absolute_directory(path, purpose):
-    descriptor = os.open("/", directory_flags)
-    try:
-        for component in path.split(os.sep)[1:]:
-            if component in ("", ".", ".."):
-                fail(f"{purpose} contains invalid path component")
-            try:
-                next_descriptor = os.open(component, directory_flags, dir_fd=descriptor)
-            except OSError:
-                fail(f"{purpose} contains unsafe or missing directory")
-            os.close(descriptor)
-            descriptor = next_descriptor
-            metadata = os.fstat(descriptor)
-            if not stat.S_ISDIR(metadata.st_mode):
-                fail(f"{purpose} contains non-directory component")
-            if metadata.st_uid not in (0, expected_uid):
-                fail(f"{purpose} contains directory owned by another user")
-            if metadata.st_mode & 0o022:
-                fail(f"{purpose} contains group- or world-writable ancestor")
-        return descriptor
-    except BaseException:
-        os.close(descriptor)
-        raise
-
-
-def open_optional_directory(parent_descriptor, name, purpose):
-    try:
-        descriptor = os.open(name, directory_flags, dir_fd=parent_descriptor)
-    except FileNotFoundError:
-        return None
-    except OSError:
-        fail(f"{purpose} is not a safe directory")
-    metadata = os.fstat(descriptor)
-    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_uid != expected_uid:
-        os.close(descriptor)
-        fail(f"{purpose} is not owned directory")
-    return descriptor
-
-
-def open_optional_auth(directory_descriptor, name, purpose, expected_links=(1,)):
-    if isinstance(expected_links, int):
-        expected_links = (expected_links,)
-    try:
-        descriptor = os.open(name, file_flags, dir_fd=directory_descriptor)
-    except FileNotFoundError:
-        return None
-    except OSError:
-        fail(f"{purpose} is not safe regular file")
-    metadata = os.fstat(descriptor)
-    if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != expected_uid or
-            metadata.st_nlink not in expected_links or stat.S_IMODE(metadata.st_mode) != 0o600):
-        os.close(descriptor)
-        fail(f"{purpose} must be login-user-owned regular file with mode 0600 and one link")
-    return descriptor
-
-
-def descriptors_equal(left_descriptor, right_descriptor):
-    left_metadata = os.fstat(left_descriptor)
-    right_metadata = os.fstat(right_descriptor)
-    if left_metadata.st_size != right_metadata.st_size:
-        return False
-    offset = 0
-    while offset < left_metadata.st_size:
-        length = min(1024 * 1024, left_metadata.st_size - offset)
-        left = os.pread(left_descriptor, length, offset)
-        right = os.pread(right_descriptor, length, offset)
-        if not hmac.compare_digest(left, right):
-            return False
-        if not left:
-            fail("credential changed while being compared")
-        offset += len(left)
-    return True
-
-
-def path_matches_descriptor(directory_descriptor, name, descriptor, purpose, links=1):
-    try:
-        path_metadata = os.stat(name, dir_fd=directory_descriptor, follow_symlinks=False)
-    except OSError:
-        fail(f"{purpose} changed during migration")
-    metadata = os.fstat(descriptor)
-    if ((path_metadata.st_dev, path_metadata.st_ino) != (metadata.st_dev, metadata.st_ino) or
-            not stat.S_ISREG(path_metadata.st_mode) or path_metadata.st_uid != expected_uid or
-            path_metadata.st_nlink != links or stat.S_IMODE(path_metadata.st_mode) != 0o600):
-        fail(f"{purpose} changed during migration")
-
-
-source_parent = open_absolute_directory(os.path.dirname(source_path), "historical Codex auth path")
-home_descriptor = open_absolute_directory(home_directory, "home directory")
-canonical_directory = open_optional_directory(home_descriptor, ".codex", "canonical Codex directory")
-if canonical_directory is not None:
-    os.fchmod(canonical_directory, 0o700)
-    os.fsync(canonical_directory)
-source_descriptor = open_optional_auth(
-    source_parent, "auth.json", "historical Codex auth", (1, 2))
-canonical_descriptor = None
-if canonical_directory is not None:
-    canonical_descriptor = open_optional_auth(
-        canonical_directory, "auth.json", "canonical Codex auth", (1, 2))
-
-try:
-    source_links = os.fstat(source_descriptor).st_nlink if source_descriptor is not None else None
-    canonical_links = (
-        os.fstat(canonical_descriptor).st_nlink if canonical_descriptor is not None else None)
-    interrupted_link = False
-    if source_links == 2 or canonical_links == 2:
-        if source_descriptor is None or canonical_descriptor is None:
-            fail("Codex credential has unexpected additional hard link")
-        source_metadata = os.fstat(source_descriptor)
-        canonical_metadata = os.fstat(canonical_descriptor)
-        interrupted_link = (
-            source_links == 2 and canonical_links == 2 and
-            (source_metadata.st_dev, source_metadata.st_ino) ==
-            (canonical_metadata.st_dev, canonical_metadata.st_ino))
-        if not interrupted_link:
-            fail("Codex credential has unexpected additional hard link")
-
-    if source_descriptor is None and canonical_descriptor is None:
-        raise SystemExit(0)
-
-    if canonical_descriptor is not None:
-        path_matches_descriptor(canonical_directory, "auth.json", canonical_descriptor,
-                                "canonical Codex auth", 2 if interrupted_link else 1)
-        if source_descriptor is not None:
-            if not descriptors_equal(source_descriptor, canonical_descriptor):
-                fail("historical and canonical Codex credentials differ; refusing to overwrite either")
-            path_matches_descriptor(source_parent, "auth.json", source_descriptor,
-                                    "historical Codex auth", 2 if interrupted_link else 1)
-            path_matches_descriptor(canonical_directory, "auth.json", canonical_descriptor,
-                                    "canonical Codex auth", 2 if interrupted_link else 1)
-            os.fsync(canonical_descriptor)
-        os.fchmod(canonical_directory, 0o700)
-        os.fsync(canonical_directory)
-        if source_descriptor is not None:
-            path_matches_descriptor(source_parent, "auth.json", source_descriptor,
-                                    "historical Codex auth", 2 if interrupted_link else 1)
-            path_matches_descriptor(canonical_directory, "auth.json", canonical_descriptor,
-                                    "canonical Codex auth", 2 if interrupted_link else 1)
-            os.unlink("auth.json", dir_fd=source_parent)
-            os.fsync(source_parent)
-            path_matches_descriptor(canonical_directory, "auth.json", canonical_descriptor,
-                                    "canonical Codex auth")
-        raise SystemExit(0)
-
-    if canonical_directory is None:
-        try:
-            os.mkdir(".codex", 0o700, dir_fd=home_descriptor)
-            os.fsync(home_descriptor)
-        except FileExistsError:
-            pass
-        canonical_directory = open_optional_directory(
-            home_descriptor, ".codex", "canonical Codex directory")
-        if canonical_directory is None:
-            fail("could not create canonical Codex directory")
-
-    os.fchmod(canonical_directory, 0o700)
-    try:
-        os.stat("auth.json", dir_fd=canonical_directory, follow_symlinks=False)
-    except FileNotFoundError:
-        pass
-    else:
-        fail("canonical Codex credential appeared during migration")
-    path_matches_descriptor(source_parent, "auth.json", source_descriptor,
-                            "historical Codex auth")
-
-    try:
-        os.link("auth.json", "auth.json", src_dir_fd=source_parent,
-                dst_dir_fd=canonical_directory, follow_symlinks=False)
-        os.fsync(canonical_directory)
-        linked_descriptor = os.open("auth.json", file_flags, dir_fd=canonical_directory)
-        try:
-            linked_metadata = os.fstat(linked_descriptor)
-            source_metadata = os.fstat(source_descriptor)
-            if ((linked_metadata.st_dev, linked_metadata.st_ino) !=
-                    (source_metadata.st_dev, source_metadata.st_ino) or
-                    linked_metadata.st_nlink != 2 or not descriptors_equal(
-                        source_descriptor, linked_descriptor)):
-                fail("could not verify linked canonical Codex credential")
-            os.fsync(linked_descriptor)
-        finally:
-            os.close(linked_descriptor)
-    except OSError as error:
-        if error.errno != errno.EXDEV:
-            fail("could not atomically install canonical Codex credential")
-        temporary_name = f".auth.json.{os.getpid()}.{secrets.token_hex(8)}.tmp"
-        temporary_descriptor = None
-        try:
-            temporary_descriptor = os.open(
-                temporary_name,
-                os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,
-                0o600,
-                dir_fd=canonical_directory,
-            )
-            offset = 0
-            while True:
-                chunk = os.pread(source_descriptor, 1024 * 1024, offset)
-                if not chunk:
-                    break
-                view = memoryview(chunk)
-                while view:
-                    written = os.write(temporary_descriptor, view)
-                    view = view[written:]
-                offset += len(chunk)
-            os.fchmod(temporary_descriptor, 0o600)
-            os.fsync(temporary_descriptor)
-            os.link(temporary_name, "auth.json", src_dir_fd=canonical_directory,
-                    dst_dir_fd=canonical_directory, follow_symlinks=False)
-            os.fsync(canonical_directory)
-            os.unlink(temporary_name, dir_fd=canonical_directory)
-            temporary_name = None
-            os.fsync(canonical_directory)
-        finally:
-            if temporary_descriptor is not None:
-                os.close(temporary_descriptor)
-            if temporary_name is not None:
-                try:
-                    os.unlink(temporary_name, dir_fd=canonical_directory)
-                except FileNotFoundError:
-                    pass
-
-    source_links = os.fstat(source_descriptor).st_nlink
-    installed_descriptor = open_optional_auth(
-        canonical_directory, "auth.json", "canonical Codex auth", source_links)
-    if installed_descriptor is None:
-        fail("canonical Codex credential disappeared after installation")
-    try:
-        if not descriptors_equal(source_descriptor, installed_descriptor):
-            fail("canonical Codex credential failed verification")
-        os.fsync(installed_descriptor)
-        path_matches_descriptor(source_parent, "auth.json", source_descriptor,
-                                "historical Codex auth",
-                                2 if os.fstat(source_descriptor).st_nlink == 2 else 1)
-        path_matches_descriptor(canonical_directory, "auth.json", installed_descriptor,
-                                "canonical Codex auth",
-                                os.fstat(installed_descriptor).st_nlink)
-        os.unlink("auth.json", dir_fd=source_parent)
-        os.fsync(source_parent)
-        path_matches_descriptor(canonical_directory, "auth.json", installed_descriptor,
-                                "canonical Codex auth")
-        os.fsync(canonical_directory)
-    finally:
-        os.close(installed_descriptor)
-finally:
-    if canonical_descriptor is not None:
-        os.close(canonical_descriptor)
-    if source_descriptor is not None:
-        os.close(source_descriptor)
-    if canonical_directory is not None:
-        os.close(canonical_directory)
-    os.close(home_descriptor)
-    os.close(source_parent)
-PY
-	then
-		fatal 'Could not securely migrate historical Codex authentication'
-	fi
-}
 
 verify_aorus_codex_login() {
 	local login_uid
@@ -1453,6 +1146,44 @@ remove_stale_hindsight_container() {
 	fi
 }
 
+remove_validated_legacy_hindsight_unit() {
+	local unit_path="$HOME/.config/systemd/user/hindsight.service"
+	local expected_unit
+	local actual_unit
+
+	[ -e "$unit_path" ] || return 0
+	[ -f "$unit_path" ] && [ ! -L "$unit_path" ] ||
+		fatal 'Legacy Hindsight unit is not a regular file'
+	expected_unit=$(cat <<'EOF'
+[Unit]
+Description=Hindsight memory API and control plane (Docker)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+EnvironmentFile=%h/.config/hindsight/hindsight.env
+ExecStartPre=/usr/bin/test -n ${HINDSIGHT_API_LLM_API_KEY}
+ExecStartPre=-/usr/bin/docker rm -f hindsight
+ExecStart=/usr/bin/docker run --rm --name hindsight --pull always --env-file %h/.config/hindsight/hindsight.env -p 127.0.0.1:18888:8888 -p 127.0.0.1:19999:9999 -v %h/.local/share/hindsight:/home/hindsight/.pg0 ghcr.io/vectorize-io/hindsight:latest
+ExecStop=/usr/bin/docker stop -t 30 hindsight
+Restart=on-failure
+RestartSec=10s
+TimeoutStartSec=0
+TimeoutStopSec=40s
+
+[Install]
+WantedBy=default.target
+EOF
+)
+	actual_unit=$(cat "$unit_path") ||
+		fatal 'Could not read legacy Hindsight unit'
+	[ "$actual_unit" = "$expected_unit" ] ||
+		fatal 'Legacy Hindsight unit does not match expected controller'
+	rm -- "$unit_path" ||
+		fatal 'Could not remove legacy Hindsight unit'
+}
+
 migrate_system_etserver_service() {
 	local exec_start
 	local expected_path=${1:-/etc/systemd/system/etserver.service}
@@ -1568,6 +1299,161 @@ PY
 		fatal 'Legacy system Eternal Terminal service remains enabled'
 }
 
+migrate_validated_legacy_vllm_controller() {
+	local admin_path="/usr/local/libexec/vllm/vllm-admin"
+	local daemon_path="/usr/local/libexec/vllm/vllm-docker-daemon"
+	local drop_in_paths
+	local fragment_path
+	local legacy_load_state
+	local service_state
+	local sudoers_path="/etc/sudoers.d/vllm-model-${LOGIN_USER}"
+	local unit_path="/etc/systemd/system/vllm.service"
+	local unit_state
+
+	[ "$(current_process_compose_profile)" = aorus ] || return 0
+	legacy_load_state=$(sudo systemctl show --property=LoadState --value vllm.service 2>/dev/null) ||
+		fatal 'Could not inspect legacy root vLLM service'
+	[ "$legacy_load_state" = not-found ] && return 0
+	[ "$legacy_load_state" = loaded ] ||
+		fatal 'Legacy root vLLM service returned unexpected load state'
+	fragment_path=$(sudo systemctl show --property=FragmentPath --value vllm.service 2>/dev/null) ||
+		fatal 'Could not locate legacy root vLLM unit'
+	[ "$fragment_path" = "$unit_path" ] ||
+		fatal 'Legacy root vLLM unit loaded from unexpected path'
+	drop_in_paths=$(sudo systemctl show --property=DropInPaths --value vllm.service 2>/dev/null) ||
+		fatal 'Could not inspect legacy root vLLM unit drop-ins'
+	[ -z "$drop_in_paths" ] ||
+		fatal 'Legacy root vLLM unit has unexpected drop-ins'
+	[ -x /usr/bin/python3 ] ||
+		fatal 'System Python is required to validate legacy root vLLM artifacts'
+
+	if ! sudo /usr/bin/python3 - \
+		"$unit_path" \
+		"$daemon_path" \
+		"$admin_path" \
+		"/var/lib/vllm/config/active.env" \
+		"$sudoers_path" \
+		"$LOGIN_USER" <<'PY'
+import hashlib
+import os
+import re
+import stat
+import sys
+
+
+unit_path, daemon_path, admin_path, active_env_path, sudoers_path, login_user = sys.argv[1:]
+
+
+def fail(message):
+    raise SystemExit(message)
+
+
+def safe_regular(path, expected_mode):
+    if not os.path.isabs(path) or path != os.path.normpath(path):
+        fail("legacy path is invalid")
+    current = "/"
+    for component in path.split(os.sep)[1:-1]:
+        current = os.path.join(current, component)
+        try:
+            metadata = os.lstat(current)
+        except OSError:
+            fail("legacy path ancestor could not be inspected")
+        if (not stat.S_ISDIR(metadata.st_mode) or stat.S_ISLNK(metadata.st_mode) or
+                metadata.st_uid != 0 or metadata.st_mode & 0o022):
+            fail("legacy path has unsafe ancestor")
+    try:
+        path_metadata = os.lstat(path)
+    except OSError:
+        fail("legacy artifact is missing")
+    if stat.S_ISLNK(path_metadata.st_mode):
+        fail("legacy artifact is a symlink")
+    if not hasattr(os, "O_NOFOLLOW"):
+        fail("legacy artifact validation requires O_NOFOLLOW")
+    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    try:
+        metadata = os.fstat(descriptor)
+        contents = os.read(descriptor, metadata.st_size)
+    finally:
+        os.close(descriptor)
+    if (not stat.S_ISREG(metadata.st_mode) or metadata.st_uid != 0 or
+            metadata.st_nlink != 1 or stat.S_IMODE(metadata.st_mode) != expected_mode or
+            (metadata.st_dev, metadata.st_ino) != (path_metadata.st_dev, path_metadata.st_ino)):
+        fail("legacy artifact is unsafe")
+    try:
+        return contents.decode("utf-8")
+    except UnicodeDecodeError:
+        fail("legacy artifact is not UTF-8")
+
+
+unit = safe_regular(unit_path, 0o644)
+daemon = safe_regular(daemon_path, 0o755)
+admin = safe_regular(admin_path, 0o755)
+sudoers = None
+if os.path.lexists(sudoers_path):
+    sudoers = safe_regular(sudoers_path, 0o440)
+
+expected_unit = """[Unit]
+Description=vLLM inference server
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/libexec/vllm/vllm-docker-daemon
+ExecStop=/usr/bin/docker stop vllm
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=120
+
+[Install]
+WantedBy=multi-user.target
+"""
+if unit != expected_unit:
+    fail("legacy root vLLM unit does not match expected controller")
+
+expected_hashes = {
+    daemon_path: "3b1d4448e7f8b3571d909c645babada6042a42237c26967030d529a8098945d0",
+    admin_path: "a82b7dcda40a52c722f9c877ae3c4fb97c7327fda278406fa77c005d7636db8a",
+}
+for path, contents in ((daemon_path, daemon), (admin_path, admin)):
+    if hashlib.sha256(contents.encode("utf-8")).hexdigest() != expected_hashes[path]:
+        fail("legacy root vLLM controller artifact does not match expected version")
+
+
+if sudoers is not None:
+    expected_sudoers = (
+        f"{login_user} ALL=(root) NOPASSWD: /usr/local/libexec/vllm/vllm-admin *\n"
+    )
+    if sudoers != expected_sudoers:
+        fail("legacy root vLLM sudoers rule does not match expected controller")
+PY
+	then
+		fatal 'Could not safely validate legacy root vLLM controller artifacts'
+	fi
+
+	sudo systemctl disable vllm.service >/dev/null ||
+		fatal 'Could not disable legacy root vLLM service'
+	sudo systemctl stop vllm.service >/dev/null ||
+		fatal 'Could not stop legacy root vLLM service'
+	service_state=$(sudo systemctl is-active vllm.service 2>/dev/null || true)
+	[ "$service_state" = inactive ] ||
+		fatal 'Legacy root vLLM service remains active'
+	unit_state=$(sudo systemctl is-enabled vllm.service 2>/dev/null || true)
+	[ "$unit_state" = disabled ] ||
+		fatal 'Legacy root vLLM service remains enabled'
+	sudo rm -f -- \
+		"$unit_path" \
+		"$daemon_path" \
+		"$admin_path" \
+		"$sudoers_path"
+	sudo systemctl daemon-reload
+	legacy_load_state=$(sudo systemctl show --property=LoadState --value vllm.service 2>/dev/null) ||
+		fatal 'Could not verify legacy root vLLM unit removal'
+	[ "$legacy_load_state" = not-found ] ||
+		fatal 'Legacy root vLLM unit remains after removal'
+}
+
 migrate_linux_process_compose_services() {
 	local codex_stop_output
 	local hindsight_ownership=false
@@ -1593,6 +1479,9 @@ migrate_linux_process_compose_services() {
 		codex-remote-control.service \
 		codex-remote.service \
 		hindsight.service \
+		vllm-qwen.service \
+		vllm-gemma4.service \
+		vllm-step3.service \
 		homebrew.et.service \
 		omniroute.service; do
 		legacy_load_state=$("${user_systemctl[@]}" show --property=LoadState --value "$legacy_unit" 2>/dev/null) ||
@@ -1606,6 +1495,15 @@ migrate_linux_process_compose_services() {
 			fatal "Legacy user service remains active: $legacy_unit"
 		! "${user_systemctl[@]}" is-enabled --quiet "$legacy_unit" ||
 			fatal "Legacy user service remains enabled: $legacy_unit"
+		if [ "$legacy_unit" = hindsight.service ]; then
+			remove_validated_legacy_hindsight_unit
+			"${user_systemctl[@]}" daemon-reload ||
+				fatal 'Could not reload user systemd after removing legacy Hindsight unit'
+			legacy_load_state=$("${user_systemctl[@]}" show --property=LoadState --value "$legacy_unit" 2>/dev/null) ||
+				fatal 'Could not verify legacy Hindsight unit removal'
+			[ "$legacy_load_state" = not-found ] ||
+				fatal 'Legacy Hindsight unit remains after removal'
+		fi
 	done
 
 	codex_stop_output=$("$mise_bin" exec -- codex remote-control --json stop) ||
@@ -1684,7 +1582,7 @@ verify_aorus_process_compose() {
 		remaining=$((deadline - SECONDS))
 		if [ -n "$process_json" ] && (( remaining > 0 )) &&
 			printf '%s' "$process_json" | timeout "${remaining}s" "$mise_bin" exec -- jq -e \
-				--argjson names '["eternal-terminal","omniroute","codex-remote-control","hindsight"]' '
+				--argjson names '["eternal-terminal","omniroute","codex-remote-control","hindsight","vllm","nanoclaw"]' '
 			map({key: .name, value: .}) | from_entries as $processes |
 			all($names[]; $processes[.] != null and $processes[.].is_running == true and
 			  ($processes[.].has_ready_probe != true or $processes[.].is_ready == "Ready"))
@@ -1696,7 +1594,11 @@ verify_aorus_process_compose() {
 			curl_timeout=5
 			(( remaining >= curl_timeout )) || curl_timeout=$remaining
 			if curl -fsS --max-time "$curl_timeout" \
-				http://127.0.0.1:18888/health >/dev/null; then
+				http://127.0.0.1:8080/v1/models |
+				timeout "$curl_timeout" "$mise_bin" exec -- jq -e \
+					'.data | any(.[]; .id == "local")' >/dev/null 2>&1 &&
+				curl -fsS --max-time "$curl_timeout" \
+					http://127.0.0.1:18888/health >/dev/null; then
 				return 0
 			fi
 		fi
@@ -1708,7 +1610,7 @@ verify_aorus_process_compose() {
 	done
 	if [ -n "$process_json" ]; then
 		readiness_diagnostics=$(printf '%s' "$process_json" | timeout 5s "$mise_bin" exec -- jq -r \
-			--argjson names '["eternal-terminal","omniroute","codex-remote-control","hindsight"]' '
+			--argjson names '["eternal-terminal","omniroute","codex-remote-control","hindsight","vllm","nanoclaw"]' '
 		map({key: .name, value: .}) | from_entries as $processes |
 		$names[] as $name |
 		($processes[$name] // {}) as $process |
@@ -1749,8 +1651,7 @@ setup_process_compose() {
 		Linux)
 			local login_uid
 			local legacy_unit
-			local legacy_unit_path
-			local legacy_unit_target
+			local legacy_load_state
 			local user_systemctl=(systemctl --user)
 			login_uid=$(id -u "$LOGIN_USER")
 			sudo loginctl enable-linger "$LOGIN_USER"
@@ -1766,17 +1667,11 @@ setup_process_compose() {
 			! "${user_systemctl[@]}" is-active --quiet dotfiles-process-compose.service ||
 				fatal 'Could not stop existing Process Compose service before migration'
 			migrate_linux_process_compose_services
-			for legacy_unit in vllm-qwen.service vllm-gemma4.service vllm-step3.service; do
-				"${user_systemctl[@]}" disable --now "$legacy_unit" >/dev/null 2>&1 || true
-				legacy_unit_path="$XDG_CONFIG_HOME/systemd/user/$legacy_unit"
-				legacy_unit_target="$DOTFILES_DIR/packages/systemd/.config/systemd/user/$legacy_unit"
-				if [ -L "$legacy_unit_path" ] && [ "$(readlink -f "$legacy_unit_path")" = "$legacy_unit_target" ]; then
-					rm -f "$legacy_unit_path"
-				fi
-			done
 			"${user_systemctl[@]}" daemon-reload
 			"${user_systemctl[@]}" enable dotfiles-process-compose.service
 			"${user_systemctl[@]}" restart dotfiles-process-compose.service
+			verify_aorus_process_compose
+			migrate_validated_legacy_vllm_controller
 			verify_aorus_process_compose
 			;;
 	esac
@@ -1884,6 +1779,17 @@ setup_tailscale() {
 	sudo systemctl is-active --quiet tailscaled || fatal 'tailscaled failed to start'
 }
 
+setup_vllm_user_control() {
+	local setup_script="$DOTFILES_DIR/scripts/setup-vllm.sh"
+
+	[ "$(current_process_compose_profile)" = aorus ] || return 0
+	[ "$(id -un)" = "$LOGIN_USER" ] ||
+		fatal 'vLLM setup must run as the login user'
+	[ -x "$setup_script" ] ||
+		fatal "vLLM setup script is missing or not executable: $setup_script"
+	"$setup_script"
+}
+
 case "$OS" in
 	Darwin) ;;
 	Linux)
@@ -1896,7 +1802,6 @@ case "$OS" in
 	*) fatal "Unsupported operating system: $OS" ;;
 esac
 
-migrate_legacy_codex_auth
 verify_aorus_codex_login
 setup_user_state
 migrate_legacy_omniroute_state
@@ -1921,6 +1826,7 @@ if [ "${DOTFILES_WITH_LINUXBREW_CA:-true}" = true ]; then setup_linuxbrew_ca; fi
 if "$RELOGIN_REQUIRED"; then
 	fatal 'Docker group membership changed; log out and back in, then rerun provisioning'
 fi
+setup_vllm_user_control
 setup_process_compose
 
 if [ -e /var/run/reboot-required ]; then REBOOT_REQUIRED=true; fi

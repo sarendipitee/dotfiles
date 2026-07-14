@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOME_DIR=$(getent passwd "$(id -u)" | cut -d: -f6)
+ROOT=${NANOCLAW_ROOT:-$HOME_DIR/.local/share/nanoclaw}
+REPO_REF=${NANOCLAW_REF:-v2.1.17}
+MISE_BIN=${MISE_BIN:-$HOME_DIR/.local/bin/mise}
+NANOCLAW_NODE_VERSION=${NANOCLAW_NODE_VERSION:-22}
+
+die() {
+	printf 'dotfiles-nanoclaw-compose: %s\n' "$*" >&2
+	exit 1
+}
+
+[[ -x "$MISE_BIN" ]] || die "mise is missing: $MISE_BIN"
+
+if [[ ! -d "$ROOT/.git" ]]; then
+	[[ ! -e "$ROOT" || -z "$(find "$ROOT" -mindepth 1 -maxdepth 1 -print -quit)" ]] ||
+		die "refusing to clone into non-empty directory: $ROOT"
+	mkdir -p "$(dirname "$ROOT")"
+	git clone --depth 1 --branch "$REPO_REF" https://github.com/nanocoai/nanoclaw.git "$ROOT"
+fi
+
+cd "$ROOT"
+if [[ ! -x node_modules/.bin/tsc || ! -f dist/index.js ]]; then
+	"$MISE_BIN" exec "node@$NANOCLAW_NODE_VERSION" -- pnpm install --frozen-lockfile
+	"$MISE_BIN" exec "node@$NANOCLAW_NODE_VERSION" -- pnpm run build
+	"$MISE_BIN" exec "node@$NANOCLAW_NODE_VERSION" -- pnpm exec tsx scripts/upgrade-state.ts set
+fi
+
+exec "$MISE_BIN" exec "node@$NANOCLAW_NODE_VERSION" -- node dist/index.js

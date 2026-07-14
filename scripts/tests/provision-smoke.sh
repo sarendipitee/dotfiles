@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -Eeo pipefail
+umask 022
 
 repo_dir=$(realpath "$(dirname "${BASH_SOURCE[0]}")/../..")
 tmp_dir=$(mktemp -d "$HOME/.dotfiles-provision-smoke.XXXXXX")
@@ -28,7 +29,8 @@ bash -n \
 	"$repo_dir/scripts/install-cuda.sh" \
 	"$repo_dir/packages/process-compose/.local/bin/dotfiles-process-compose" \
 	"$repo_dir/packages/process-compose/.local/bin/dotfiles-codex-remote-control" \
-	"$repo_dir/packages/process-compose/.local/bin/dotfiles-omniroute"
+	"$repo_dir/packages/process-compose/.local/bin/dotfiles-omniroute" \
+	"$repo_dir/packages/process-compose/.local/bin/dotfiles-vllm-docker"
 sh -n "$repo_dir/bootstrap.sh"
 zsh -n "$repo_dir/packages/shell/.config/zsh/functions.sh"
 "$repo_dir/scripts/provision.sh" --help >/dev/null
@@ -51,7 +53,8 @@ if command -v shellcheck >/dev/null 2>&1; then
 		"$repo_dir/scripts/install-cuda.sh" \
 		"$repo_dir/packages/process-compose/.local/bin/dotfiles-process-compose" \
 		"$repo_dir/packages/process-compose/.local/bin/dotfiles-codex-remote-control" \
-		"$repo_dir/packages/process-compose/.local/bin/dotfiles-omniroute"
+		"$repo_dir/packages/process-compose/.local/bin/dotfiles-omniroute" \
+		"$repo_dir/packages/process-compose/.local/bin/dotfiles-vllm-docker"
 fi
 
 cuda_test_home="$tmp_dir/cuda-root/usr/local/cuda"
@@ -88,11 +91,13 @@ hosts_file="$repo_dir/packages/process-compose/.config/process-compose/hosts.yam
   .version == "0.5" and
   .is_strict == true and
   (.processes | tag == "!!map") and
-  ((.processes | length) == 4) and
+  ((.processes | length) == 6) and
   (.processes | has("eternal-terminal")) and
   (.processes | has("omniroute")) and
   (.processes | has("codex-remote-control")) and
   (.processes | has("hindsight")) and
+  (.processes | has("vllm")) and
+  (.processes | has("nanoclaw")) and
   (.processes.eternal-terminal.command == "exec etserver --port 2022 --logtostdout") and
   (.processes.eternal-terminal.availability.restart == "always") and
   (.processes.eternal-terminal.availability.backoff_seconds == 5) and
@@ -122,7 +127,18 @@ hosts_file="$repo_dir/packages/process-compose/.config/process-compose/hosts.yam
   (.processes.hindsight.readiness_probe.initial_delay_seconds == 10) and
   (.processes.hindsight.readiness_probe.failure_threshold == 60) and
   (.processes.hindsight.shutdown.command == "/usr/bin/docker stop -t 30 hindsight") and
-  (.processes.hindsight.shutdown.timeout_seconds == 40)
+  (.processes.hindsight.shutdown.timeout_seconds == 40) and
+  (.processes.vllm.command == "exec ${HOME}/.local/bin/dotfiles-vllm-docker") and
+  (.processes.vllm.availability.restart == "always") and
+  (.processes.vllm.availability.backoff_seconds == 10) and
+  (.processes.vllm.readiness_probe.http_get.host == "127.0.0.1") and
+  (.processes.vllm.readiness_probe.http_get.port == 8080) and
+  (.processes.vllm.readiness_probe.http_get.path == "/v1/models") and
+  (.processes.vllm.readiness_probe.initial_delay_seconds == 10) and
+  (.processes.vllm.readiness_probe.failure_threshold == 60) and
+  (.processes.vllm.shutdown.command == "/usr/bin/docker stop -t 120 vllm") and
+  (.processes.vllm.shutdown.timeout_seconds == 130) and
+  (.processes.nanoclaw.depends_on.vllm.condition == "process_healthy")
 ' "$compose_file" >/dev/null ||
 	fail 'Canonical Process Compose config is invalid'
 "$yq_bin" -e '
@@ -130,11 +146,13 @@ hosts_file="$repo_dir/packages/process-compose/.config/process-compose/hosts.yam
   (length == 2) and
   (."sd-mbp" | length == 1) and
   (."sd-mbp"[0] == "eternal-terminal") and
-  (.aorus | length == 4) and
+  (.aorus | length == 6) and
   (.aorus[0] == "eternal-terminal") and
   (.aorus[1] == "omniroute") and
   (.aorus[2] == "codex-remote-control") and
-  (.aorus[3] == "hindsight")
+  (.aorus[3] == "hindsight") and
+  (.aorus[4] == "vllm") and
+  (.aorus[5] == "nanoclaw")
 ' "$hosts_file" >/dev/null ||
 	fail 'Process Compose host mapping is invalid'
 
@@ -169,6 +187,8 @@ docker_call_line=$(grep -nF 'then setup_docker; fi' "$repo_dir/scripts/bootstrap
 	cut -d: -f1 || true)
 linux_process_compose_call_line=$(grep -nFx 'setup_process_compose' "$repo_dir/scripts/bootstrap-system.sh" |
 	cut -d: -f1 | tail -1 || true)
+vllm_setup_call_line=$(grep -nFx 'setup_vllm_user_control' "$repo_dir/scripts/bootstrap-system.sh" |
+	cut -d: -f1 | tail -1 || true)
 [ -n "$provision_bootstrap_line" ] && [ -n "$provision_system_line" ] && \
 	[ "$provision_bootstrap_line" -lt "$provision_system_line" ] ||
 	fail 'System bootstrap does not run after Mise bootstrap install'
@@ -178,6 +198,11 @@ linux_process_compose_call_line=$(grep -nFx 'setup_process_compose' "$repo_dir/s
 [ -n "$docker_call_line" ] && [ -n "$linux_process_compose_call_line" ] &&
 	[ "$docker_call_line" -lt "$linux_process_compose_call_line" ] ||
 	fail 'Linux Process Compose starts before Docker setup completes'
+[ -n "$docker_call_line" ] && [ -n "$vllm_setup_call_line" ] &&
+	[ -n "$linux_process_compose_call_line" ] &&
+	[ "$docker_call_line" -lt "$vllm_setup_call_line" ] &&
+	[ "$vllm_setup_call_line" -lt "$linux_process_compose_call_line" ] ||
+	fail 'vLLM user control does not run after Docker setup and before Process Compose'
 
 test_home="$tmp_dir/home"
 mkdir -p "$test_home/.config/zsh"
@@ -203,6 +228,7 @@ HOME="$test_home" XDG_STATE_HOME="$test_home/.local/state" \
 [ -L "$test_home/.local/bin/dotfiles-codex-remote-control" ] ||
 	fail 'Codex remote-control wrapper was not linked'
 [ -L "$test_home/.local/bin/dotfiles-omniroute" ] || fail 'OmniRoute pre-start wrapper was not linked'
+[ -L "$test_home/.local/bin/dotfiles-vllm-docker" ] || fail 'vLLM Docker wrapper was not linked'
 grep -R -q '^legacy zshenv$' "$test_home/.local/state/dotfiles/backups" || fail '.zshenv backup missing'
 grep -q 'mise/shims' "$test_home/.config/zsh/path.sh" || fail 'Mise shims are absent from shell PATH config'
 CUDA_HOME="$cuda_test_home" HOME="$test_home" zsh -c '
@@ -234,6 +260,7 @@ case "$(uname -s)" in
 	esac
 
 platform_mock_bin="$tmp_dir/platform-mock-bin"
+real_git=$(command -v git) || fail 'git is required for mocked platform Stow tests'
 mkdir -p "$platform_mock_bin"
 cat > "$platform_mock_bin/uname" <<'EOF'
 #!/usr/bin/env bash
@@ -242,6 +269,9 @@ printf '%s\n' "$MOCK_UNAME"
 EOF
 cat > "$platform_mock_bin/git" <<'EOF'
 #!/usr/bin/env bash
+if [ "$1" = -C ] && [ "$3" = ls-files ]; then
+	exec "$REAL_GIT" "$@"
+fi
 exit 0
 EOF
 chmod +x "$platform_mock_bin/uname" "$platform_mock_bin/git"
@@ -249,7 +279,7 @@ chmod +x "$platform_mock_bin/uname" "$platform_mock_bin/git"
 for platform in Darwin Linux; do
 	platform_home="$tmp_dir/home-$platform"
 	mkdir -p "$platform_home"
-	MOCK_UNAME="$platform" PATH="$platform_mock_bin:$PATH" HOME="$platform_home" \
+	MOCK_UNAME="$platform" REAL_GIT="$real_git" PATH="$platform_mock_bin:$PATH" HOME="$platform_home" \
 		XDG_STATE_HOME="$platform_home/.local/state" \
 		bash "$repo_dir/scripts/create-links.sh" >/dev/null 2>&1
 	case "$platform" in
@@ -274,6 +304,25 @@ for legacy_unit in vllm-qwen.service vllm-gemma4.service vllm-step3.service; do
 	[ ! -e "$test_home/.config/systemd/user/$legacy_unit" ] ||
 		fail "Legacy vLLM unit was linked: $legacy_unit"
 done
+
+setup_vllm_script="$repo_dir/scripts/setup-vllm.sh"
+for retired_vllm_control in \
+	'/usr/local/libexec/vllm' \
+	'vllm-docker-daemon' \
+	'vllm-admin' \
+	'/etc/sudoers.d/vllm-model-'; do
+	if grep -Fq "$retired_vllm_control" "$setup_vllm_script"; then
+		fail "setup-vllm retains root control path: $retired_vllm_control"
+	fi
+done
+grep -Fq 'current_selection_is_ornith() {' "$setup_vllm_script" &&
+	grep -Fq 'if ! current_selection_is_ornith; then' "$setup_vllm_script" ||
+	fail 'setup-vllm does not restrict current-model migration to Ornith'
+grep -Fq 'ln -s "${MODELS_DIR}/qwen3-27b-awq.env" "${temporary_link}"' "$setup_vllm_script" ||
+	fail 'setup-vllm does not migrate Ornith current selection to Qwen AWQ'
+if grep -Eq 'migrate_known_(gemma|step|smollm)' "$setup_vllm_script"; then
+	fail 'setup-vllm migrates a current selection other than Ornith'
+fi
 
 mkdir -p "$test_home/.local/bin"
 fake_process_compose_log="$tmp_dir/process-compose.log"
@@ -330,7 +379,7 @@ FAKE_REAL_YQ="$yq_bin" FAKE_PROCESS_COMPOSE_LOG="$fake_process_compose_log" \
 	XDG_RUNTIME_DIR="$runtime_dir" \
 	"$launcher" --check >/dev/null ||
 	fail 'aorus Process Compose check failed'
-expected_aorus="<-f><$test_home/.config/process-compose/process-compose.yaml><-t=false><--disable-dotenv><--use-uds><--unix-socket><$runtime_dir/dpc/pc.sock><--dry-run><up><--><eternal-terminal><omniroute><codex-remote-control><hindsight>"
+expected_aorus="<-f><$test_home/.config/process-compose/process-compose.yaml><-t=false><--disable-dotenv><--use-uds><--unix-socket><$runtime_dir/dpc/pc.sock><--dry-run><up><--><eternal-terminal><omniroute><codex-remote-control><hindsight><vllm><nanoclaw>"
 grep -Fxq -- "$expected_aorus" "$fake_process_compose_log" ||
 	fail 'aorus Process Compose argv did not select all declared services in order'
 
@@ -444,6 +493,191 @@ if FAKE_REAL_YQ="$yq_bin" FAKE_PROCESS_COMPOSE_LOG="$fake_process_compose_log" \
 fi
 grep -q 'undefined process for sd-mbp: missing-process' "$tmp_dir/undefined-process.out" ||
 	fail 'Undefined Process Compose process failure was unclear'
+
+vllm_wrapper_home="$tmp_dir/vllm-wrapper-home"
+vllm_wrapper="$vllm_wrapper_home/.local/bin/dotfiles-vllm-docker"
+vllm_docker_log="$tmp_dir/vllm-docker.log"
+vllm_stale_id_file="$tmp_dir/vllm-stale-id"
+vllm_runtime_env="$vllm_wrapper_home/.config/vllm/runtime.env"
+vllm_profile_env="$vllm_wrapper_home/.config/vllm/models.d/qwen3-27b-awq.env"
+vllm_current="$vllm_wrapper_home/.config/vllm/current"
+vllm_cache="$vllm_wrapper_home/.cache/huggingface"
+vllm_state="$vllm_wrapper_home/.local/state/vllm"
+mkdir -p "$vllm_wrapper_home/.local/bin" "$(dirname "$vllm_profile_env")" \
+	"$vllm_cache" "$vllm_state"
+cp "$repo_dir/packages/process-compose/.local/bin/dotfiles-vllm-docker" "$vllm_wrapper"
+cat > "$vllm_wrapper_home/.local/bin/docker" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+
+log_call() {
+	printf '<%s>' "$@" >> "$FAKE_VLLM_DOCKER_LOG"
+	printf '\n' >> "$FAKE_VLLM_DOCKER_LOG"
+}
+
+case "${1:-}" in
+	ps)
+		[ "$#" -eq 4 ] && [ "$2" = -aq ] && [ "$3" = --filter ] &&
+			[ "$4" = 'name=^/vllm$' ] || exit 64
+		log_call "$@"
+		[ ! -e "$FAKE_VLLM_STALE_ID_FILE" ] || cat "$FAKE_VLLM_STALE_ID_FILE"
+		;;
+	rm)
+		[ "$#" -eq 3 ] && [ "$2" = -f ] && [ -f "$FAKE_VLLM_STALE_ID_FILE" ] &&
+			[ "$3" = "$(cat "$FAKE_VLLM_STALE_ID_FILE")" ] || exit 64
+		log_call "$@"
+		rm "$FAKE_VLLM_STALE_ID_FILE"
+		;;
+	run)
+		[ "$#" -gt 1 ] || exit 64
+		log_call "$@"
+		;;
+	*) exit 64 ;;
+esac
+EOF
+cat > "$vllm_runtime_env" <<EOF
+VLLM_IMAGE=vllm/vllm-openai:v0.20.2
+VLLM_CONTAINER_NAME=vllm
+VLLM_HOST=0.0.0.0
+VLLM_PORT=8080
+VLLM_SHM_SIZE=24g
+VLLM_DOCKER_GPUS=all
+VLLM_DOCKER_EXTRA_ARGS=--ipc=host
+HF_HOME=$vllm_cache
+VLLM_STATE_DIR=$vllm_state
+EOF
+cat > "$vllm_profile_env" <<'EOF'
+MODEL_ID=QuantTrio/Qwen3.6-27B-AWQ
+MODEL_ALIAS=qwen3-27b-awq
+VLLM_MAX_MODEL_LEN=15360
+VLLM_GPU_MEMORY_UTILIZATION=0.98
+VLLM_MAX_NUM_SEQS=1
+VLLM_MODEL_ARGS='--enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --generation-config vllm'
+EOF
+printf '%s\n' qwen3-27b-awq > "$vllm_current"
+chmod +x "$vllm_wrapper" "$vllm_wrapper_home/.local/bin/docker"
+: > "$vllm_docker_log"
+printf '%s\n' 0123456789ab > "$vllm_stale_id_file"
+HOME="$vllm_wrapper_home" XDG_CONFIG_HOME="$vllm_wrapper_home/.config" PATH="$vllm_wrapper_home/.local/bin:$PATH" \
+	FAKE_VLLM_DOCKER_LOG="$vllm_docker_log" \
+	FAKE_VLLM_STALE_ID_FILE="$vllm_stale_id_file" "$vllm_wrapper" \
+	>"$tmp_dir/vllm-wrapper.out" 2>&1 ||
+	fail 'vLLM Docker wrapper did not run valid Qwen profile'
+[ "$(grep -Fxc '<ps><-aq><--filter><name=^/vllm$>' "$vllm_docker_log")" -eq 2 ] ||
+	fail 'vLLM Docker wrapper did not query only exact stale vllm container'
+grep -Fxq '<rm><-f><0123456789ab>' "$vllm_docker_log" ||
+	fail 'vLLM Docker wrapper did not remove exact stale vllm container ID'
+[ ! -e "$vllm_stale_id_file" ] ||
+	fail 'vLLM Docker wrapper did not remove exact stale vllm container'
+expected_vllm_docker_run="<run><--name><vllm><--rm><--gpus><all><-v><$vllm_cache:/root/.cache/huggingface><-v><$vllm_state:/var/lib/vllm/state><-p><0.0.0.0:8080:8080><--shm-size><24g><--ipc=host><vllm/vllm-openai:v0.20.2><QuantTrio/Qwen3.6-27B-AWQ><--served-model-name><local><--port><8080><--max-model-len><15360><--gpu-memory-utilization><0.98><--max-num-seqs><1><--enable-auto-tool-choice><--tool-call-parser><qwen3_xml><--reasoning-parser><qwen3><--generation-config><vllm>"
+grep -Fxq "$expected_vllm_docker_run" "$vllm_docker_log" ||
+	fail 'vLLM Docker wrapper argv was not canonical'
+
+vllm_docker_line_count=$(wc -l < "$vllm_docker_log" | tr -d ' ')
+grep -v '^VLLM_IMAGE=' "$vllm_runtime_env" > "$vllm_runtime_env.invalid"
+mv "$vllm_runtime_env.invalid" "$vllm_runtime_env"
+if HOME="$vllm_wrapper_home" XDG_CONFIG_HOME="$vllm_wrapper_home/.config" PATH="$vllm_wrapper_home/.local/bin:$PATH" \
+	FAKE_VLLM_DOCKER_LOG="$vllm_docker_log" "$vllm_wrapper" \
+	>"$tmp_dir/vllm-wrapper-missing-runtime.out" 2>&1; then
+	fail 'vLLM Docker wrapper accepted missing runtime key'
+fi
+[ "$(wc -l < "$vllm_docker_log" | tr -d ' ')" = "$vllm_docker_line_count" ] ||
+	fail 'vLLM Docker wrapper reached Docker with invalid runtime configuration'
+
+cat > "$vllm_runtime_env" <<EOF
+VLLM_IMAGE=vllm/vllm-openai:v0.20.2
+VLLM_CONTAINER_NAME=vllm
+VLLM_HOST=0.0.0.0
+VLLM_PORT=8080
+VLLM_SHM_SIZE=24g
+VLLM_DOCKER_GPUS=all
+VLLM_DOCKER_EXTRA_ARGS=--ipc=host
+HF_HOME=$vllm_cache
+VLLM_STATE_DIR=$vllm_state
+EOF
+grep -v '^MODEL_ID=' "$vllm_profile_env" > "$vllm_profile_env.invalid"
+mv "$vllm_profile_env.invalid" "$vllm_profile_env"
+if HOME="$vllm_wrapper_home" XDG_CONFIG_HOME="$vllm_wrapper_home/.config" PATH="$vllm_wrapper_home/.local/bin:$PATH" \
+	FAKE_VLLM_DOCKER_LOG="$vllm_docker_log" "$vllm_wrapper" \
+	>"$tmp_dir/vllm-wrapper-missing-profile.out" 2>&1; then
+	fail 'vLLM Docker wrapper accepted missing Qwen profile key'
+fi
+[ "$(wc -l < "$vllm_docker_log" | tr -d ' ')" = "$vllm_docker_line_count" ] ||
+	fail 'vLLM Docker wrapper reached Docker with invalid Qwen profile'
+
+cat > "$vllm_profile_env" <<'EOF'
+MODEL_ID=QuantTrio/Qwen3.6-27B-AWQ
+MODEL_ALIAS=qwen3-27b-awq
+VLLM_MAX_MODEL_LEN=15360
+VLLM_GPU_MEMORY_UTILIZATION=0.98
+VLLM_MAX_NUM_SEQS=1
+VLLM_MODEL_ARGS='--enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --generation-config vllm'
+EOF
+
+grep -v '^VLLM_DOCKER_EXTRA_ARGS=' "$vllm_runtime_env" > "$vllm_runtime_env.invalid"
+printf '%s\n' 'VLLM_DOCKER_EXTRA_ARGS=--ipc=private' >> "$vllm_runtime_env.invalid"
+mv "$vllm_runtime_env.invalid" "$vllm_runtime_env"
+if HOME="$vllm_wrapper_home" XDG_CONFIG_HOME="$vllm_wrapper_home/.config" PATH="$vllm_wrapper_home/.local/bin:$PATH" \
+	FAKE_VLLM_DOCKER_LOG="$vllm_docker_log" "$vllm_wrapper" \
+	>"$tmp_dir/vllm-wrapper-invalid-docker-args.out" 2>&1; then
+	fail 'vLLM Docker wrapper accepted noncanonical Docker arguments'
+fi
+[ "$(wc -l < "$vllm_docker_log" | tr -d ' ')" = "$vllm_docker_line_count" ] ||
+	fail 'vLLM Docker wrapper reached Docker with noncanonical Docker arguments'
+
+cat > "$vllm_runtime_env" <<EOF
+VLLM_IMAGE=vllm/vllm-openai:v0.20.2
+VLLM_CONTAINER_NAME=vllm
+VLLM_HOST=0.0.0.0
+VLLM_PORT=8080
+VLLM_SHM_SIZE=24g
+VLLM_DOCKER_GPUS=all
+VLLM_DOCKER_EXTRA_ARGS=--ipc=host
+HF_HOME=$vllm_cache
+VLLM_STATE_DIR=$vllm_state
+EOF
+grep -v '^VLLM_MODEL_ARGS=' "$vllm_profile_env" > "$vllm_profile_env.invalid"
+printf '%s\n' "VLLM_MODEL_ARGS='--served-model-name not-local'" >> "$vllm_profile_env.invalid"
+mv "$vllm_profile_env.invalid" "$vllm_profile_env"
+if HOME="$vllm_wrapper_home" XDG_CONFIG_HOME="$vllm_wrapper_home/.config" PATH="$vllm_wrapper_home/.local/bin:$PATH" \
+	FAKE_VLLM_DOCKER_LOG="$vllm_docker_log" "$vllm_wrapper" \
+	>"$tmp_dir/vllm-wrapper-served-model-override.out" 2>&1; then
+	fail 'vLLM Docker wrapper accepted served-model-name override'
+fi
+[ "$(wc -l < "$vllm_docker_log" | tr -d ' ')" = "$vllm_docker_line_count" ] ||
+	fail 'vLLM Docker wrapper reached Docker with served-model-name override'
+
+cat > "$vllm_profile_env" <<'EOF'
+MODEL_ID=QuantTrio/Qwen3.6-27B-AWQ
+MODEL_ALIAS=qwen3-27b-awq
+VLLM_MAX_MODEL_LEN=15360
+VLLM_GPU_MEMORY_UTILIZATION=0.98
+VLLM_MAX_NUM_SEQS=1
+VLLM_MODEL_ARGS='--enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --generation-config vllm'
+EOF
+
+printf '%s\n' unknown-profile > "$vllm_current"
+if HOME="$vllm_wrapper_home" XDG_CONFIG_HOME="$vllm_wrapper_home/.config" PATH="$vllm_wrapper_home/.local/bin:$PATH" \
+	FAKE_VLLM_DOCKER_LOG="$vllm_docker_log" "$vllm_wrapper" \
+	>"$tmp_dir/vllm-wrapper-invalid-current.out" 2>&1; then
+	fail 'vLLM Docker wrapper accepted arbitrary current selection'
+fi
+[ "$(wc -l < "$vllm_docker_log" | tr -d ' ')" = "$vllm_docker_line_count" ] ||
+	fail 'vLLM Docker wrapper reached Docker with invalid current selection'
+
+vllm_current_marker="$tmp_dir/vllm-current-marker"
+cat > "$vllm_current" <<EOF
+\$(touch "$vllm_current_marker")
+EOF
+if HOME="$vllm_wrapper_home" XDG_CONFIG_HOME="$vllm_wrapper_home/.config" PATH="$vllm_wrapper_home/.local/bin:$PATH" \
+	FAKE_VLLM_DOCKER_LOG="$vllm_docker_log" "$vllm_wrapper" \
+	>"$tmp_dir/vllm-wrapper-current-injection.out" 2>&1; then
+	fail 'vLLM Docker wrapper accepted executable current selection'
+fi
+[ ! -e "$vllm_current_marker" ] ||
+	fail 'vLLM Docker wrapper executed current selection contents'
+[ "$(wc -l < "$vllm_docker_log" | tr -d ' ')" = "$vllm_docker_line_count" ] ||
+	fail 'vLLM Docker wrapper reached Docker with executable current selection'
 
 codex_wrapper_home="$tmp_dir/codex-wrapper-home"
 codex_wrapper_env="$codex_wrapper_home/.config/hindsight/hindsight.env"
@@ -597,7 +831,7 @@ if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = python ]; then
 	exec /usr/bin/python3 "$@"
 fi
 if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = omniroute ]; then
-	[ "$(stat -f '%Lp' "$FAKE_PACKAGE_ENV" 2>/dev/null || stat -c '%a' "$FAKE_PACKAGE_ENV")" = 600 ] || exit 65
+	[ "$(stat -c '%a' "$FAKE_PACKAGE_ENV" 2>/dev/null || stat -f '%Lp' "$FAKE_PACKAGE_ENV")" = 600 ] || exit 65
 	printf '%s\n' "${*:3}" >> "$FAKE_WRAPPER_LOG"
 	exit
 fi
@@ -659,237 +893,12 @@ assert_mode 644 "$wrapper_outside_install/lib/node_modules/omniroute/.env"
 	fail 'Outside-home OmniRoute package path reached service exec'
 
 setup_process_compose_function=$(awk '
-  /^command_exists\(\) \{/ { capture = 1 }
+  /^fatal\(\) \{/ { capture = 1 }
   /^setup_ssh_server\(\) \{/ { exit }
   capture { print }
 ' "$repo_dir/scripts/bootstrap-system.sh")
 [ -n "$setup_process_compose_function" ] || fail 'Could not extract setup_process_compose'
 
-codex_auth_python=$(command -v python3) || fail 'Python 3 is required for Codex auth migration smoke tests'
-codex_auth_root="$tmp_dir/codex-auth"
-codex_auth_secret='codex-auth-secret-must-not-print'
-mkdir -p "$codex_auth_root"
-
-prepare_codex_auth_case() {
-	local case_name="$1"
-	local case_root="$codex_auth_root/$case_name"
-	CODEX_CASE_HOME="$case_root/home"
-	CODEX_CASE_DOTFILES="$CODEX_CASE_HOME/projects/dotfiles"
-
-	mkdir -p \
-		"$CODEX_CASE_HOME/.local/bin" \
-		"$CODEX_CASE_DOTFILES/packages/ai/.codex"
-	cat > "$CODEX_CASE_HOME/.local/bin/mise" <<'EOF'
-#!/usr/bin/env bash
-if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = python ]; then
-	shift 3
-	exec "$CODEX_AUTH_PYTHON" "$@"
-fi
-if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = codex ] &&
-	[ "$4" = login ] && [ "$5" = status ]; then
-	printf '%s\n' 'codex status canonical' >> "$CODEX_AUTH_LOG"
-	[ -f "$HOME/.codex/auth.json" ] && [ ! -L "$HOME/.codex/auth.json" ]
-	exit
-fi
-exit 64
-EOF
-	chmod +x "$CODEX_CASE_HOME/.local/bin/mise"
-}
-
-run_codex_auth_case() {
-	local case_home="$1" case_dotfiles="$2" output="$3"
-	HOME="$case_home" DOTFILES_DIR="$case_dotfiles" LOGIN_USER="$(id -un)" \
-		OS=Linux DOTFILES_HOST=aorus CODEX_AUTH_PYTHON="$codex_auth_python" \
-		CODEX_AUTH_LOG="$codex_auth_root/status.log" \
-		SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
-		bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; migrate_legacy_codex_auth; verify_aorus_codex_login' \
-		>"$output" 2>&1
-}
-
-prepare_codex_auth_case success
-codex_success_home=$CODEX_CASE_HOME
-codex_success_dotfiles=$CODEX_CASE_DOTFILES
-codex_success_source="$codex_success_dotfiles/packages/ai/.codex/auth.json"
-codex_success_expected="$codex_auth_root/success.expected"
-printf '%s\n' "$codex_auth_secret" > "$codex_success_source"
-cp "$codex_success_source" "$codex_success_expected"
-chmod 0600 "$codex_success_source" "$codex_success_expected"
-: > "$codex_auth_root/status.log"
-run_codex_auth_case "$codex_success_home" "$codex_success_dotfiles" \
-	"$codex_auth_root/success.out" || fail 'Historical Codex auth migration failed'
-[ ! -e "$codex_success_source" ] || fail 'Historical Codex auth remained after migration'
-cmp -s "$codex_success_expected" "$codex_success_home/.codex/auth.json" ||
-	fail 'Canonical Codex auth differs from historical credential'
-assert_mode 700 "$codex_success_home/.codex"
-assert_mode 600 "$codex_success_home/.codex/auth.json"
-[ "$(stat -c '%u' "$codex_success_home/.codex/auth.json" 2>/dev/null ||
-	stat -f '%u' "$codex_success_home/.codex/auth.json")" = "$(id -u)" ] ||
-	fail 'Canonical Codex auth ownership is incorrect'
-grep -Fxq 'codex status canonical' "$codex_auth_root/status.log" ||
-	fail 'Codex login status did not inspect canonical authentication'
-[ ! -s "$codex_auth_root/success.out" ] || fail 'Successful Codex auth migration printed output'
-run_codex_auth_case "$codex_success_home" "$codex_success_dotfiles" \
-	"$codex_auth_root/idempotent.out" || fail 'Codex auth migration is not idempotent'
-cmp -s "$codex_success_expected" "$codex_success_home/.codex/auth.json" ||
-	fail 'Idempotent Codex auth migration changed credential'
-
-prepare_codex_auth_case identical
-codex_identical_home=$CODEX_CASE_HOME
-codex_identical_dotfiles=$CODEX_CASE_DOTFILES
-mkdir "$codex_identical_home/.codex"
-printf '%s\n' "$codex_auth_secret" > "$codex_identical_home/.codex/auth.json"
-printf '%s\n' "$codex_auth_secret" > "$codex_identical_dotfiles/packages/ai/.codex/auth.json"
-chmod 0700 "$codex_identical_home/.codex"
-chmod 0600 "$codex_identical_home/.codex/auth.json" \
-	"$codex_identical_dotfiles/packages/ai/.codex/auth.json"
-run_codex_auth_case "$codex_identical_home" "$codex_identical_dotfiles" \
-	"$codex_auth_root/identical.out" || fail 'Identical Codex credentials did not converge'
-[ ! -e "$codex_identical_dotfiles/packages/ai/.codex/auth.json" ] ||
-	fail 'Identical historical Codex credential was not removed'
-
-prepare_codex_auth_case interrupted-hardlink
-codex_interrupted_home=$CODEX_CASE_HOME
-codex_interrupted_dotfiles=$CODEX_CASE_DOTFILES
-codex_interrupted_source="$codex_interrupted_dotfiles/packages/ai/.codex/auth.json"
-mkdir "$codex_interrupted_home/.codex"
-chmod 0775 "$codex_interrupted_home/.codex"
-printf '%s\n' "$codex_auth_secret" > "$codex_interrupted_source"
-chmod 0600 "$codex_interrupted_source"
-ln "$codex_interrupted_source" "$codex_interrupted_home/.codex/auth.json"
-run_codex_auth_case "$codex_interrupted_home" "$codex_interrupted_dotfiles" \
-	"$codex_auth_root/interrupted-hardlink.out" ||
-	fail 'Interrupted same-filesystem Codex auth install did not recover'
-[ ! -e "$codex_interrupted_source" ] ||
-	fail 'Recovered historical Codex credential was not removed'
-assert_mode 700 "$codex_interrupted_home/.codex"
-assert_mode 600 "$codex_interrupted_home/.codex/auth.json"
-[ "$(stat -c '%h' "$codex_interrupted_home/.codex/auth.json" 2>/dev/null ||
-	stat -f '%l' "$codex_interrupted_home/.codex/auth.json")" = 1 ] ||
-	fail 'Recovered canonical Codex credential retained additional hard link'
-
-prepare_codex_auth_case writable-canonical-directory
-codex_writable_home=$CODEX_CASE_HOME
-codex_writable_dotfiles=$CODEX_CASE_DOTFILES
-mkdir "$codex_writable_home/.codex"
-chmod 0775 "$codex_writable_home/.codex"
-printf '%s\n' "$codex_auth_secret" > "$codex_writable_home/.codex/auth.json"
-chmod 0600 "$codex_writable_home/.codex/auth.json"
-run_codex_auth_case "$codex_writable_home" "$codex_writable_dotfiles" \
-	"$codex_auth_root/writable-canonical-directory.out" ||
-	fail 'Writable canonical Codex directory did not converge'
-assert_mode 700 "$codex_writable_home/.codex"
-assert_mode 600 "$codex_writable_home/.codex/auth.json"
-
-prepare_codex_auth_case divergent
-codex_divergent_home=$CODEX_CASE_HOME
-codex_divergent_dotfiles=$CODEX_CASE_DOTFILES
-codex_divergent_source="$codex_divergent_dotfiles/packages/ai/.codex/auth.json"
-mkdir "$codex_divergent_home/.codex"
-printf '%s\n' "${codex_auth_secret}-source" > "$codex_divergent_source"
-printf '%s\n' "${codex_auth_secret}-canonical" > "$codex_divergent_home/.codex/auth.json"
-chmod 0700 "$codex_divergent_home/.codex"
-chmod 0600 "$codex_divergent_source" "$codex_divergent_home/.codex/auth.json"
-cp "$codex_divergent_source" "$codex_auth_root/divergent-source.expected"
-cp "$codex_divergent_home/.codex/auth.json" "$codex_auth_root/divergent-canonical.expected"
-if run_codex_auth_case "$codex_divergent_home" "$codex_divergent_dotfiles" \
-	"$codex_auth_root/divergent.out"; then
-	fail 'Divergent Codex credentials did not fail closed'
-fi
-cmp -s "$codex_auth_root/divergent-source.expected" "$codex_divergent_source" ||
-	fail 'Divergent migration changed historical Codex credential'
-cmp -s "$codex_auth_root/divergent-canonical.expected" \
-	"$codex_divergent_home/.codex/auth.json" ||
-	fail 'Divergent migration changed canonical Codex credential'
-
-prepare_codex_auth_case missing
-codex_missing_home=$CODEX_CASE_HOME
-codex_missing_dotfiles=$CODEX_CASE_DOTFILES
-if run_codex_auth_case "$codex_missing_home" "$codex_missing_dotfiles" \
-	"$codex_auth_root/missing.out"; then
-	fail 'Missing Codex credentials passed login preflight'
-fi
-grep -Fq 'mise exec -- codex login' "$codex_auth_root/missing.out" ||
-	fail 'Missing Codex credentials omitted actionable login command'
-[ ! -e "$codex_missing_home/.codex" ] ||
-	fail 'Missing Codex credentials caused preflight filesystem mutation'
-
-for unsafe_kind in source-symlink source-mode source-hardlink canonical-symlink canonical-mode canonical-hardlink; do
-	prepare_codex_auth_case "$unsafe_kind"
-	codex_unsafe_home=$CODEX_CASE_HOME
-	codex_unsafe_dotfiles=$CODEX_CASE_DOTFILES
-	codex_unsafe_source="$codex_unsafe_dotfiles/packages/ai/.codex/auth.json"
-	codex_unsafe_canonical="$codex_unsafe_home/.codex/auth.json"
-	printf '%s\n' "$codex_auth_secret" > "$codex_auth_root/$unsafe_kind.outside"
-	chmod 0600 "$codex_auth_root/$unsafe_kind.outside"
-	case "$unsafe_kind" in
-		source-symlink)
-			ln -s "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_source"
-			;;
-		source-mode)
-			cp "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_source"
-			chmod 0640 "$codex_unsafe_source"
-			;;
-		source-hardlink)
-			ln "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_source"
-			;;
-		canonical-*)
-			cp "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_source"
-			chmod 0600 "$codex_unsafe_source"
-			mkdir "$codex_unsafe_home/.codex"
-			chmod 0700 "$codex_unsafe_home/.codex"
-			case "$unsafe_kind" in
-				canonical-symlink) ln -s "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_canonical" ;;
-				canonical-mode)
-					cp "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_canonical"
-					chmod 0640 "$codex_unsafe_canonical"
-					;;
-				canonical-hardlink) ln "$codex_auth_root/$unsafe_kind.outside" "$codex_unsafe_canonical" ;;
-			esac
-			;;
-	esac
-	if run_codex_auth_case "$codex_unsafe_home" "$codex_unsafe_dotfiles" \
-		"$codex_auth_root/$unsafe_kind.out"; then
-		fail "Unsafe Codex auth accepted: $unsafe_kind"
-	fi
-	if grep -Fq "$codex_auth_secret" "$codex_auth_root/$unsafe_kind.out"; then
-		fail "Unsafe Codex auth failure printed credential: $unsafe_kind"
-	fi
-done
-
-codex_auth_wrong_uid=$(( $(id -u) + 1 ))
-for wrong_owner_kind in source canonical; do
-	prepare_codex_auth_case "wrong-owner-$wrong_owner_kind"
-	codex_wrong_owner_home=$CODEX_CASE_HOME
-	codex_wrong_owner_dotfiles=$CODEX_CASE_DOTFILES
-	printf '%s\n' "$codex_auth_secret" > \
-		"$codex_wrong_owner_dotfiles/packages/ai/.codex/auth.json"
-	chmod 0600 "$codex_wrong_owner_dotfiles/packages/ai/.codex/auth.json"
-	if [ "$wrong_owner_kind" = canonical ]; then
-		mkdir "$codex_wrong_owner_home/.codex"
-		chmod 0700 "$codex_wrong_owner_home/.codex"
-		printf '%s\n' "$codex_auth_secret" > "$codex_wrong_owner_home/.codex/auth.json"
-		chmod 0600 "$codex_wrong_owner_home/.codex/auth.json"
-	fi
-	wrong_owner_mock="$codex_auth_root/wrong-owner-$wrong_owner_kind-bin"
-	mkdir "$wrong_owner_mock"
-	cat > "$wrong_owner_mock/id" <<EOF
-#!/usr/bin/env bash
-case "\${1:-}" in
-	-u) printf '%s\\n' '$codex_auth_wrong_uid' ;;
-	-un) printf '%s\\n' '$(id -un)' ;;
-	*) exit 64 ;;
-esac
-EOF
-	chmod +x "$wrong_owner_mock/id"
-	if PATH="$wrong_owner_mock:$PATH" run_codex_auth_case \
-		"$codex_wrong_owner_home" "$codex_wrong_owner_dotfiles" \
-		"$codex_auth_root/wrong-owner-$wrong_owner_kind.out"; then
-		fail "Wrong-owner Codex auth accepted: $wrong_owner_kind"
-	fi
-	if grep -Fq "$codex_auth_secret" "$codex_auth_root/wrong-owner-$wrong_owner_kind.out"; then
-		fail "Wrong-owner Codex auth failure printed credential: $wrong_owner_kind"
-	fi
-done
 
 omniroute_bootstrap_functions=$(awk '
   /^path_owner_uid\(\) \{/ { capture = 1 }
@@ -907,7 +916,12 @@ cat > "$migration_mock_bin/systemctl" <<'EOF'
 printf 'systemctl %s\n' "$*" >> "$MIGRATION_LOG"
 if [ "$1" = --user ] && [ "$2" = show ] && [ "$3" = --property=LoadState ] &&
 	[ "$4" = --value ]; then
-	printf '%s\n' loaded
+	case "${5:-}" in
+		vllm-qwen.service | vllm-gemma4.service | vllm-step3.service)
+			printf '%s\n' not-found
+			;;
+		*) printf '%s\n' loaded ;;
+	esac
 	exit
 fi
 if [ "$1" = --user ] && [ "$2" = stop ]; then
@@ -1022,7 +1036,7 @@ run_omniroute_migration_case() {
 		MIGRATION_FUSER_LATE_STATUS="${MIGRATION_FUSER_LATE_STATUS:-}" \
 		MIGRATION_PGREP_CMDLINE="${MIGRATION_PGREP_CMDLINE:-}" \
 		PATH="$migration_mock_bin:$PATH" \
-		bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$OMNIROUTE_BOOTSTRAP_FUNCTIONS"; command_exists() { [ "$1" = pgrep ] || [ "$1" = fuser ]; }; pgrep() { if [ -n "$MIGRATION_PGREP_CMDLINE" ]; then local pattern="${@: -1}"; [[ "$MIGRATION_PGREP_CMDLINE" =~ $pattern ]]; else return 1; fi; }; migrate_legacy_omniroute_state' \
+	bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$OMNIROUTE_BOOTSTRAP_FUNCTIONS"; command_exists() { [ "$1" = pgrep ] || [ "$1" = fuser ]; }; pgrep() { if [ -n "$MIGRATION_PGREP_CMDLINE" ]; then local pattern="${@: -1}"; [[ "$MIGRATION_PGREP_CMDLINE" =~ $pattern ]]; else return 1; fi; }; migrate_legacy_omniroute_state' \
 		>"$output" 2>&1
 }
 
@@ -1744,6 +1758,7 @@ assert_mode 644 "$harden_home/.local/state/omniroute/.env"
 lifecycle_home="$tmp_dir/lifecycle-home"
 lifecycle_mock_bin="$tmp_dir/lifecycle-mock-bin"
 lifecycle_log="$tmp_dir/lifecycle.log"
+lifecycle_login_uid=$(id -u)
 real_python=$(mise which python 2>/dev/null || command -v python3) ||
 	fail 'Python is required for native service generation smoke tests'
 real_jq=$(mise which jq 2>/dev/null || command -v jq) ||
@@ -1784,7 +1799,9 @@ if [ "$1" = exec ] && [ "$2" = -- ] && [ "$3" = process-compose ]; then
   {"name":"eternal-terminal","is_running":true,"has_ready_probe":false,"is_ready":"-"},
   {"name":"omniroute","is_running":true,"has_ready_probe":true,"is_ready":"Ready"},
   {"name":"codex-remote-control","is_running":true,"has_ready_probe":true,"is_ready":"Ready"},
-  {"name":"hindsight","is_running":true,"has_ready_probe":true,"is_ready":"Ready"}
+  {"name":"hindsight","is_running":true,"has_ready_probe":true,"is_ready":"Ready"},
+  {"name":"vllm","is_running":true,"has_ready_probe":true,"is_ready":"Ready"},
+  {"name":"nanoclaw","is_running":true,"has_ready_probe":false,"is_ready":"-"}
 ]
 JSON
 else
@@ -1825,7 +1842,16 @@ if [ "${MOCK_CURL_HANG:-false}" = true ]; then
 	sleep "$duration"
 	exit 28
 fi
-[ "${MOCK_HINDSIGHT_HEALTH:-true}" = true ]
+case "${!#}" in
+	http://127.0.0.1:8080/v1/models)
+		[ "${MOCK_VLLM_HEALTH:-true}" = true ] || exit 1
+		printf '%s\n' '{"data":[{"id":"local"}]}'
+		;;
+	http://127.0.0.1:18888/health)
+		[ "${MOCK_HINDSIGHT_HEALTH:-true}" = true ]
+		;;
+	*) exit 64 ;;
+esac
 EOF
 cat > "$lifecycle_mock_bin/timeout" <<'EOF'
 #!/usr/bin/env bash
@@ -1882,6 +1908,11 @@ if [ "$1" = show ] && [ "$2" = --property=LoadState ] && [ "$3" = --value ] &&
 	fi
 	exit
 fi
+if [ "$1" = show ] && [ "$2" = --property=LoadState ] && [ "$3" = --value ] &&
+	[ "$4" = vllm.service ]; then
+	printf '%s\n' "${MOCK_ROOT_VLLM_LOAD_STATE:-not-found}"
+	exit
+fi
 if [ "$1" = show ] && [ "$3" = --value ] && [ "$4" = etserver.service ]; then
 	case "$2" in
 		--property=FragmentPath) printf '%s\n' "${MOCK_ET_UNIT:-/etc/systemd/system/etserver.service}" ;;
@@ -1908,11 +1939,18 @@ if [ "$1" = is-enabled ] && [ "$2" = etserver.service ]; then
 fi
 if [ "$1" = --user ] && [ "$2" = show ] && [ "$3" = --property=LoadState ] &&
 	[ "$4" = --value ]; then
-	if [ "${MOCK_LEGACY_UNITS:-absent}" = present ]; then
-		printf '%s\n' loaded
-	else
-		printf '%s\n' not-found
-	fi
+	case "${5:-}" in
+		vllm-qwen.service | vllm-gemma4.service | vllm-step3.service)
+			printf '%s\n' not-found
+			;;
+		*)
+			if [ "${MOCK_LEGACY_UNITS:-absent}" = present ]; then
+				printf '%s\n' loaded
+			else
+				printf '%s\n' not-found
+			fi
+			;;
+	esac
 	exit
 fi
 if [ "$1" = --user ] && [ "$2" = show ] && [ "$3" = --property=FragmentPath ] &&
@@ -1960,8 +1998,6 @@ HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycl
 grep -Fxq 'mise codex login status' "$lifecycle_log" ||
 	fail 'Aorus Codex login preflight did not use supported status command'
 
-auth_migration_call_line=$(grep -nFx 'migrate_legacy_codex_auth' "$repo_dir/scripts/bootstrap-system.sh" |
-	cut -d: -f1 || true)
 preflight_call_line=$(grep -nFx 'verify_aorus_codex_login' "$repo_dir/scripts/bootstrap-system.sh" |
 	cut -d: -f1 || true)
 setup_state_call_line=$(grep -nFx 'setup_user_state' "$repo_dir/scripts/bootstrap-system.sh" |
@@ -1970,11 +2006,10 @@ migration_call_line=$(grep -nFx 'migrate_legacy_omniroute_state' "$repo_dir/scri
 	cut -d: -f1 || true)
 harden_call_line=$(grep -nFx 'harden_omniroute_env' "$repo_dir/scripts/bootstrap-system.sh" |
 	cut -d: -f1 || true)
-[ -n "$auth_migration_call_line" ] && [ -n "$preflight_call_line" ] && [ -n "$setup_state_call_line" ] &&
+[ -n "$preflight_call_line" ] && [ -n "$setup_state_call_line" ] &&
 	[ -n "$migration_call_line" ] && [ -n "$harden_call_line" ] ||
 	fail 'Could not locate Aorus Codex login preflight ordering'
-[ "$auth_migration_call_line" -lt "$preflight_call_line" ] &&
-	[ "$preflight_call_line" -lt "$setup_state_call_line" ] &&
+[ "$preflight_call_line" -lt "$setup_state_call_line" ] &&
 	[ "$preflight_call_line" -lt "$migration_call_line" ] &&
 	[ "$preflight_call_line" -lt "$harden_call_line" ] ||
 	fail 'Aorus Codex login preflight does not precede filesystem and service migration'
@@ -2030,7 +2065,7 @@ for et_failure_case in unsafe wrong-user disable; do
 		MOCK_ET_DISABLED_STATE="$et_disabled_state" MOCK_ET_VALIDATION_BYPASS=true \
 		MOCK_ET_VALIDATION_FAIL="$et_validation_fail" MOCK_ET_DISABLE_FAIL="$et_disable_fail" \
 		SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
-		bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; migrate_system_etserver_service "$MOCK_ET_UNIT"' \
+	bash -c 'fatal() { printf "ERROR: %s\n" "$*" >&2; exit 1; }; eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; migrate_system_etserver_service "$MOCK_ET_UNIT"' \
 		>"$tmp_dir/etserver-$et_failure_case.out" 2>&1; then
 		fail "Legacy system Eternal Terminal migration accepted $et_failure_case case"
 	fi
@@ -2083,6 +2118,17 @@ linux_native_state="$lifecycle_home/state % \"quoted\" \$(touch $linux_injection
 legacy_codex_unit="$lifecycle_home/.config/systemd/user/codex-remote-control.service"
 hindsight_container_state="$tmp_dir/hindsight-container.state"
 mkdir -p "$(dirname "$legacy_codex_unit")"
+lifecycle_runtime_dir=$(mktemp -d /tmp/dotfiles-lifecycle-runtime.XXXXXX)
+linux_native_socket="$lifecycle_runtime_dir/dpc/pc.sock"
+mkdir -p "$(dirname "$linux_native_socket")"
+"$real_python" - "$linux_native_socket" <<'PY'
+import socket
+import sys
+
+listener = socket.socket(socket.AF_UNIX)
+listener.bind(sys.argv[1])
+listener.close()
+PY
 chmod 0775 \
 	"$lifecycle_home/.config" \
 	"$lifecycle_home/.config/systemd" \
@@ -2099,10 +2145,11 @@ EOF
 chmod 0664 "$legacy_codex_unit"
 printf '%s\n' true > "$hindsight_container_state"
 HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
-	LOGIN_USER=tester OS=Linux XDG_CONFIG_HOME="$lifecycle_home/.config" \
-	XDG_STATE_HOME="$linux_native_state" DOTFILES_DIR="$repo_dir" REAL_PYTHON="$real_python" \
+	LOGIN_USER=tester OS=Linux MOCK_UID="$lifecycle_login_uid" XDG_CONFIG_HOME="$lifecycle_home/.config" \
+	XDG_STATE_HOME="$linux_native_state" XDG_RUNTIME_DIR="$lifecycle_runtime_dir" DOTFILES_DIR="$repo_dir" REAL_PYTHON="$real_python" \
 	MOCK_LEGACY_UNITS=present MOCK_CODEX_UNIT="$legacy_codex_unit" \
 	MOCK_HINDSIGHT_STATE="$hindsight_container_state" \
+	MOCK_PROCESS_READY=true \
 	SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
 	bash -c 'eval "$SETUP_PROCESS_COMPOSE_FUNCTION"; setup_process_compose'
 linux_native_dropin="$lifecycle_home/.config/systemd/user/dotfiles-process-compose.service.d/10-xdg-state.conf"
@@ -2166,6 +2213,11 @@ for legacy_unit in \
 	[ "$legacy_disable_line" -lt "$systemd_restart_line" ] ||
 		fail "Linux Process Compose restart preceded migration of $legacy_unit"
 done
+for legacy_unit in vllm-qwen.service vllm-gemma4.service vllm-step3.service; do
+	if grep -Fxq "systemctl --user disable --now $legacy_unit" "$lifecycle_log"; then
+		fail "Linux lifecycle tried to migrate rejected legacy vLLM unit: $legacy_unit"
+	fi
+done
 
 stopped_container_log="$tmp_dir/stopped-container.log"
 printf '%s\n' false > "$hindsight_container_state"
@@ -2184,8 +2236,8 @@ fi
 
 : > "$lifecycle_log"
 HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
-	LOGIN_USER=tester OS=Linux XDG_CONFIG_HOME="$lifecycle_home/.config" \
-	XDG_STATE_HOME="$linux_native_state" DOTFILES_DIR="$repo_dir" REAL_PYTHON="$real_python" \
+	LOGIN_USER=tester OS=Linux MOCK_UID="$lifecycle_login_uid" XDG_CONFIG_HOME="$lifecycle_home/.config" \
+	XDG_STATE_HOME="$linux_native_state" XDG_RUNTIME_DIR="$lifecycle_runtime_dir" DOTFILES_DIR="$repo_dir" REAL_PYTHON="$real_python" \
 	MOCK_LEGACY_UNITS=absent MOCK_CODEX_UNIT="$legacy_codex_unit" \
 	MOCK_HINDSIGHT_STATE="$hindsight_container_state" \
 	SETUP_PROCESS_COMPOSE_FUNCTION="$setup_process_compose_function" \
@@ -2204,6 +2256,7 @@ grep -Fxq 'mise codex remote-control --json stop' "$lifecycle_log" ||
 	fail 'Linux lifecycle did not accept detached Codex not-running status'
 [ "$(grep -Fxc 'EnvironmentFile=%h/.config/hindsight/hindsight.env' "$legacy_codex_unit")" -eq 1 ] ||
 	fail 'Legacy Codex unit sanitizer is not idempotent'
+rm -rf "$lifecycle_runtime_dir"
 
 rm "$legacy_codex_unit"
 legacy_codex_outside="$tmp_dir/legacy-codex-outside.service"
@@ -2271,6 +2324,8 @@ HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycl
 	fail 'Aorus replacement readiness verification rejected healthy processes'
 grep -Fxq 'curl -fsS --max-time 5 http://127.0.0.1:18888/health' "$lifecycle_log" ||
 	fail 'Aorus replacement verification omitted Hindsight HTTP health'
+grep -Fxq 'curl -fsS --max-time 5 http://127.0.0.1:8080/v1/models' "$lifecycle_log" ||
+	fail 'Aorus replacement verification omitted vLLM local-model readiness'
 
 if HOME="$lifecycle_home" PATH="$lifecycle_mock_bin:$PATH" LIFECYCLE_LOG="$lifecycle_log" \
 	LOGIN_USER=tester DOTFILES_HOST=aorus XDG_CONFIG_HOME="$lifecycle_home/.config" \

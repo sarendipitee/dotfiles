@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+CONFIG_HOME=${XDG_CONFIG_HOME:-$HOME/.config}
+UNIT=dotfiles-process-compose.service
+DROP_IN_DIR="$CONFIG_HOME/systemd/user/${UNIT}.d"
+DROP_IN="$DROP_IN_DIR/20-nanoclaw.conf"
+MISE_BIN="$HOME/.local/bin/mise"
+
+fail() {
+	printf 'dotfiles-nanoclaw-user: %s\n' "$*" >&2
+	exit 1
+}
+
+[[ $(id -u) -ne 0 ]] || fail 'must run as the NanoClaw owner, not root'
+[[ -x "$MISE_BIN" ]] || fail "mise is missing: $MISE_BIN"
+systemctl --user cat "$UNIT" >/dev/null ||
+	fail "missing $UNIT; stow the process-compose and systemd packages first"
+
+case "${1:-enable}" in
+	enable)
+		mkdir -p "$DROP_IN_DIR"
+		cat > "$DROP_IN" <<'EOF'
+[Service]
+Environment=DOTFILES_HOST=nanoclaw
+EOF
+		loginctl enable-linger "$(id -un)"
+		"$MISE_BIN" install node@22 npm:node-gyp
+		systemctl --user daemon-reload
+		systemctl --user enable --now "$UNIT"
+		;;
+	disable)
+		rm -f "$DROP_IN"
+		systemctl --user daemon-reload
+		systemctl --user disable --now "$UNIT"
+		;;
+	*)
+		fail 'usage: dotfiles-nanoclaw-user [enable|disable]'
+		;;
+esac

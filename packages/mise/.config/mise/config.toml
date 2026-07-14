@@ -49,6 +49,7 @@ jobs = 8
 "rust" = "latest"
 "sqlite" = "latest"
 "pnpm" = "latest"
+"npm:node-gyp" = "latest"
 "process-compose" = "latest"
 "dyff" = "latest"
 "talosctl" = "latest"

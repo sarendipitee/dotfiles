@@ -9,41 +9,13 @@ source "${DOTFILES_DIR}/packages/shell/.config/zsh/colors.sh"
 source "${DOTFILES_DIR}/packages/shell/.config/zsh/functions.sh"
 source "${DOTFILES_DIR}/packages/shell/.config/zsh/env.sh"
 
-run_privileged() {
-	if [[ "$(id -u)" == "0" ]]; then
-		"$@"
-	else
-		sudo "$@"
-	fi
-}
-
-keep_sudo_alive() {
-	if [[ "$(id -u)" == "0" ]]; then
-		return
-	fi
-
-	section_header 'Keeping sudo alive till this script has finished'
-	sudo -v
-	while true; do
-		sudo -n true
-		sleep 60
-		kill -0 "$$" || exit
-	done 2>/dev/null &
-}
-
 write_user_file() {
 	local target_path="${1}"
 	local file_mode="${2}"
 	local tmp_file
 	tmp_file="$(mktemp)"
 	cat > "${tmp_file}"
-
-	if [[ "$(id -u)" == "0" ]]; then
-		install -D -m "${file_mode}" -o "${VLLM_OWNER}" -g "${VLLM_OWNER_GROUP}" "${tmp_file}" "${target_path}"
-	else
-		install -D -m "${file_mode}" "${tmp_file}" "${target_path}"
-	fi
-
+	install -D -m "${file_mode}" "${tmp_file}" "${target_path}"
 	rm -f "${tmp_file}"
 }
 
@@ -52,7 +24,7 @@ write_user_file_if_missing() {
 	local file_mode="${2}"
 
 	if [[ -e "${target_path}" ]]; then
-		warn "skipping existing user-managed file '${target_path}'"
+		warn "preserving existing user-managed file '${target_path}'"
 		cat >/dev/null
 		return
 	fi
@@ -65,26 +37,10 @@ ensure_user_env_key() {
 	local key_name="${2}"
 	local key_value="${3}"
 
-	if rg -q "^${key_name}=" "${target_path}" 2>/dev/null; then
+	if grep -q "^${key_name}=" "${target_path}" 2>/dev/null; then
 		return
 	fi
-
-	if [[ "$(id -u)" == "0" ]]; then
-		printf '%s=%s\n' "${key_name}" "${key_value}" >> "${target_path}"
-		chown "${VLLM_OWNER}:${VLLM_OWNER_GROUP}" "${target_path}"
-	else
-		printf '%s=%s\n' "${key_name}" "${key_value}" >> "${target_path}"
-	fi
-}
-
-write_root_file() {
-	local target_path="${1}"
-	local file_mode="${2}"
-	local tmp_file
-	tmp_file="$(mktemp)"
-	cat > "${tmp_file}"
-	run_privileged install -D -m "${file_mode}" "${tmp_file}" "${target_path}"
-	rm -f "${tmp_file}"
+	printf '%s=%s\n' "${key_name}" "${key_value}" >> "${target_path}"
 }
 
 require_linux() {
@@ -95,84 +51,107 @@ require_command() {
 	command_exists "${1}" || error "required command missing: ${1}"
 }
 
-ensure_dir_with_owner() {
+ensure_durable_directory() {
 	local target_path="${1}"
-	local target_mode="${2}"
-	local target_owner="${3}"
-	local target_group="${4}"
-	run_privileged install -d -m "${target_mode}" -o "${target_owner}" -g "${target_group}" "${target_path}"
+
+	[[ -d "${target_path}" ]] && return
+	sudo install -d -m 0755 "${target_path}"
+}
+
+current_selection_is_ornith() {
+	local resolved_path
+
+	[[ -e "${CURRENT_LINK}" || -L "${CURRENT_LINK}" ]] || return 1
+	if [[ -L "${CURRENT_LINK}" ]]; then
+		resolved_path="$(readlink -f "${CURRENT_LINK}")" || return 1
+		[[ "${resolved_path}" == "${MODELS_DIR}/ornith.env" ]]
+		return
+	fi
+	if grep -qx 'ornith' "${CURRENT_LINK}" 2>/dev/null ||
+		grep -qx 'ornith.env' "${CURRENT_LINK}" 2>/dev/null ||
+		grep -qx "MODEL_ALIAS=ornith" "${CURRENT_LINK}" 2>/dev/null; then
+		return 0
+	fi
+	return 1
+}
+
+preserve_direct_ornith_profile() {
+	[[ -L "${CURRENT_LINK}" ]] && return
+	grep -q '^MODEL_ID=' "${CURRENT_LINK}" 2>/dev/null || return
+	[[ -e "${MODELS_DIR}/ornith.env" ]] && return
+	install -m 0644 "${CURRENT_LINK}" "${MODELS_DIR}/ornith.env"
+}
+
+migrate_known_ornith_selection() {
+	local temporary_link="${CURRENT_LINK}.tmp.$$"
+
+	if [[ ! -e "${CURRENT_LINK}" && ! -L "${CURRENT_LINK}" ]]; then
+		ln -s "${MODELS_DIR}/qwen3-27b-awq.env" "${CURRENT_LINK}"
+		success "created default active model selection 'qwen3-27b-awq'"
+		return
+	fi
+	if ! current_selection_is_ornith; then
+		warn "preserving existing active model selection '${CURRENT_LINK}'"
+		return
+	fi
+
+	preserve_direct_ornith_profile
+	rm -f "${temporary_link}"
+	ln -s "${MODELS_DIR}/qwen3-27b-awq.env" "${temporary_link}"
+	mv -Tf "${temporary_link}" "${CURRENT_LINK}"
+	success "migrated known Ornith selection to 'qwen3-27b-awq'; preserved ornith profile"
 }
 
 require_linux
-require_command systemctl
 require_command docker
 require_command curl
+require_command sudo
+[[ "$(id -u)" != "0" ]] ||
+	error "setup-vllm.sh must run as the user who owns the vLLM configuration"
 
-if [[ "$(id -u)" == "0" ]]; then
-	if [[ -n "${SUDO_USER:-}" ]]; then
-		VLLM_OWNER="${SUDO_USER}"
-	else
-		[[ -n "${VLLM_OWNER:-}" ]] || error "run as normal user or set VLLM_OWNER when running as root"
-	fi
-else
-	VLLM_OWNER="$(id -un)"
-fi
-
-VLLM_OWNER_HOME="$(getent passwd "${VLLM_OWNER}" | cut -d: -f6)"
-VLLM_OWNER_GROUP="$(id -gn "${VLLM_OWNER}")"
-[[ -n "${VLLM_OWNER_HOME}" ]] || error "failed to resolve home for '${VLLM_OWNER}'"
-
-keep_sudo_alive
-
-CONTROL_DIR="${VLLM_OWNER_HOME}/.config/vllm"
+CONTROL_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/vllm"
 MODELS_DIR="${CONTROL_DIR}/models.d"
 CURRENT_LINK="${CONTROL_DIR}/current"
 RUNTIME_ENV="${CONTROL_DIR}/runtime.env"
-LOCAL_BIN_DIR="${VLLM_OWNER_HOME}/.local/bin"
-
-SYSTEM_LIBEXEC_DIR="/usr/local/libexec/vllm"
-SYSTEM_DAEMON="${SYSTEM_LIBEXEC_DIR}/vllm-docker-daemon"
-SYSTEM_ADMIN="${SYSTEM_LIBEXEC_DIR}/vllm-admin"
-SYSTEMD_UNIT="/etc/systemd/system/vllm.service"
-SUDOERS_FILE="/etc/sudoers.d/vllm-model-${VLLM_OWNER}"
-
-SHARED_ROOT="/var/lib/vllm"
-SHARED_CONFIG_DIR="${SHARED_ROOT}/config"
-SHARED_STATE_DIR="${SHARED_ROOT}/state"
-SERVICE_ACTIVE_ENV="${SHARED_CONFIG_DIR}/active.env"
+LOCAL_BIN_DIR="${HOME}/.local/bin"
+PROCESS_COMPOSE="${LOCAL_BIN_DIR}/dotfiles-process-compose"
+VLLM_WRAPPER="${LOCAL_BIN_DIR}/dotfiles-vllm-docker"
 HF_CACHE_DIR="/var/cache/vllm/huggingface"
+VLLM_STATE_DIR="/var/lib/vllm/state"
+section_header 'Preflighting Process Compose vLLM declaration'
+[[ -x "${VLLM_WRAPPER}" ]] ||
+	error "tracked vLLM wrapper is missing or not executable: ${VLLM_WRAPPER}"
+[[ -x "${PROCESS_COMPOSE}" ]] ||
+	error "Process Compose launcher is missing or not executable: ${PROCESS_COMPOSE}"
+"${PROCESS_COMPOSE}" --check
 
-DOCKER_BIN="$(command -v docker)"
 
-section_header 'Verifying docker service'
-run_privileged systemctl enable --now docker.service >/dev/null
-
-section_header 'Creating user control directories'
+section_header 'Creating user vLLM control directories'
 ensure_dir_exists "${CONTROL_DIR}"
 ensure_dir_exists "${MODELS_DIR}"
 ensure_dir_exists "${LOCAL_BIN_DIR}"
 
-section_header 'Writing vLLM control defaults'
+section_header 'Writing vLLM runtime defaults'
 write_user_file_if_missing "${RUNTIME_ENV}" 0644 <<EOF
 VLLM_IMAGE=vllm/vllm-openai:v0.20.2
 VLLM_CONTAINER_NAME=vllm
-VLLM_HOST=127.0.0.1
+VLLM_HOST=0.0.0.0
 VLLM_PORT=8080
 VLLM_SHM_SIZE=24g
 VLLM_DOCKER_GPUS=all
 VLLM_DOCKER_EXTRA_ARGS='--ipc=host'
 HF_HOME=${HF_CACHE_DIR}
-VLLM_STATE_DIR=${SHARED_STATE_DIR}
+VLLM_STATE_DIR=${VLLM_STATE_DIR}
 EOF
 ensure_user_env_key "${RUNTIME_ENV}" "VLLM_IMAGE" "vllm/vllm-openai:v0.20.2"
 ensure_user_env_key "${RUNTIME_ENV}" "VLLM_CONTAINER_NAME" "vllm"
-ensure_user_env_key "${RUNTIME_ENV}" "VLLM_HOST" "127.0.0.1"
+ensure_user_env_key "${RUNTIME_ENV}" "VLLM_HOST" "0.0.0.0"
 ensure_user_env_key "${RUNTIME_ENV}" "VLLM_PORT" "8080"
 ensure_user_env_key "${RUNTIME_ENV}" "VLLM_SHM_SIZE" "24g"
 ensure_user_env_key "${RUNTIME_ENV}" "VLLM_DOCKER_GPUS" "all"
 ensure_user_env_key "${RUNTIME_ENV}" "VLLM_DOCKER_EXTRA_ARGS" "'--ipc=host'"
 ensure_user_env_key "${RUNTIME_ENV}" "HF_HOME" "${HF_CACHE_DIR}"
-ensure_user_env_key "${RUNTIME_ENV}" "VLLM_STATE_DIR" "${SHARED_STATE_DIR}"
+ensure_user_env_key "${RUNTIME_ENV}" "VLLM_STATE_DIR" "${VLLM_STATE_DIR}"
 
 write_user_file_if_missing "${MODELS_DIR}/qwen3-27b-awq.env" 0644 <<'EOF'
 MODEL_ID=QuantTrio/Qwen3.6-27B-AWQ
@@ -211,280 +190,11 @@ VLLM_MAX_NUM_SEQS=4
 VLLM_MODEL_ARGS=''
 EOF
 
-if [[ ! -L "${CURRENT_LINK}" && ! -e "${CURRENT_LINK}" ]]; then
-	ln -s "${MODELS_DIR}/qwen3-27b-awq.env" "${CURRENT_LINK}"
-	if [[ "$(id -u)" == "0" ]]; then
-		chown -h "${VLLM_OWNER}:${VLLM_OWNER_GROUP}" "${CURRENT_LINK}"
-	fi
-	success "created default active model symlink '${CURRENT_LINK}'"
-else
-	warn "skipping existing active model pointer '${CURRENT_LINK}'"
-fi
+migrate_known_ornith_selection
 
-section_header 'Creating shared vLLM directories'
-ensure_dir_with_owner "${SYSTEM_LIBEXEC_DIR}" 0755 root root
-ensure_dir_with_owner "${SHARED_ROOT}" 0755 root root
-ensure_dir_with_owner "${SHARED_CONFIG_DIR}" 0755 root root
-ensure_dir_with_owner "${SHARED_STATE_DIR}" 0755 root root
-ensure_dir_with_owner "${HF_CACHE_DIR}" 0755 root root
-
-section_header 'Installing vLLM docker daemon wrapper'
-write_root_file "${SYSTEM_DAEMON}" 0755 <<EOF
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-ACTIVE_ENV="${SERVICE_ACTIVE_ENV}"
-DOCKER_BIN="${DOCKER_BIN}"
-
-[[ -f "\${ACTIVE_ENV}" ]] || { echo "missing active env: \${ACTIVE_ENV}" >&2; exit 1; }
-
-set -a
-source "\${ACTIVE_ENV}"
-set +a
-
-: "\${VLLM_IMAGE:?VLLM_IMAGE required}"
-: "\${VLLM_CONTAINER_NAME:?VLLM_CONTAINER_NAME required}"
-: "\${VLLM_HOST:?VLLM_HOST required}"
-: "\${VLLM_PORT:?VLLM_PORT required}"
-: "\${VLLM_SHM_SIZE:?VLLM_SHM_SIZE required}"
-: "\${VLLM_DOCKER_GPUS:?VLLM_DOCKER_GPUS required}"
-: "\${HF_HOME:?HF_HOME required}"
-: "\${VLLM_STATE_DIR:?VLLM_STATE_DIR required}"
-: "\${MODEL_ID:?MODEL_ID required}"
-: "\${VLLM_MAX_MODEL_LEN:?VLLM_MAX_MODEL_LEN required}"
-: "\${VLLM_GPU_MEMORY_UTILIZATION:?VLLM_GPU_MEMORY_UTILIZATION required}"
-: "\${VLLM_MAX_NUM_SEQS:?VLLM_MAX_NUM_SEQS required}"
-
-"\${DOCKER_BIN}" rm -f "\${VLLM_CONTAINER_NAME}" >/dev/null 2>&1 || true
-
-cmd=(
-	"\${DOCKER_BIN}" run
-	--name "\${VLLM_CONTAINER_NAME}"
-	--rm
-	--gpus "\${VLLM_DOCKER_GPUS}"
-	-v "\${HF_HOME}:/root/.cache/huggingface"
-	-v "\${VLLM_STATE_DIR}:/var/lib/vllm/state"
-	-p "\${VLLM_HOST}:\${VLLM_PORT}:8080"
-	--shm-size "\${VLLM_SHM_SIZE}"
-)
-
-if [[ -n "\${VLLM_DOCKER_EXTRA_ARGS:-}" ]]; then
-	# shellcheck disable=SC2206
-	extra_docker_args=(\${VLLM_DOCKER_EXTRA_ARGS})
-	cmd+=("\${extra_docker_args[@]}")
-fi
-
-cmd+=(
-	"\${VLLM_IMAGE}"
-	"\${MODEL_ID}"
-	--port 8080
-	--max-model-len "\${VLLM_MAX_MODEL_LEN}"
-	--gpu-memory-utilization "\${VLLM_GPU_MEMORY_UTILIZATION}"
-	--max-num-seqs "\${VLLM_MAX_NUM_SEQS}"
-)
-
-if [[ "\${VLLM_TRUST_REMOTE_CODE:-0}" == "1" ]]; then
-	cmd+=(--trust-remote-code)
-fi
-
-if [[ -n "\${VLLM_MODEL_ARGS:-}" ]]; then
-	# shellcheck disable=SC2206
-	model_args=(\${VLLM_MODEL_ARGS})
-	cmd+=("\${model_args[@]}")
-fi
-
-exec "\${cmd[@]}"
-EOF
-
-section_header 'Installing vLLM admin helper'
-write_root_file "${SYSTEM_ADMIN}" 0755 <<EOF
-#!/usr/bin/env bash
-
-set -euo pipefail
-
-MODELS_DIR="${MODELS_DIR}"
-CURRENT_LINK="${CURRENT_LINK}"
-RUNTIME_ENV="${RUNTIME_ENV}"
-SERVICE_ACTIVE_ENV="${SERVICE_ACTIVE_ENV}"
-DOCKER_BIN="${DOCKER_BIN}"
-SERVICE_NAME="vllm.service"
-
-die() {
-	echo "\$*" >&2
-	exit 1
-}
-
-require_root() {
-	[[ "\$(id -u)" == "0" ]] || die "must run as root"
-}
-
-resolve_profile_path() {
-	[[ -L "\${CURRENT_LINK}" || -f "\${CURRENT_LINK}" ]] || die "missing current model pointer: \${CURRENT_LINK}"
-
-	if [[ -L "\${CURRENT_LINK}" ]]; then
-		readlink -f "\${CURRENT_LINK}"
-		return
-	fi
-
-	if grep -q '^MODEL_ID=' "\${CURRENT_LINK}" 2>/dev/null; then
-		printf '%s\n' "\${CURRENT_LINK}"
-		return
-	fi
-
-	local pointer_value
-	pointer_value="\$(head -n 1 "\${CURRENT_LINK}" | tr -d '[:space:]')"
-	[[ -n "\${pointer_value}" ]] || die "empty current model pointer: \${CURRENT_LINK}"
-
-	if [[ -f "\${MODELS_DIR}/\${pointer_value}.env" ]]; then
-		printf '%s\n' "\${MODELS_DIR}/\${pointer_value}.env"
-		return
-	fi
-
-	[[ -f "\${pointer_value}" ]] || die "unable to resolve current model pointer '\${pointer_value}'"
-	printf '%s\n' "\${pointer_value}"
-}
-
-load_env_file() {
-	local env_path="\${1}"
-	[[ -f "\${env_path}" ]] || die "missing env file: \${env_path}"
-	set -a
-	source "\${env_path}"
-	set +a
-}
-
-quote_env() {
-	local name="\${1}"
-	local value="\${2:-}"
-	printf '%s=%q\n' "\${name}" "\${value}"
-}
-
-render_active_env() {
-	require_root
-
-	local profile_path
-	profile_path="\$(resolve_profile_path)"
-	[[ -f "\${profile_path}" ]] || die "missing active profile: \${profile_path}"
-
-	unset VLLM_IMAGE VLLM_CONTAINER_NAME VLLM_HOST VLLM_PORT VLLM_SHM_SIZE VLLM_DOCKER_GPUS
-	unset VLLM_DOCKER_EXTRA_ARGS HF_HOME VLLM_STATE_DIR
-	unset MODEL_ID MODEL_ALIAS VLLM_MAX_MODEL_LEN VLLM_GPU_MEMORY_UTILIZATION VLLM_MAX_NUM_SEQS
-	unset VLLM_MODEL_ARGS VLLM_EXTRA_ARGS VLLM_TRUST_REMOTE_CODE
-
-	load_env_file "\${RUNTIME_ENV}"
-	load_env_file "\${profile_path}"
-
-	: "\${VLLM_IMAGE:?VLLM_IMAGE required}"
-	: "\${VLLM_CONTAINER_NAME:?VLLM_CONTAINER_NAME required}"
-	: "\${VLLM_HOST:?VLLM_HOST required}"
-	: "\${VLLM_PORT:?VLLM_PORT required}"
-	: "\${VLLM_SHM_SIZE:?VLLM_SHM_SIZE required}"
-	: "\${VLLM_DOCKER_GPUS:?VLLM_DOCKER_GPUS required}"
-	: "\${HF_HOME:?HF_HOME required}"
-	: "\${VLLM_STATE_DIR:?VLLM_STATE_DIR required}"
-	: "\${MODEL_ID:?MODEL_ID required}"
-	: "\${MODEL_ALIAS:?MODEL_ALIAS required}"
-	: "\${VLLM_MAX_MODEL_LEN:?VLLM_MAX_MODEL_LEN required}"
-	: "\${VLLM_GPU_MEMORY_UTILIZATION:?VLLM_GPU_MEMORY_UTILIZATION required}"
-	: "\${VLLM_MAX_NUM_SEQS:?VLLM_MAX_NUM_SEQS required}"
-
-	if [[ -z "\${VLLM_MODEL_ARGS:-}" && -n "\${VLLM_EXTRA_ARGS:-}" ]]; then
-		VLLM_MODEL_ARGS="\${VLLM_EXTRA_ARGS}"
-	fi
-
-	install -d -m 0755 "\${HF_HOME}" "\${VLLM_STATE_DIR}" "\$(dirname "\${SERVICE_ACTIVE_ENV}")"
-
-	local tmp_file
-	tmp_file="\$(mktemp)"
-	{
-		echo "# Generated by \${0} on \$(date -Iseconds)"
-		quote_env VLLM_IMAGE "\${VLLM_IMAGE}"
-		quote_env VLLM_CONTAINER_NAME "\${VLLM_CONTAINER_NAME}"
-		quote_env VLLM_HOST "\${VLLM_HOST}"
-		quote_env VLLM_PORT "\${VLLM_PORT}"
-		quote_env VLLM_SHM_SIZE "\${VLLM_SHM_SIZE}"
-		quote_env VLLM_DOCKER_GPUS "\${VLLM_DOCKER_GPUS}"
-		quote_env VLLM_DOCKER_EXTRA_ARGS "\${VLLM_DOCKER_EXTRA_ARGS:-}"
-		quote_env HF_HOME "\${HF_HOME}"
-		quote_env VLLM_STATE_DIR "\${VLLM_STATE_DIR}"
-		quote_env MODEL_ID "\${MODEL_ID}"
-		quote_env MODEL_ALIAS "\${MODEL_ALIAS}"
-		quote_env VLLM_MAX_MODEL_LEN "\${VLLM_MAX_MODEL_LEN}"
-		quote_env VLLM_GPU_MEMORY_UTILIZATION "\${VLLM_GPU_MEMORY_UTILIZATION}"
-		quote_env VLLM_MAX_NUM_SEQS "\${VLLM_MAX_NUM_SEQS}"
-		quote_env VLLM_MODEL_ARGS "\${VLLM_MODEL_ARGS:-}"
-		quote_env VLLM_TRUST_REMOTE_CODE "\${VLLM_TRUST_REMOTE_CODE:-0}"
-	} > "\${tmp_file}"
-
-	install -m 0644 "\${tmp_file}" "\${SERVICE_ACTIVE_ENV}"
-	rm -f "\${tmp_file}"
-}
-
-pull_image() {
-	require_root
-	unset VLLM_IMAGE
-	load_env_file "\${RUNTIME_ENV}"
-	: "\${VLLM_IMAGE:?VLLM_IMAGE required}"
-	"\${DOCKER_BIN}" pull "\${VLLM_IMAGE}"
-}
-
-download_model() {
-	require_root
-	local alias_name="\${1:-}"
-	[[ -n "\${alias_name}" ]] || die "usage: \$0 download-model <alias>"
-
-	local profile_path="\${MODELS_DIR}/\${alias_name}.env"
-	[[ -f "\${profile_path}" ]] || die "unknown model alias: \${alias_name}"
-
-	unset VLLM_IMAGE HF_HOME MODEL_ID
-	load_env_file "\${RUNTIME_ENV}"
-	load_env_file "\${profile_path}"
-
-	: "\${VLLM_IMAGE:?VLLM_IMAGE required}"
-	: "\${HF_HOME:?HF_HOME required}"
-	: "\${MODEL_ID:?MODEL_ID required}"
-
-	install -d -m 0755 "\${HF_HOME}"
-	"\${DOCKER_BIN}" pull "\${VLLM_IMAGE}" >/dev/null
-	"\${DOCKER_BIN}" run --rm \
-		-v "\${HF_HOME}:/root/.cache/huggingface" \
-		--entrypoint python3 \
-		"\${VLLM_IMAGE}" \
-		-c 'from huggingface_hub import snapshot_download; import sys; snapshot_download(repo_id=sys.argv[1]); print(sys.argv[1])' \
-		"\${MODEL_ID}"
-}
-
-cmd="\${1:-}"
-case "\${cmd}" in
-	apply-active)
-		render_active_env
-		;;
-	pull-image)
-		pull_image
-		;;
-	restart-service)
-		systemctl restart "\${SERVICE_NAME}"
-		;;
-	start-service)
-		systemctl start "\${SERVICE_NAME}"
-		;;
-	stop-service)
-		systemctl stop "\${SERVICE_NAME}"
-		;;
-	status)
-		systemctl --no-pager --full status "\${SERVICE_NAME}"
-		;;
-	logs)
-		journalctl -u "\${SERVICE_NAME}" -f
-		;;
-	download-model)
-		download_model "\${2:-}"
-		;;
-	*)
-		die "usage: \$0 {apply-active|pull-image|restart-service|start-service|stop-service|status|logs|download-model <alias>}"
-		;;
-esac
-EOF
+section_header 'Ensuring durable vLLM storage directories'
+ensure_durable_directory "${HF_CACHE_DIR}"
+ensure_durable_directory "${VLLM_STATE_DIR}"
 
 section_header 'Installing user vLLM control CLI'
 write_user_file "${LOCAL_BIN_DIR}/vllm-model" 0755 <<EOF
@@ -494,8 +204,8 @@ set -euo pipefail
 
 MODELS_DIR="${MODELS_DIR}"
 CURRENT_LINK="${CURRENT_LINK}"
-VLLM_ADMIN="${SYSTEM_ADMIN}"
 HEALTH_URL="http://127.0.0.1:8080/v1/models"
+PROCESS_COMPOSE="${PROCESS_COMPOSE}"
 
 die() {
 	echo "\$*" >&2
@@ -511,7 +221,6 @@ usage:
   vllm-model add <alias> <model_id>
   vllm-model edit <alias>
   vllm-model rm <alias>
-  vllm-model download <alias>
   vllm-model start
   vllm-model stop
   vllm-model restart
@@ -521,64 +230,54 @@ USAGE
 }
 
 profile_path() {
-	echo "\${MODELS_DIR}/\${1}.env"
+	printf '%s/%s.env\n' "\${MODELS_DIR}" "\${1}"
 }
 
 resolve_profile_path() {
+	local pointer_value
+
 	if [[ -L "\${CURRENT_LINK}" ]]; then
 		readlink -f "\${CURRENT_LINK}"
 		return
 	fi
-
 	[[ -f "\${CURRENT_LINK}" ]] || return 0
-
 	if grep -q '^MODEL_ID=' "\${CURRENT_LINK}" 2>/dev/null; then
 		printf '%s\n' "\${CURRENT_LINK}"
 		return
 	fi
-
-	local pointer_value
-	pointer_value="\$(head -n 1 "\${CURRENT_LINK}" | tr -d '[:space:]')"
-	[[ -n "\${pointer_value}" ]] || return 0
-
-	if [[ -f "\$(profile_path "\${pointer_value}")" ]]; then
+	IFS= read -r pointer_value < "\${CURRENT_LINK}" || return 0
+	pointer_value="\${pointer_value%.env}"
+	[[ "\${pointer_value}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || return 0
+	[[ -f "\$(profile_path "\${pointer_value}")" ]] &&
 		profile_path "\${pointer_value}"
-		return
-	fi
-
-	[[ -f "\${pointer_value}" ]] && printf '%s\n' "\${pointer_value}"
 }
 
 current_alias() {
-	local resolved_path
+	local resolved_path model_alias
 	resolved_path="\$(resolve_profile_path || true)"
 	[[ -n "\${resolved_path}" && -f "\${resolved_path}" ]] || return 0
-
-	local model_alias
 	model_alias="\$(sed -n 's/^MODEL_ALIAS=//p' "\${resolved_path}" | head -n 1)"
-	if [[ -n "\${model_alias}" ]]; then
-		printf '%s\n' "\${model_alias}"
-		return
-	fi
-
-	basename "\${resolved_path}" .env
+	[[ -n "\${model_alias}" ]] && printf '%s\n' "\${model_alias}" ||
+		basename "\${resolved_path}" .env
 }
 
 ensure_alias_exists() {
 	local alias_name="\${1}"
-	[[ -f "\$(profile_path "\${alias_name}")" ]] || die "unknown model alias: \${alias_name}"
+	[[ "\${alias_name}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+		die "invalid model alias: \${alias_name}"
+	[[ -f "\$(profile_path "\${alias_name}")" ]] ||
+		die "unknown model alias: \${alias_name}"
 }
 
 wait_for_health() {
-	local tries=300
-	local i
+	local tries=300 i
 	for ((i = 0; i < tries; i++)); do
 		if curl -fsS "\${HEALTH_URL}" >/dev/null 2>&1; then
 			return 0
 		fi
 		sleep 2
 	done
-	die "timed out waiting for vllm health at \${HEALTH_URL}"
+	die "timed out waiting for vLLM health at \${HEALTH_URL}"
 }
 
 cmd="\${1:-}"
@@ -588,11 +287,8 @@ case "\${cmd}" in
 		shopt -s nullglob
 		for profile in "\${MODELS_DIR}"/*.env; do
 			alias_name="\$(basename "\${profile}" .env)"
-			if [[ "\${alias_name}" == "\${current}" ]]; then
-				echo "* \${alias_name}"
-			else
+			[[ "\${alias_name}" == "\${current}" ]] && echo "* \${alias_name}" ||
 				echo "  \${alias_name}"
-			fi
 		done
 		;;
 	current)
@@ -605,15 +301,19 @@ case "\${cmd}" in
 		tmp_link="\${CURRENT_LINK}.tmp"
 		ln -sfn "\$(profile_path "\${alias_name}")" "\${tmp_link}"
 		mv -Tf "\${tmp_link}" "\${CURRENT_LINK}"
-		sudo "\${VLLM_ADMIN}" apply-active
-		sudo "\${VLLM_ADMIN}" restart-service
+		"\${PROCESS_COMPOSE}" process restart vllm
 		wait_for_health
 		echo "\${alias_name}"
 		;;
 	add)
 		alias_name="\${2:-}"
 		model_id="\${3:-}"
-		[[ -n "\${alias_name}" && -n "\${model_id}" ]] || die "usage: vllm-model add <alias> <model_id>"
+		[[ -n "\${alias_name}" && -n "\${model_id}" ]] ||
+			die "usage: vllm-model add <alias> <model_id>"
+		[[ "\${alias_name}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+			die "invalid model alias: \${alias_name}"
+		[[ "\${model_id}" =~ ^[A-Za-z0-9][A-Za-z0-9._/@:-]*$ ]] ||
+			die "invalid model id"
 		target_file="\$(profile_path "\${alias_name}")"
 		[[ ! -e "\${target_file}" ]] || die "profile already exists: \${target_file}"
 		cat > "\${target_file}" <<PROFILE
@@ -636,38 +336,27 @@ PROFILE
 		alias_name="\${2:-}"
 		[[ -n "\${alias_name}" ]] || die "usage: vllm-model rm <alias>"
 		ensure_alias_exists "\${alias_name}"
-		if [[ "\$(current_alias || true)" == "\${alias_name}" ]]; then
+		[[ "\$(current_alias || true)" != "\${alias_name}" ]] ||
 			die "refusing to remove active model alias: \${alias_name}"
-		fi
 		rm -f "\$(profile_path "\${alias_name}")"
 		;;
-	download)
-		alias_name="\${2:-}"
-		[[ -n "\${alias_name}" ]] || die "usage: vllm-model download <alias>"
-		ensure_alias_exists "\${alias_name}"
-		sudo "\${VLLM_ADMIN}" download-model "\${alias_name}"
-		;;
 	start)
-		sudo "\${VLLM_ADMIN}" apply-active
-		sudo "\${VLLM_ADMIN}" pull-image
-		sudo "\${VLLM_ADMIN}" start-service
+		"\${PROCESS_COMPOSE}" process start vllm
 		wait_for_health
 		;;
 	stop)
-		sudo "\${VLLM_ADMIN}" stop-service
+		"\${PROCESS_COMPOSE}" process stop vllm
 		;;
 	restart)
-		sudo "\${VLLM_ADMIN}" apply-active
-		sudo "\${VLLM_ADMIN}" pull-image
-		sudo "\${VLLM_ADMIN}" restart-service
+		"\${PROCESS_COMPOSE}" process restart vllm
 		wait_for_health
 		;;
 	status)
 		echo "current: \$(current_alias || true)"
-		sudo "\${VLLM_ADMIN}" status
+		"\${PROCESS_COMPOSE}" process get vllm
 		;;
 	logs)
-		sudo "\${VLLM_ADMIN}" logs
+		"\${PROCESS_COMPOSE}" process logs vllm
 		;;
 	""|-h|--help|help)
 		usage
@@ -678,51 +367,8 @@ PROFILE
 esac
 EOF
 
-section_header 'Installing systemd service'
-write_root_file "${SYSTEMD_UNIT}" 0644 <<EOF
-[Unit]
-Description=vLLM inference server
-After=network-online.target docker.service
-Wants=network-online.target
-Requires=docker.service
 
-[Service]
-Type=simple
-ExecStart=${SYSTEM_DAEMON}
-ExecStop=${DOCKER_BIN} stop vllm
-Restart=on-failure
-RestartSec=5
-TimeoutStopSec=120
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-section_header 'Installing sudoers rule for vLLM admin helper'
-write_root_file "${SUDOERS_FILE}" 0440 <<EOF
-${VLLM_OWNER} ALL=(root) NOPASSWD: ${SYSTEM_ADMIN} *
-EOF
-run_privileged visudo -cf "${SUDOERS_FILE}" >/dev/null
-
-section_header 'Disabling legacy per-model vLLM units'
-for legacy_unit in vllm-qwen.service vllm-gemma4.service vllm-step3.service; do
-	if [[ "$(id -u)" == "0" ]]; then
-		owner_uid="$(id -u "${VLLM_OWNER}")"
-		sudo -u "${VLLM_OWNER}" XDG_RUNTIME_DIR="/run/user/${owner_uid}" \
-			systemctl --user disable --now "${legacy_unit}" >/dev/null 2>&1 || true
-	else
-		systemctl --user disable --now "${legacy_unit}" >/dev/null 2>&1 || true
-	fi
-done
-
-section_header 'Pulling pinned vLLM image and starting service'
-run_privileged "${SYSTEM_ADMIN}" pull-image
-run_privileged "${SYSTEM_ADMIN}" apply-active
-run_privileged systemctl daemon-reload
-run_privileged systemctl enable vllm.service >/dev/null
-run_privileged systemctl restart vllm.service
-
-success "vLLM docker setup complete"
+success "vLLM user-owned Process Compose setup complete"
 echo "Control dir: ${CONTROL_DIR}"
 echo "CLI: ${LOCAL_BIN_DIR}/vllm-model"
-echo "Service: ${SYSTEMD_UNIT}"
+echo "Controller: dotfiles-process-compose.service (vllm)"

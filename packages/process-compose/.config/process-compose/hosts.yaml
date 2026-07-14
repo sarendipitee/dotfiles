@@ -1,2 +1,3 @@
 sd-mbp: [eternal-terminal]
-aorus: [eternal-terminal, omniroute, codex-remote-control, hindsight]
+aorus: [eternal-terminal, omniroute, codex-remote-control, hindsight, vllm, nanoclaw]
+nanoclaw: [nanoclaw]

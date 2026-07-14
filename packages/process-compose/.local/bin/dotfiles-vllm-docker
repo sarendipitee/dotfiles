@@ -1,0 +1,300 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/vllm"
+RUNTIME_ENV="${CONFIG_DIR}/runtime.env"
+MODELS_DIR="${CONFIG_DIR}/models.d"
+CURRENT_MODEL="${CONFIG_DIR}/current"
+
+die() {
+	printf 'dotfiles-vllm-docker: %s\n' "$*" >&2
+	exit 1
+}
+
+declare -A settings=()
+
+parse_value() {
+	local raw_value=$1
+	local parsed_value
+
+	case "$raw_value" in
+		\'*\')
+			((${#raw_value} >= 2)) || die 'invalid quoted environment value'
+			parsed_value=${raw_value:1:${#raw_value}-2}
+			[[ "$parsed_value" != *"'"* ]] || die 'embedded quotes are not supported'
+			;;
+		\"*\")
+			((${#raw_value} >= 2)) || die 'invalid quoted environment value'
+			parsed_value=${raw_value:1:${#raw_value}-2}
+			[[ "$parsed_value" != *'"'* ]] || die 'embedded quotes are not supported'
+			;;
+		*)
+			parsed_value=$raw_value
+			;;
+	esac
+
+	case "$parsed_value" in
+		*[$'\r\n']* | *'`'* | *'$'* | *'\'*)
+			die 'environment values may not contain shell expansion syntax'
+			;;
+	esac
+	printf '%s' "$parsed_value"
+}
+
+allow_setting() {
+	local kind=$1 key=$2
+
+	case "$kind" in
+		runtime)
+			case "$key" in
+				VLLM_IMAGE|VLLM_CONTAINER_NAME|VLLM_HOST|VLLM_PORT|VLLM_SHM_SIZE|VLLM_DOCKER_GPUS|VLLM_DOCKER_EXTRA_ARGS|HF_HOME|VLLM_STATE_DIR|VLLM_RUN_BIN|VLLM_LOG_LEVEL|VLLM_SERVED_MODEL_NAME)
+					return 0
+					;;
+			esac
+			;;
+		profile)
+			case "$key" in
+				MODEL_ID|MODEL_ALIAS|VLLM_MAX_MODEL_LEN|VLLM_GPU_MEMORY_UTILIZATION|VLLM_MAX_NUM_SEQS|VLLM_MODEL_ARGS|VLLM_EXTRA_ARGS|VLLM_TRUST_REMOTE_CODE)
+					return 0
+					;;
+			esac
+			;;
+	esac
+	return 1
+}
+
+load_environment_file() {
+	local file_path=$1 kind=$2 line key raw_value parsed_value
+
+	[[ -f "$file_path" && ! -L "$file_path" ]] ||
+		die "environment file must be a regular file: $file_path"
+
+	while IFS= read -r line || [[ -n "$line" ]]; do
+		[[ -z "$line" || "$line" == \#* ]] && continue
+		if [[ "$line" =~ ^([A-Z][A-Z0-9_]*)=(.*)$ ]]; then
+			key=${BASH_REMATCH[1]}
+			raw_value=${BASH_REMATCH[2]}
+		else
+			die "invalid environment assignment in $file_path"
+		fi
+		allow_setting "$kind" "$key" ||
+			die "unsupported ${kind} setting: $key"
+		[[ -v "settings[$key]" ]] &&
+			die "duplicate environment setting: $key"
+		parsed_value=$(parse_value "$raw_value")
+		settings["$key"]=$parsed_value
+	done < "$file_path"
+}
+
+resolve_profile_path() {
+	local canonical_models_dir profile_path pointer_line
+
+	[[ -d "$MODELS_DIR" && ! -L "$MODELS_DIR" ]] ||
+		die "models directory must be a directory: $MODELS_DIR"
+	canonical_models_dir=$(realpath -e -- "$MODELS_DIR") ||
+		die 'could not resolve models directory'
+
+	if [[ -L "$CURRENT_MODEL" ]]; then
+		profile_path=$(realpath -e -- "$CURRENT_MODEL") ||
+			die 'could not resolve current model selection'
+	elif [[ -f "$CURRENT_MODEL" && ! -L "$CURRENT_MODEL" ]]; then
+		if grep -q '^[A-Z][A-Z0-9_]*=' "$CURRENT_MODEL"; then
+			profile_path=$(realpath -e -- "$CURRENT_MODEL") ||
+				die 'could not resolve current model profile'
+		else
+			IFS= read -r pointer_line < "$CURRENT_MODEL" ||
+				die 'current model selection is empty'
+			if tail -n +2 "$CURRENT_MODEL" | grep -q '^'; then
+				die 'current model selection must contain one line'
+			fi
+			pointer_line=${pointer_line%.env}
+			[[ "$pointer_line" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+				die 'current model selection is invalid'
+			profile_path=$(realpath -e -- "${MODELS_DIR}/${pointer_line}.env") ||
+				die 'current model profile does not exist'
+		fi
+	else
+		die "current model selection must be a regular file or symlink: $CURRENT_MODEL"
+	fi
+
+	[[ "$profile_path" == "$canonical_models_dir/"* && -f "$profile_path" && ! -L "$profile_path" ]] ||
+		die 'current model profile must be a regular file in models.d'
+	printf '%s\n' "$profile_path"
+}
+
+require_setting() {
+	local key=$1
+	[[ -n "${settings[$key]:-}" ]] || die "required setting is missing: $key"
+}
+
+validate_value() {
+	local key=$1 value=$2
+
+	case "$key" in
+		VLLM_IMAGE | MODEL_ID)
+			[[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9._/@:-]*$ ]] ||
+				die "invalid $key"
+			;;
+		MODEL_ALIAS)
+			[[ "$value" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+				die 'invalid MODEL_ALIAS'
+			;;
+		VLLM_CONTAINER_NAME)
+			[[ "$value" == vllm ]] || die 'VLLM_CONTAINER_NAME must be vllm'
+			;;
+		VLLM_HOST)
+			[[ "$value" == 0.0.0.0 ]] || die 'VLLM_HOST must be 0.0.0.0'
+			;;
+		VLLM_PORT)
+			[[ "$value" == 8080 ]] || die 'VLLM_PORT must be 8080'
+			;;
+		VLLM_SHM_SIZE)
+			[[ "$value" =~ ^[1-9][0-9]*[kKmMgG]$ ]] || die 'invalid VLLM_SHM_SIZE'
+			;;
+		VLLM_DOCKER_GPUS)
+			[[ "$value" == all ]] || die 'VLLM_DOCKER_GPUS must be all'
+			;;
+		VLLM_MAX_MODEL_LEN | VLLM_MAX_NUM_SEQS)
+			[[ "$value" =~ ^[1-9][0-9]*$ ]] || die "invalid $key"
+			;;
+		VLLM_GPU_MEMORY_UTILIZATION)
+			[[ "$value" =~ ^(0|0\.[0-9]+|1|1\.0+)$ ]] ||
+				die 'invalid VLLM_GPU_MEMORY_UTILIZATION'
+			;;
+		VLLM_RUN_BIN)
+			[[ "$value" == /* ]] || die 'VLLM_RUN_BIN must be an absolute path'
+			;;
+		VLLM_LOG_LEVEL)
+			[[ "$value" =~ ^(DEBUG|INFO|WARNING|ERROR|CRITICAL)$ ]] || die 'invalid VLLM_LOG_LEVEL'
+			;;
+		VLLM_SERVED_MODEL_NAME)
+			[[ "$value" == local ]] || die 'VLLM_SERVED_MODEL_NAME must be local'
+			;;
+		HF_HOME | VLLM_STATE_DIR)
+			[[ "$value" == /* && -d "$value" ]] || die "invalid or missing directory for $key"
+			;;
+	esac
+}
+
+split_arguments() {
+	local value=$1
+	local destination_name=$2
+
+	case "$value" in
+		*"'"* | *'"'* | *\\*) die 'quoted or escaped extra arguments are not supported' ;;
+	esac
+	read -r -a "${destination_name?}" <<< "$value"
+}
+
+validate_docker_extra_arguments() {
+	case "${settings[VLLM_DOCKER_EXTRA_ARGS]:-}" in
+		"" | --ipc=host) ;;
+		*) die 'VLLM_DOCKER_EXTRA_ARGS may only be --ipc=host' ;;
+	esac
+}
+
+validate_model_arguments() {
+	local argument
+
+	for argument in "$@"; do
+		case "$argument" in
+			--served-model-name|--served-model-name=*|--port|--port=*|--host|--host=*|--max-model-len|--max-model-len=*|--gpu-memory-utilization|--gpu-memory-utilization=*|--max-num-seqs|--max-num-seqs=*|--trust-remote-code)
+				die "model arguments may not override $argument"
+				;;
+		esac
+	done
+}
+
+remove_stale_vllm_container() {
+	local container_id remaining_ids
+
+	container_id=$("$DOCKER_BIN" ps -aq --filter "name=^/${VLLM_CONTAINER_NAME}$") ||
+		die 'could not query stale vLLM container'
+	[[ -z "$container_id" ]] && return 0
+	[[ "$container_id" =~ ^[[:xdigit:]]{12,64}$ ]] ||
+		die 'stale vLLM container query returned an invalid identifier'
+	"$DOCKER_BIN" rm -f "$container_id" >/dev/null ||
+		die 'could not remove stale vLLM container'
+	remaining_ids=$("$DOCKER_BIN" ps -aq --filter "name=^/${VLLM_CONTAINER_NAME}$") ||
+		die 'could not verify stale vLLM container removal'
+	[[ -z "$remaining_ids" ]] || die 'stale vLLM container remains after removal'
+}
+
+profile_path=$(resolve_profile_path)
+load_environment_file "$RUNTIME_ENV" runtime
+load_environment_file "$profile_path" profile
+
+for required_key in \
+	VLLM_IMAGE VLLM_CONTAINER_NAME VLLM_HOST VLLM_PORT VLLM_SHM_SIZE \
+	VLLM_DOCKER_GPUS HF_HOME VLLM_STATE_DIR MODEL_ID MODEL_ALIAS \
+	VLLM_MAX_MODEL_LEN VLLM_GPU_MEMORY_UTILIZATION VLLM_MAX_NUM_SEQS; do
+	require_setting "$required_key"
+	validate_value "$required_key" "${settings[$required_key]}"
+done
+
+for optional_key in VLLM_RUN_BIN VLLM_LOG_LEVEL VLLM_SERVED_MODEL_NAME; do
+	if [[ -n "${settings[$optional_key]:-}" ]]; then
+		validate_value "$optional_key" "${settings[$optional_key]}"
+	fi
+done
+
+case "${settings[VLLM_TRUST_REMOTE_CODE]:-0}" in
+	0 | 1) ;;
+	*) die 'VLLM_TRUST_REMOTE_CODE must be 0 or 1' ;;
+esac
+
+if [[ -z "${settings[VLLM_MODEL_ARGS]:-}" && -n "${settings[VLLM_EXTRA_ARGS]:-}" ]]; then
+	settings[VLLM_MODEL_ARGS]=${settings[VLLM_EXTRA_ARGS]}
+fi
+
+DOCKER_BIN=$(command -v docker) || die 'docker command is required'
+VLLM_IMAGE=${settings[VLLM_IMAGE]}
+VLLM_CONTAINER_NAME=${settings[VLLM_CONTAINER_NAME]}
+VLLM_HOST=${settings[VLLM_HOST]}
+VLLM_PORT=${settings[VLLM_PORT]}
+VLLM_SHM_SIZE=${settings[VLLM_SHM_SIZE]}
+VLLM_DOCKER_GPUS=${settings[VLLM_DOCKER_GPUS]}
+HF_HOME=${settings[HF_HOME]}
+VLLM_STATE_DIR=${settings[VLLM_STATE_DIR]}
+MODEL_ID=${settings[MODEL_ID]}
+VLLM_MAX_MODEL_LEN=${settings[VLLM_MAX_MODEL_LEN]}
+VLLM_GPU_MEMORY_UTILIZATION=${settings[VLLM_GPU_MEMORY_UTILIZATION]}
+VLLM_MAX_NUM_SEQS=${settings[VLLM_MAX_NUM_SEQS]}
+
+extra_docker_args=()
+model_args=()
+validate_docker_extra_arguments
+if [[ "${settings[VLLM_DOCKER_EXTRA_ARGS]:-}" == --ipc=host ]]; then
+	extra_docker_args=(--ipc=host)
+fi
+split_arguments "${settings[VLLM_MODEL_ARGS]:-}" model_args
+validate_model_arguments "${model_args[@]}"
+remove_stale_vllm_container
+
+command=(
+	"$DOCKER_BIN" run
+	--name "$VLLM_CONTAINER_NAME"
+	--rm
+	--gpus "$VLLM_DOCKER_GPUS"
+	-v "$HF_HOME:/root/.cache/huggingface"
+	-v "$VLLM_STATE_DIR:/var/lib/vllm/state"
+	-p "$VLLM_HOST:$VLLM_PORT:8080"
+	--shm-size "$VLLM_SHM_SIZE"
+)
+command+=("${extra_docker_args[@]}")
+command+=(
+	"$VLLM_IMAGE"
+	"$MODEL_ID"
+	--served-model-name local
+	--port 8080
+	--max-model-len "$VLLM_MAX_MODEL_LEN"
+	--gpu-memory-utilization "$VLLM_GPU_MEMORY_UTILIZATION"
+	--max-num-seqs "$VLLM_MAX_NUM_SEQS"
+)
+if [[ "${settings[VLLM_TRUST_REMOTE_CODE]:-0}" == 1 ]]; then
+	command+=(--trust-remote-code)
+fi
+command+=("${model_args[@]}")
+
+exec "${command[@]}"
