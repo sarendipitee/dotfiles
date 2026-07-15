@@ -74,6 +74,7 @@ fzf = "latest"
 lazygit = "latest"
 eza = "latest"
 "npm:context-mode" = "latest"
+"cargo:markdown-tui-explorer" = "latest"
 
 [bootstrap.packages]
 # Ubuntu-only operating-system prerequisites and services.
