@@ -14,7 +14,7 @@ processes:
     command: exec ${HOME}/.local/bin/dotfiles-omniroute serve --no-open --no-recovery
     environment:
       - "DATA_DIR=${XDG_STATE_HOME}/omniroute"
-      - "OMNIROUTE_SERVER_HOST=127.0.0.1"
+      - "OMNIROUTE_SERVER_HOST=0.0.0.0"
     availability:
       restart: always
       backoff_seconds: 5
