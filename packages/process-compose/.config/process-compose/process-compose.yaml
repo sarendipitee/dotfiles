@@ -41,7 +41,7 @@ processes:
 
   hindsight:
     description: Hindsight server
-    command: exec /usr/bin/docker run --rm --name hindsight --pull always --env-file ${HOME}/.config/hindsight/hindsight.env -p 127.0.0.1:18888:8888 -p 127.0.0.1:19999:9999 -v ${HOME}/.local/share/hindsight:/home/hindsight/.pg0 ghcr.io/vectorize-io/hindsight:latest
+    command: exec /usr/bin/docker run --rm --name hindsight --pull always --add-host host.docker.internal:host-gateway --env-file ${HOME}/.config/hindsight/hindsight.env -p 0.0.0.0:18888:8888 -p 0.0.0.0:19999:9999 -v ${HOME}/.local/share/hindsight:/home/hindsight/.pg0 ghcr.io/vectorize-io/hindsight:latest
     availability:
       restart: always
       backoff_seconds: 10
