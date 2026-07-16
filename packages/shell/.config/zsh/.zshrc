@@ -32,11 +32,7 @@ fpath=( "$ZDOTDIR/completions" $fpath )
 # Antidote plugin manager (static loading for speed)
 [[ -r "$ZDOTDIR/antidote/antidote.zsh" ]] && source "$ZDOTDIR/antidote/antidote.zsh" >/dev/null 2>&1
 
-if [[ "$OSTYPE" == darwin* ]]; then
-	export ANTIDOTE_HOME="$HOME/Library/Caches/antidote"
-else
-	export ANTIDOTE_HOME="$XDG_CACHE_HOME/antidote"
-fi
+export ANTIDOTE_HOME="${XDG_CACHE_HOME:-$HOME/.cache}/antidote"
 export ZSH="$ANTIDOTE_HOME/github.com/ohmyzsh/ohmyzsh"
 
 zsh_plugins=${ZDOTDIR:-$HOME/.config/zsh}/.zsh_plugins

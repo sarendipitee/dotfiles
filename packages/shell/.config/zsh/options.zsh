@@ -117,6 +117,10 @@ command_exists bat && export MANPAGER="sh -c 'col -bx | bat -l man -p'"
 export WORDCHARS="${WORDCHARS:s#/#}"
 export WORDCHARS="${WORDCHARS:s#.#}"
 
+# Enable prompt command substitution so themes like agnoster can run
+# build_prompt via PROMPT='$(build_prompt) ' instead of printing it literally.
+setopt promptsubst
+
 # remove empty components to avoid '::' ending up + resulting in './' being in $PATH, etc
 # path=( "${path[@]:#}" )
 # fpath=( "${fpath[@]:#}" )
