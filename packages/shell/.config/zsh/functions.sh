@@ -278,3 +278,17 @@ to() {
 vimr() {
 	open -a VimR "${@:-.}"
 }
+
+# Copy files to clipboard over ssh
+osc52() {
+  local data
+  # Read stdin
+  data=$(cat)
+
+  # Base64 encode the stdin and remove all newlines
+  local b64
+  b64=$(printf %s "$data" | base64 | tr -d '\n')
+
+  # Send OSC 52 sequence to the terminal
+  printf '\e]52;c;%s\a' "$b64" > /dev/tty
+}
