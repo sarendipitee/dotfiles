@@ -1,0 +1,63 @@
+setupVersion: 1
+providers: 
+  webSearch: auto
+disabledProviders: 
+  - ollama
+  - lm-studio
+  - llama.cpp
+symbolPreset: nerd
+theme: 
+  dark: titanium
+  light: light
+features: 
+  unexpectedStopDetection: true
+startup: 
+  showSplash: true
+  quiet: true
+  setupWizard: false
+compaction: 
+  idleEnabled: true
+  idleTimeoutSeconds: 1800
+plan: 
+  enabled: false
+task: 
+  eager: default
+commands: 
+  enableClaudeUser: false
+  enableClaudeProject: false
+inspect_image: 
+  enabled: true
+ask: 
+  enabled: false
+bash: 
+  autoBackground: 
+    enabled: true
+edit: 
+  mode: hashline
+memory: 
+  backend: hindsight
+hindsight: 
+  apiUrl: http://localhost:18888
+statusLine: 
+  sessionAccent: true
+tui: 
+  textSizing: true
+ui: 
+  hide_disabled_providers: true
+display: 
+  shimmer: classic
+  showTokenUsage: true
+  cacheMissMarker: true
+modelRoles: 
+  smol: openai/gpt-5.6-luna
+  task: openai/gpt-5.6-terra
+  commit: openai/gpt-5.6-luna
+  tiny: openai/gpt-5.6-luna
+  default: omniroute/codex/gpt-5.6-luna
+  slow: openai/gpt-5.6-sol
+  TEMP: openai-codex/gpt-5.6-terra:high
+defaultThinkingLevel: auto
+hideThinkingBlock: true
+dev: 
+  autoqa: 
+    consent: granted

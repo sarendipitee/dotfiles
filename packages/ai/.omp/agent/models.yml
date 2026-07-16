@@ -1,0 +1,7 @@
+providers:
+  omniroute:
+    baseUrl: http://127.0.0.1:20128/v1
+    api: openai-completions
+    auth: none
+    discovery:
+      type: proxy
