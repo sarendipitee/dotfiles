@@ -28,7 +28,7 @@ jobs = 8
 "caddy" = "latest"
 "cmake" = "latest"
 "ffmpeg" = "latest"
-"go" = "latest"
+go = "latest"
 "imagemagick" = "latest"
 "kubectl" = "latest"
 "k9s" = "latest"
@@ -60,7 +60,10 @@ jobs = 8
 "git-lfs" = "latest"
 "sops" = "latest"
 "npm:@openai/codex" = "latest"
-"npm:omniroute" = { version = "latest", allow_builds = ["omniroute", "better-sqlite3"] }
+"npm:omniroute" = { version = "latest", allow_builds = [
+	"omniroute",
+	"better-sqlite3",
+] }
 "pipx:commitizen" = "latest"
 "pipx:thefuck" = "latest"
 "pipx:httpie" = "latest"
@@ -75,6 +78,7 @@ lazygit = "latest"
 eza = "latest"
 "npm:context-mode" = "latest"
 "cargo:markdown-tui-explorer" = "latest"
+"aqua:dolthub/dolt" = "latest"
 
 [bootstrap.packages]
 # Ubuntu-only operating-system prerequisites and services.
