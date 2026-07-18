@@ -3,7 +3,7 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: dotfiles-process-compose [--check | process <get|logs|restart|start|stop> <name>]" >&2
+  echo "Usage: dotfiles-process-compose [--check | update | process <get|logs|restart|start|stop> <name>]" >&2
 }
 
 check=false
@@ -17,6 +17,13 @@ case "${1:-}" in
       usage
       exit 2
     fi
+    ;;
+  update)
+    if (( $# != 1 )); then
+      usage
+      exit 2
+    fi
+    control_operation="update"
     ;;
   process)
     if (( $# != 3 )); then
@@ -142,6 +149,25 @@ for process in ${processes[@]+"${processes[@]}"}; do
   fi
 done
 unset DOTFILES_PROCESS_COMPOSE_PROCESS
+
+if [[ "$control_operation" == "update" ]]; then
+  filtered_compose_file=$(mktemp "$socket_dir/update.XXXXXX.yaml")
+  trap 'rm -f "$filtered_compose_file"' EXIT
+  "${yq_cmd[@]}" eval-all '
+    select(fileIndex == 0) as $config |
+    select(fileIndex == 1) as $hosts |
+    $config |
+    .processes |= with_entries(
+      select(.key as $name |
+        $hosts[strenv(DOTFILES_PROCESS_COMPOSE_HOST)] | contains([$name]))
+    )
+  ' "$compose_file" "$hosts_file" > "$filtered_compose_file"
+  "$mise_bin" exec -- process-compose \
+    --use-uds \
+    --unix-socket "$socket_path" \
+    project update --verbose --config "$filtered_compose_file"
+  exit 0
+fi
 
 if [[ -n "$control_operation" ]]; then
   is_managed_process=false
