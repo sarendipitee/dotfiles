@@ -333,6 +333,7 @@ cat > "$test_home/.local/bin/mise" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
+[[ "${MISE_AUTO_INSTALL:-}" == false ]] || exit 65
 [[ "${1:-}" == exec && "${2:-}" == -- ]] || exit 64
 shift 2
 tool="$1"
