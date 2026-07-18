@@ -1,4 +1,3 @@
-
 export LANG='en_US.UTF-8'
 export LANGUAGE='en_US.UTF-8'
 export LC_COLLATE='en_US.UTF-8'
@@ -22,6 +21,7 @@ if [[ -n "${XDG_RUNTIME_DIR:-}" && -d "$XDG_RUNTIME_DIR" && -w "$XDG_RUNTIME_DIR
 else
 	export PC_SOCKET_PATH="$XDG_STATE_HOME/process-compose/run/pc.sock"
 fi
+export PC_CONFIG_FILES="$XDG_CONFIG_HOME/process-compose/process-compose.yaml"
 
 # All development codebases are cloned into a subfolder of this folder
 export PROJECTS_BASE_DIR="${HOME}/projects"
