@@ -1,6 +1,6 @@
 ---
 name: screenshot-ui-redesign-plan
-description: Turn a screenshot or visual complaint about an existing UI into a grounded redesign plan. Use when the user provides a screenshot, says a UI is bad, asks what is wrong with a screen, wants a redesign plan for a product surface, or wants acceptance criteria to prevent superficial agent-generated UI changes.
+description: ""
 ---
 
 # Screenshot UI Redesign Plan
