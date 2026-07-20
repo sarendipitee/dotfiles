@@ -79,6 +79,8 @@ eza = "latest"
 "npm:context-mode" = "latest"
 "cargo:markdown-tui-explorer" = "latest"
 "aqua:dolthub/dolt" = "latest"
+btop = "latest"
+oxker = "latest"
 
 [bootstrap.packages]
 # Ubuntu-only operating-system prerequisites and services.
@@ -90,6 +92,7 @@ eza = "latest"
 "apt:libpq-dev" = "latest"
 "apt:software-properties-common" = "latest"
 "apt:watchman" = "latest"
+"apt:libicu-dev" = "latest"
 "apt:zsh" = "latest"
 
 # Cross-platform machine-global commands and libraries without suitable Mise
