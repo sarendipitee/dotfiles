@@ -79,6 +79,20 @@ processes:
       command: /usr/bin/docker stop -t 120 vllm
       timeout_seconds: 130
 
+  codebase-memory-mcp:
+    description: Codebase Memory MCP server and graph UI
+    command: sleep infinity | codebase-memory-mcp --ui=true --port=9750
+    availability:
+      restart: always
+      backoff_seconds: 10
+
+  codebase-memory-mcp-proxy:
+    description: Loopback host-rewriting proxy for Codebase Memory MCP
+    command: exec caddy run --adapter caddyfile --config ${HOME}/.config/process-compose/codebase-memory-mcp.Caddyfile
+    availability:
+      restart: always
+      backoff_seconds: 10
+
   nanoclaw:
     description: NanoClaw and OneCLI stack
     command: exec ${HOME}/.local/bin/dotfiles-nanoclaw-compose

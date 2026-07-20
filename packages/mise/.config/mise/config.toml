@@ -72,6 +72,7 @@ go = "latest"
 "pipx:git-filter-repo" = "latest"
 "github:predatorray/kubectl-tmux-exec" = "latest"
 "github:gastownhall/gascity" = "latest"
+"github:DeusData/codebase-memory-mcp" = { version = "latest", matching_regex = "^codebase-memory-mcp-ui-(darwin-(amd64|arm64)|linux-(amd64|arm64)-portable)\\.tar\\.gz$" }
 "github:jakehilborn/displayplacer" = { version = "latest", os = ["macos"] }
 fzf = "latest"
 lazygit = "latest"
