@@ -154,11 +154,11 @@ Plug 'audibleblink/hackthebox.vim'
 
 " CoC
 
-if has("nvim")
-  Plug 'williamboman/mason.nvim'
-else
-  Plug 'neoclide/coc.nvim', {'branch': 'release'}
-endif
+"if has("nvim")
+"  Plug 'williamboman/mason.nvim'
+"else
+"  Plug 'neoclide/coc.nvim', {'branch': 'release'}
+"endif
 
 " =-=-=-=-=-=-=-=-=-=- GUI =-=-=-=-=-=-=-=-=-=-
 
