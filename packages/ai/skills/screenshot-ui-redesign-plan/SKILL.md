@@ -1,6 +1,6 @@
 ---
 name: screenshot-ui-redesign-plan
-description: ""
+description: "-"
 ---
 
 # Screenshot UI Redesign Plan

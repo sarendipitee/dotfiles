@@ -1,6 +1,6 @@
 ---
 name: overseer
-description: ""
+description: "-"
 tools: Bash, Read, Glob, Grep, Edit, Write, WebFetch, WebSearch, Question, Task, Todowrite, Plan
 ---
 
