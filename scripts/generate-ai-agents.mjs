@@ -19,26 +19,26 @@ const TIER_MODELS = {
 		// codex: "gpt-5.3-codex-spark",
 		codex: "gpt-5.6-luna",
 		claude: "haiku",
-		omp: "openai/gpt-5.6-luna",
+		omp: "omniroute/codex/gpt-5.6-luna",
 	},
 	"medium-cheap": {
 		kilo: "openai/gpt-5.6-luna",
 		//codex: "gpt-5.3-codex-spark",
 		codex: "gpt-5.6-luna",
 		claude: "sonnet",
-		omp: "openai/gpt-5.6-luna",
+		omp: "omniroute/codex/gpt-5.6-luna",
 	},
 	"medium-high": {
 		kilo: "openai/gpt-5.6-terra",
 		codex: "gpt-5.6-terra",
 		claude: "opus",
-		omp: "openai/gpt-5.6-terra",
+		omp: "omniroute/codex/gpt-5.6-terra",
 	},
 	frontier: {
 		kilo: "openai/gpt-5.6-sol",
 		codex: "gpt-5.6-sol",
 		claude: "fable",
-		omp: "openai/gpt-5.6-sol",
+		omp: "omniroute/codex/gpt-5.6-sol",
 	},
 };
 
