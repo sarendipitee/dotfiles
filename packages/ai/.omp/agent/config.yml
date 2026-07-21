@@ -7,7 +7,7 @@ disabledProviders:
   - llama.cpp
 symbolPreset: nerd
 theme: 
-  dark: titanium
+  dark: dark-abyss
   light: light
 features: 
   unexpectedStopDetection: true
@@ -18,10 +18,12 @@ startup:
 compaction: 
   idleEnabled: true
   idleTimeoutSeconds: 1800
+  thresholdPercent: 60
 plan: 
-  enabled: false
+  enabled: true
 task: 
   eager: default
+  showResolvedModelBadge: true
 commands: 
   enableClaudeUser: false
   enableClaudeProject: false
@@ -35,13 +37,17 @@ bash:
 edit: 
   mode: hashline
 memory: 
-  backend: hindsight
+  backend: "off"
 hindsight: 
   apiUrl: http://localhost:18888
+  scoping: per-project-tagged
+  apiToken: ""
 statusLine: 
   sessionAccent: true
+  preset: default
 tui: 
   textSizing: true
+  tight: false
 ui: 
   hide_disabled_providers: true
 display: 
@@ -49,15 +55,46 @@ display:
   showTokenUsage: true
   cacheMissMarker: true
 modelRoles: 
-  smol: openai/gpt-5.6-luna
+  smol: omniroute/codex/gpt-5.6-luna:high
   task: openai/gpt-5.6-terra
   commit: openai/gpt-5.6-luna
   tiny: openai/gpt-5.6-luna
-  default: omniroute/codex/gpt-5.6-luna
-  slow: openai/gpt-5.6-sol
-  TEMP: openai-codex/gpt-5.6-terra:high
+  default: omniroute/codex/gpt-5.6-terra:high
+  slow: omniroute/codex/gpt-5.6-sol
+  fast: omniroute/codex/gpt-5.3-codex-spark:high
 defaultThinkingLevel: auto
-hideThinkingBlock: true
+hideThinkingBlock: false
 dev: 
-  autoqa: 
-    consent: granted
+  autoqaConsent: granted
+  autoqa: false
+cycleOrder: 
+  - smol
+  - default
+  - slow
+  - fast
+tools: 
+  format: auto
+autolearn: 
+  enabled: false
+lsp: 
+  enabled: false
+debug: 
+  enabled: false
+skills: 
+  enableSkillCommands: true
+disabledExtensions: 
+  - context-file:user:CLAUDE.md
+  - skill:ctx-doctor
+  - skill:ctx-insight
+  - skill:ctx-stats
+  - skill:ctx-upgrade
+  - context-file:user:AGENTS.md
+astGrep: 
+  enabled: true
+checkpoint: 
+  enabled: true
+magicKeywords: 
+  enabled: false
+  ultrathink: false
+  orchestrate: false
+  workflow: false
