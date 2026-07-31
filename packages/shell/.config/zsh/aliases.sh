@@ -15,9 +15,7 @@ alias ga='git add'
 alias gd='git diff'
 alias gds='git diff --summary'
 alias lg='lazygit'
-
-# gascity conflict
-unalias gc 2>/dev/null
+unalias gc 2>/dev/null # gascity conflict
 
 # ROT13-encode text. Works for decoding, too! ;)
 alias rot13='tr a-zA-Z n-za-mN-ZA-M'
@@ -38,15 +36,8 @@ alias vbox="VBoxManage"
 # YAML
 alias yaml2json="ruby -ryaml -rjson -e 'puts JSON.pretty_generate(YAML.load(ARGF))'"
 
-# Random
-alias please="sudo !!"
-alias hosts='sudo $EDITOR /etc/hosts'
-alias sshconfig='$EDITOR ~/.ssh/config'
-alias currentwifi="networksetup -getairportnetwork en0"
-alias stfu="osascript -e 'set volume output muted true'"
-alias pumpitup="osascript -e 'set volume 10'"
-
-alias week='date +%V'
+# Herdr
+alias h='herdr'
 
 # List only directories
 alias lsd='ls -l | grep "^d"'
@@ -152,5 +143,12 @@ if [[ $(uname -a) =~ "WSL2" ]]; then
 	}
 fi
 
-# Additional aliases
-alias goclaw="/usr/bin/docker exec goclaw /app/goclaw"
+# Random
+alias please="sudo !!"
+alias hosts='sudo $EDITOR /etc/hosts'
+alias sshconfig='$EDITOR ~/.ssh/config'
+alias currentwifi="networksetup -getairportnetwork en0"
+alias stfu="osascript -e 'set volume output muted true'"
+alias pumpitup="osascript -e 'set volume 10'"
+
+alias week='date +%V'
