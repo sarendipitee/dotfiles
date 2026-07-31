@@ -31,6 +31,7 @@ return {
         },
         cssls = {},
         cssmodules_ls = {},
+        rust_analyzer = {},
         vtsls = {
           keys = {
             {
