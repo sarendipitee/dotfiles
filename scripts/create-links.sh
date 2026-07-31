@@ -120,6 +120,7 @@ ignore_args=()
 if printf '%s\n' "${packages[@]}" | grep -qx ai; then
 	ai_force_include=$'.claude/agents
 .codex/agents
+.codex/skills
 .config/kilo/agents
 .config/opencode/agents
 .omp/agent/agents'
@@ -141,3 +142,4 @@ if ! stow --simulate "${stow_args[@]}" "${ignore_args[@]}" "${packages[@]}"; the
 fi
 
 stow "${stow_args[@]}" "${ignore_args[@]}" "${packages[@]}"
+
