@@ -1764,6 +1764,27 @@ setup_linuxbrew_ca() {
 	fi
 }
 
+setup_zswap() {
+	local grub_args='zswap.enabled=1 zswap.compressor=zstd'
+	local grub_file=/etc/default/grub
+	local module_params=/sys/module/zswap/parameters
+
+	printf '==> Enabling zswap compressed swap cache\n'
+	sudo modprobe zswap 2>/dev/null || true
+
+	if [ ! -d "$module_params" ]; then
+		printf 'zswap unavailable in this kernel; skipping\n'
+		return 0
+	fi
+	printf '1\n' | sudo tee "$module_params/enabled" >/dev/null
+	printf 'zstd\n' | sudo tee "$module_params/compressor" >/dev/null
+
+	[ -f "$grub_file" ] || return 0
+	grep -q 'zswap.enabled=1' "$grub_file" && return 0
+	sudo sed -i "s/^GRUB_CMDLINE_LINUX_DEFAULT=\"\(.*\)\"/GRUB_CMDLINE_LINUX_DEFAULT=\"\1 $grub_args\"/" "$grub_file"
+	sudo update-grub
+}
+
 setup_tailscale() {
 	printf '==> Configuring Tailscale\n'
 	if ! command_exists tailscale; then
@@ -1823,6 +1844,7 @@ if [ "${DOTFILES_WITH_NVIDIA:-auto}" = true ] || { [ "${DOTFILES_WITH_NVIDIA:-au
 fi
 if [ "${DOTFILES_WITH_TAILSCALE:-true}" = true ]; then setup_tailscale; fi
 if [ "${DOTFILES_WITH_LINUXBREW_CA:-true}" = true ]; then setup_linuxbrew_ca; fi
+if [ "${DOTFILES_WITH_ZSWAP:-true}" = true ]; then setup_zswap; fi
 if "$RELOGIN_REQUIRED"; then
 	fatal 'Docker group membership changed; log out and back in, then rerun provisioning'
 fi

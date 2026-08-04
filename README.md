@@ -34,13 +34,15 @@ GitHub Pages. Use HTTPS so script cannot be modified in transit.
 
 Ubuntu bootstrap installs and enables OpenSSH server, Docker Engine, and
 Tailscale. NVIDIA drivers and CUDA install only when supported NVIDIA display
-hardware is detected. Set component controls before running bootstrap:
+hardware is detected. zswap compressed swap is enabled and persisted in the
+GRUB boot command line. Set component controls before running bootstrap:
 
 ```sh
 export DOTFILES_WITH_SSH=false
 export DOTFILES_WITH_DOCKER=false
 export DOTFILES_WITH_NVIDIA=false
 export DOTFILES_WITH_TAILSCALE=false
+export DOTFILES_WITH_ZSWAP=false
 export DOTFILES_SSH_KEY_ONLY=true
 ```
 
