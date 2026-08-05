@@ -95,6 +95,8 @@ oxker = "latest"
 "apt:watchman" = "latest"
 "apt:libicu-dev" = "latest"
 "apt:zsh" = "latest"
+"apt:linux-tools-common" = "latest"
+"apt:linux-tools-generic" = "latest"
 
 # Cross-platform machine-global commands and libraries without suitable Mise
 # tool backends. Mise's Brew manager supports macOS and Linux.
