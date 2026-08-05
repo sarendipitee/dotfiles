@@ -1,16 +1,18 @@
 {
+  "$schema": "https://raw.githubusercontent.com/can1357/oh-my-pi/main/packages/coding-agent/src/config/mcp-schema.json",
   "mcpServers": {
     "context-mode": {
       "type": "stdio",
-      "command": "node",
-      "args": [
-        "/home/saren/.omp/plugins/node_modules/context-mode/server.bundle.mjs"
-      ]
+      "command": "context-mode",
+      "args": []
     },
     "codebase-memory-mcp": {
       "type": "stdio",
       "command": "codebase-memory-mcp",
       "args": []
     }
-  }
+  },
+  "disabledServers": [
+    "mcp-agent-mail"
+  ]
 }
