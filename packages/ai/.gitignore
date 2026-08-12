@@ -5,6 +5,7 @@
 .codex/agents/
 .claude/agents
 .omp/agent/agents/
+.gemini/config/agents/
 
 .claude/
 .codex/

@@ -12,6 +12,7 @@ const CODEX_DIR = path.join(ROOT, "packages/ai/.codex/agents");
 const CODEX_SKILLS_DIR = path.join(ROOT, "packages/ai/.codex/skills");
 const CLAUDE_CODE_DIR = path.join(ROOT, "packages/ai/.claude/agents");
 const OMP_DIR = path.join(ROOT, "packages/ai/.omp/agent/agents");
+const AGY_DIR = path.join(ROOT, "packages/ai/.gemini/config/agents");
 
 const TIER_MODELS = {
 	cheap: {
@@ -123,6 +124,34 @@ function dumpYaml(obj, indent = 0) {
 	return dumpYamlValue(obj, indent);
 }
 
+// Reads a double-quoted YAML scalar, folding multi-line continuations into a
+// single space-separated value and stripping the surrounding quotes. The
+// generic parseYaml parser only captures the first physical line of such
+// scalars, so this is used where the full description value is required.
+function yamlQuotedScalar(yamlPart, key) {
+	const lines = yamlPart.split("\n");
+	for (let i = 0; i < lines.length; i++) {
+		const isKeyLine = lines[i].match(new RegExp(`^${key}:\\s*`));
+		if (!isKeyLine) continue;
+		let first = lines[i].slice(isKeyLine[0].length).trim();
+		if (first.startsWith('"')) first = first.slice(1);
+		const parts = [first];
+		for (let j = i + 1; j < lines.length; j++) {
+			const line = lines[j];
+			if (line.trim() === "" || line.startsWith("  ")) {
+				const trimmed = line.trim();
+				if (trimmed !== "") parts.push(trimmed);
+				continue;
+			}
+			break;
+		}
+		let value = parts.join(" ");
+		if (value.endsWith('"')) value = value.slice(0, -1);
+		return value.trim();
+	}
+	return null;
+}
+
 function readSoT(sotPath) {
 	const text = fs.readFileSync(sotPath, "utf-8");
 
@@ -154,6 +183,7 @@ function readSoT(sotPath) {
 		name: path.basename(sotPath, ".yml"),
 		path: sotPath,
 		frontmatter,
+		fullDescription: yamlQuotedScalar(yamlPart, "description"),
 		prompt,
 	};
 }
@@ -281,6 +311,52 @@ function ompMarkdown(agent) {
 	return `---\n${parts.join("\n")}\n---\n${prompt}`;
 }
 
+function agyModel(tier) {
+	switch (tier) {
+		case "cheap":
+			return "flash_lite";
+		case "medium-cheap":
+			return "flash";
+		case "medium-high":
+		case "frontier":
+			return "pro";
+	}
+	return null;
+}
+
+function agyTools(permission) {
+	if (!permission) return null;
+	const tools = [];
+	if (!permissionDenied(permission.read)) tools.push("view_file");
+	if (!permissionDenied(permission.glob)) tools.push("list_dir");
+	if (!permissionDenied(permission.grep)) tools.push("grep_search");
+	if (!permissionDenied(permission.edit)) tools.push("write_to_file");
+	if (!permissionDenied(permission.bash)) tools.push("run_command");
+	if (permission.websearch === "allow") tools.push("search_web");
+	if (!permissionDenied(permission.webfetch)) tools.push("read_url_content");
+	if (!permissionDenied(permission.task)) tools.push("manage_task");
+	return tools.length > 0 ? tools : null;
+}
+
+function agyMarkdown(agent) {
+	const { name, frontmatter, fullDescription, prompt } = agent;
+
+	const parts = [];
+	parts.push(`name: ${JSON.stringify(name)}`);
+	parts.push(`description: ${JSON.stringify(fullDescription)}`);
+
+	const model = agyModel(frontmatter.tier);
+	if (model) parts.push(`model: ${JSON.stringify(model)}`);
+
+	const tools = agyTools(frontmatter.permission);
+	if (tools) {
+		parts.push("tools:");
+		for (const tool of tools) parts.push(`  - ${JSON.stringify(tool)}`);
+	}
+
+	return `---\n${parts.join("\n")}\n---\n${prompt}`;
+}
+
 function codexToml(agent) {
 	const { name, frontmatter, prompt } = agent;
 
@@ -324,6 +400,7 @@ function generate(agents, check) {
 		outputs[path.join(CLAUDE_CODE_DIR, `${agent.name}.md`)] =
 			claudeCodeMarkdown(agent);
 		outputs[path.join(OMP_DIR, `${agent.name}.md`)] = ompMarkdown(agent);
+		outputs[path.join(AGY_DIR, `${agent.name}.md`)] = agyMarkdown(agent);
 	}
 
 	const changed = Object.entries(outputs).filter(([p, c]) => {
@@ -352,6 +429,7 @@ function generate(agents, check) {
 	fs.mkdirSync(CODEX_DIR, { recursive: true });
 	fs.mkdirSync(CLAUDE_CODE_DIR, { recursive: true });
 	fs.mkdirSync(OMP_DIR, { recursive: true });
+	fs.mkdirSync(AGY_DIR, { recursive: true });
 	for (const [filePath, content] of Object.entries(outputs)) {
 		fs.writeFileSync(filePath, content, "utf-8");
 	}
@@ -371,6 +449,9 @@ function generate(agents, check) {
 	);
 	console.log(
 		`Generated ${agents.length} OMP agents      in ${OMP_DIR.replace(rootRel, "")}`,
+	);
+	console.log(
+		`Generated ${agents.length} AGY agents       in ${AGY_DIR.replace(rootRel, "")}`,
 	);
 	return true;
 }
