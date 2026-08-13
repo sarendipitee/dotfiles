@@ -23,11 +23,11 @@ if command -v zoxide >/dev/null 2>&1; then
 	[[ -r "$_zoxide_init" ]] && source "$_zoxide_init" >/dev/null 2>&1
 fi
 
+# Local completions (must be before compinit, which runs in completions-opts.zsh)
+fpath=( "$ZDOTDIR/completions" $fpath )
+
 [[ -r "$ZDOTDIR/completions-opts.zsh" ]] && source "$ZDOTDIR/completions-opts.zsh" >/dev/null 2>&1
 [[ -r "$ZDOTDIR/options.zsh" ]] && source "$ZDOTDIR/options.zsh" >/dev/null 2>&1
-
-# Local completions (must be before compinit, which runs inside .zsh_plugins.zsh)
-fpath=( "$ZDOTDIR/completions" $fpath )
 
 # Antidote plugin manager (static loading for speed)
 [[ -r "$ZDOTDIR/antidote/antidote.zsh" ]] && source "$ZDOTDIR/antidote/antidote.zsh" >/dev/null 2>&1
