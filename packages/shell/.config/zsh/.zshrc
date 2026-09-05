@@ -97,6 +97,21 @@ if [[ -o interactive && -t 0 && -t 1 ]] && command -v direnv >/dev/null 2>&1; th
 	[[ -r "$_direnv_hook" ]] && source "$_direnv_hook" >/dev/null 2>&1
 fi
 
+# Mise integration (eval activate for dynamic cd/env hooks)
+if command -v mise >/dev/null 2>&1; then
+	_mise_hook="${XDG_CACHE_HOME:-$HOME/.cache}/mise-hook.zsh"
+	if [[ ! -s "$_mise_hook" || "$_mise_hook" -ot "$(command -v mise)" ]] && mkdir -p "${_mise_hook:h}" 2>/dev/null; then
+		_mise_tmp="${_mise_hook}.tmp.$$"
+		if { mise activate zsh >| "$_mise_tmp"; } 2>/dev/null && [[ -s "$_mise_tmp" ]]; then
+			mv -f "$_mise_tmp" "$_mise_hook" 2>/dev/null || rm -f "$_mise_tmp" 2>/dev/null
+		else
+			rm -f "$_mise_tmp" 2>/dev/null
+		fi
+		unset _mise_tmp
+	fi
+	[[ -r "$_mise_hook" ]] && source "$_mise_hook" >/dev/null 2>&1
+fi
+
 # Remove duplicate PATH entries while preserving system paths needed by prompt plugins.
 typeset -U path PATH
 
@@ -105,3 +120,5 @@ export GPG_TTY=$TTY
 gpg-connect-agent updatestartuptty /bye >/dev/null 2>&1
 
 # zprof
+
+. "$HOME/.local/share/../bin/env"
