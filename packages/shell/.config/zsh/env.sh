@@ -23,6 +23,10 @@ else
 fi
 export PC_CONFIG_FILES="$XDG_CONFIG_HOME/process-compose/process-compose.yaml"
 
+# Prevent incoming Codex SSH sessions from spawning unmanaged background app-servers,
+# allowing Process Compose to own and manage the codex-remote-control service.
+export CODEX_SSH_SKIP_APP_SERVER_BOOT=true
+
 # All development codebases are cloned into a subfolder of this folder
 export PROJECTS_BASE_DIR="${HOME}/projects"
 
