@@ -3,6 +3,7 @@ min_version = "2026.7.5"
 [settings]
 experimental = true
 jobs = 8
+npm.package_manager = "npm"
 
 [tools]
 "age" = "latest"
