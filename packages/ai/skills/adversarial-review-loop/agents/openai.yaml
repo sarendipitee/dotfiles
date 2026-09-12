@@ -1,0 +1,7 @@
+interface:
+  display_name: "Adversarial Review Loop"
+  short_description: "Review, verify, and fix work using a single subagent until greenlight."
+  default_prompt: "Use $adversarial-review-loop to review and remediate completed work via a single review-and-fix subagent until greenlit."
+
+policy:
+  allow_implicit_invocation: false

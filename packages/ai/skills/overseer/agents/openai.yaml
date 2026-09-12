@@ -1,0 +1,7 @@
+interface:
+  display_name: "Overseer"
+  short_description: "Coordinate multi-slice engineering work."
+  default_prompt: "Use $overseer to coordinate this task through independent investigation, implementation, review, and verification slices."
+
+policy:
+  allow_implicit_invocation: false
