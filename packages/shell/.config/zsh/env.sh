@@ -46,6 +46,8 @@ if [[ -x "${CUDA_HOME:-/usr/local/cuda}/bin/nvcc" ]]; then
 	export CUDA_HOME="${CUDA_HOME:-/usr/local/cuda}"
 fi
 
+export PLAYWRIGHT_CHROMIUM_EXECUTABLE=$(command -v chromium || command -v google-chrome)
+
 # ZSH
 export HISTFILE="$XDG_STATE_HOME"/zsh/history
 export ZSH_CACHE_DIR="${XDG_CACHE_HOME}/zsh"
