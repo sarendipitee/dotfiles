@@ -48,6 +48,8 @@
 ^\.codex/tmp(/.*)?$
 ^\.codex/memories(/.*)?$
 ^\.codex/visualizations(/.*)?$
+^\.codex/config\.toml$
+^\.codex/hooks\.json$
 ^skills(/.*)?$
 ^\.gitignore$
 ^\.agents$

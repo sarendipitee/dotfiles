@@ -5,7 +5,9 @@ app-server-control/
 rules/
 shell_snapshots/
 
-# Runtime files
+# Runtime and machine-dependent config files
+config.toml
+hooks.json
 .personality_migration
 .tmp/
 tmp/
