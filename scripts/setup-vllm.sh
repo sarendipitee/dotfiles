@@ -162,6 +162,16 @@ VLLM_MAX_NUM_SEQS=1
 VLLM_MODEL_ARGS='--enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --generation-config vllm'
 EOF
 
+write_user_file_if_missing "${MODELS_DIR}/qwen3.8-27b-awq.env" 0644 <<'EOF'
+MODEL_ID=Ar4ikov/Qwen3.8-27B-AWQ-W4A16-ASYM
+MODEL_ALIAS=qwen3.8-27b-awq
+VLLM_MAX_MODEL_LEN=16384
+VLLM_GPU_MEMORY_UTILIZATION=0.90
+VLLM_MAX_NUM_SEQS=1
+VLLM_TRUST_REMOTE_CODE=1
+VLLM_MODEL_ARGS='--enable-auto-tool-choice --tool-call-parser qwen3_xml --reasoning-parser qwen3 --generation-config vllm'
+EOF
+
 write_user_file_if_missing "${MODELS_DIR}/gemma4.env" 0644 <<'EOF'
 MODEL_ID=google/gemma-4-E4B-it
 MODEL_ALIAS=gemma4
