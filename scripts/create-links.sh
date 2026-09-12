@@ -77,6 +77,47 @@ git_ignore_patterns() {
 	rm -f "$tracked"
 }
 
+normalize_codex_skill_links() {
+	local ai_skills_dir agents_skills_dir codex_skills_dir skill_source skill_name skill_target
+	ai_skills_dir="${packages_dir}/ai/skills"
+	agents_skills_dir="$HOME/.agents/skills"
+	codex_skills_dir="$HOME/.codex/skills"
+
+	# Codex discovers user skills under ~/.agents/skills. Keep that root pointed
+	# at the canonical repository source; packages/ai/.agents is intentionally
+	# excluded from normal Stow selection.
+	mkdir -p "$HOME/.agents"
+	if [ -e "$agents_skills_dir" ] && [ ! -L "$agents_skills_dir" ]; then
+		printf 'Refusing to replace non-symlink: %s\n' "$agents_skills_dir" >&2
+		return 1
+	fi
+	if [ -L "$agents_skills_dir" ] && [ "$(readlink "$agents_skills_dir")" != "$ai_skills_dir" ]; then
+		rm "$agents_skills_dir"
+	fi
+	if [ ! -e "$agents_skills_dir" ]; then
+		ln -s "$ai_skills_dir" "$agents_skills_dir"
+	fi
+
+	[ -d "$codex_skills_dir" ] || return 0
+	for skill_source in "$ai_skills_dir"/*; do
+		[ -d "$skill_source" ] || continue
+		skill_name=${skill_source##*/}
+		skill_target="$codex_skills_dir/$skill_name"
+
+		if [ -L "$skill_target" ] && [ "$(readlink "$skill_target")" = "$skill_source" ]; then
+			continue
+		fi
+		if [ -e "$skill_target" ] || [ -L "$skill_target" ]; then
+			if [ ! -d "$skill_target" ] || find "$skill_target" -type f ! -type l -print -quit | grep -q .; then
+				printf 'Refusing to replace non-generated skill path: %s\n' "$skill_target" >&2
+				return 1
+			fi
+			rm -rf "$skill_target"
+		fi
+		ln -s "$skill_source" "$skill_target"
+	done
+}
+
 os=$(uname -s)
 case "$os" in
 	Darwin) excluded_platform_package=systemd ;;
@@ -123,7 +164,8 @@ if printf '%s\n' "${packages[@]}" | grep -qx ai; then
 .codex/skills
 .config/kilo/agents
 .config/opencode/agents
-.omp/agent/agents'
+.omp/agent/agents
+.gemini/config/agents'
 	while IFS= read -r pattern; do
 		[ -n "$pattern" ] && ignore_args+=(--ignore="$pattern")
 	done < <(git_ignore_patterns packages/ai "${packages_dir}/ai" "$ai_force_include")
@@ -143,3 +185,4 @@ fi
 
 stow "${stow_args[@]}" "${ignore_args[@]}" "${packages[@]}"
 
+normalize_codex_skill_links

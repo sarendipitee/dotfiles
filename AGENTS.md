@@ -84,7 +84,10 @@ Reuse helpers from `functions.sh`, including `clone_repo_into`,
 
 `packages/ai/agents/*.yml` is source of truth for shared agent definitions.
 Do not edit rendered files in `.claude/agents`, `.codex/agents`,
-`.config/kilo/agents`, `.config/opencode/agents`, or `.omp/agent/agents`.
+`.config/kilo/agents`, `.config/opencode/agents`, `.omp/agent/agents`, or
+`.gemini/config/agents`. The `.gemini/config/agents` set is consumed by the
+Antigravity CLI (`agy`) through `~/.gemini/config/agents`; its global skills
+come from the repo `skills/` tree via `.gemini/antigravity-cli/skills`.
 
 ```bash
 node scripts/generate-ai-agents.mjs
