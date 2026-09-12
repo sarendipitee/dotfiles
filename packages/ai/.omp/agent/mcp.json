@@ -9,7 +9,8 @@
     "codebase-memory-mcp": {
       "type": "stdio",
       "command": "codebase-memory-mcp",
-      "args": []
+      "args": [],
+      "enabled": false
     }
   },
   "disabledServers": [

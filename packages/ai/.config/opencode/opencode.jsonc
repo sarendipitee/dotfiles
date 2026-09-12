@@ -20,16 +20,6 @@
 	},
 	"instructions": [],
 	"mcp": {
-		"notion": {
-			"type": "remote",
-			"url": "https://mcp.notion.com/mcp",
-			"enabled": false
-		},
-		"mcp-agent-mail": {
-			"type": "remote",
-			"url": "http://127.0.0.1:8765/mcp/",
-			"enabled": false
-		}
 	},
 	"skills": {
 		"paths": []
