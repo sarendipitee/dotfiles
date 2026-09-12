@@ -34,7 +34,7 @@ npm.package_manager = "npm"
 "caddy" = "latest"
 "cmake" = "latest"
 "ffmpeg" = "latest"
-go = "latest"
+go = "1.26"
 "imagemagick" = "latest"
 "kubectl" = "latest"
 "k9s" = "latest"
@@ -44,7 +44,7 @@ go = "latest"
 "k3d" = "latest"
 "kind" = "latest"
 "stern" = "latest"
-"ctop" = "latest"
+ctop = "latest"
 "argo" = "latest"
 "argocd" = "latest"
 "direnv" = "latest"
@@ -69,6 +69,8 @@ go = "latest"
 "npm:omniroute" = { version = "latest", allow_builds = [
 	"omniroute",
 	"better-sqlite3",
+], trust_policy_excludes = [
+	"@pierre/theme@1.1.0",
 ] }
 "pipx:commitizen" = "latest"
 "pipx:thefuck" = "latest"
@@ -88,6 +90,15 @@ eza = "latest"
 "aqua:dolthub/dolt" = "latest"
 btop = "latest"
 oxker = "latest"
+"github:astral-sh/hawk" = "latest"
+"github:diegosouzapw/OmniRoute" = "latest"
+lazydocker = "latest"
+"github:cruise-org/cruise" = "latest"
+gdu = "latest"
+dua = "latest"
+"github:kunobi-ninja/kache" = "0.14.0"
+"aqua:moonrepo/moon" = "latest"
+codex = "latest"
 
 [bootstrap.packages]
 # Ubuntu-only operating-system prerequisites and services.
