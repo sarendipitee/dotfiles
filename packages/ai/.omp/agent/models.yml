@@ -5,3 +5,12 @@ providers:
     auth: none
     discovery:
       type: proxy
+  vllm:
+    baseUrl: http://127.0.0.1:8080/v1
+    auth: none
+    models:
+      - id: local
+        name: Local vLLM
+        api: openai-completions
+        reasoning: true
+        supportsTools: true

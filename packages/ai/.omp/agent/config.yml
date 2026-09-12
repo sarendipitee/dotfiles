@@ -1,90 +1,94 @@
 setupVersion: 1
-providers: 
+providers:
   {}
-disabledProviders: 
+disabledProviders:
   - ollama
   - lm-studio
   - llama.cpp
-  - builtin-defaults
   - cursor
   - opencode
   - codex
+  - builtin-defaults
 symbolPreset: nerd
-theme: 
+theme:
   dark: dark-abyss
   light: light
-features: 
-  unexpectedStopDetection: true
-startup: 
+features:
+  unexpectedStopDetection: smart
+startup:
   showSplash: true
   quiet: true
   setupWizard: false
-compaction: 
+compaction:
   idleEnabled: true
   idleTimeoutSeconds: 1800
   thresholdPercent: 60
-plan: 
+plan:
   enabled: true
-task: 
+task:
   eager: default
   showResolvedModelBadge: true
   batch: true
-commands: 
+  agentPrewalk:
+    task: "off"
+commands:
   enableClaudeUser: false
   enableClaudeProject: false
-inspect_image: 
+inspect_image:
   mode: "on"
-ask: 
+ask:
   enabled: false
-bash: 
-  autoBackground: 
+bash:
+  autoBackground:
     enabled: true
-edit: 
-  mode: hashline
-memory: 
+edit:
+  mode: sloppy
+memory:
   backend: "off"
-hindsight: 
+hindsight:
   apiUrl: http://localhost:18888
   scoping: per-project-tagged
   apiToken: ""
-statusLine: 
+statusLine:
   sessionAccent: true
   preset: default
-tui: 
+tui:
   textSizing: true
   tight: false
-ui: 
+ui:
   hide_disabled_providers: true
-display: 
+display:
   shimmer: classic
   showTokenUsage: true
   cacheMissMarker: true
-modelRoles: 
+  hideToolActivity: false
+modelRoles:
   smol: omniroute/codex/gpt-5.6-luna:xhigh
-  default: omniroute/codex/gpt-5.6-luna:max
-  slow: omniroute/codex/gpt-5.6-sol
+  default: omniroute/codex/gpt-5.6-luna:xhigh
+  frontier: omniroute/codex/gpt-5.6-sol:high
   fast: omniroute/codex/gpt-5.3-codex-spark:high
+  scout: omniroute/codex/gpt-5.6-luna:high
+  task: omniroute/codex/gpt-5.6-luna:high
 defaultThinkingLevel: auto
 hideThinkingBlock: false
-dev: 
+dev:
   autoqaConsent: granted
   autoqa: false
-cycleOrder: 
-  - smol
+cycleOrder:
   - default
-  - slow
+  - frontier
   - fast
-tools: 
+tools:
   format: auto
-autolearn: 
+autolearn:
   enabled: false
-lsp: 
+lsp:
   enabled: false
-debug: 
+debug:
   enabled: false
-skills: 
+skills:
   enableSkillCommands: true
-disabledExtensions: 
+disabledExtensions:
   - context-file:user:CLAUDE.md
   - skill:ctx-doctor
   - skill:ctx-insight
@@ -95,11 +99,12 @@ disabledExtensions:
   - skill:beads
   - skill:gascity-formula-launch
   - skill:screenshot-ui-redesign-plan
-astGrep: 
+  - skill:ctx-purge
+astGrep:
   enabled: true
-checkpoint: 
+checkpoint:
   enabled: false
-magicKeywords: 
+magicKeywords:
   enabled: false
   ultrathink: false
   orchestrate: false
@@ -109,5 +114,5 @@ interruptMode: immediate
 doubleEscapeAction: tree
 treeFilterMode: default
 emojiAutocomplete: false
-mcp: 
+mcp:
   notifications: true
