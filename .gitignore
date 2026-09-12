@@ -8,5 +8,7 @@
 packages/**/.env
 packages/**/.env.*
 
+.moon/
+
 
 
