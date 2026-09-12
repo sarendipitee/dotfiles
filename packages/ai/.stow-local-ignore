@@ -48,6 +48,7 @@
 ^\.codex/tmp(/.*)?$
 ^\.codex/memories(/.*)?$
 ^\.codex/visualizations(/.*)?$
+^\.codex/skills(/.*)?$
 ^\.codex/config\.toml$
 ^\.codex/hooks\.json$
 ^skills(/.*)?$

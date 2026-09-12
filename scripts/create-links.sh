@@ -161,11 +161,11 @@ ignore_args=()
 if printf '%s\n' "${packages[@]}" | grep -qx ai; then
 	ai_force_include=$'.claude/agents
 .codex/agents
-.codex/skills
 .config/kilo/agents
 .config/opencode/agents
 .omp/agent/agents
 .gemini/config/agents'
+	ignore_args+=(--ignore='\.codex/skills')
 	while IFS= read -r pattern; do
 		[ -n "$pattern" ] && ignore_args+=(--ignore="$pattern")
 	done < <(git_ignore_patterns packages/ai "${packages_dir}/ai" "$ai_force_include")
