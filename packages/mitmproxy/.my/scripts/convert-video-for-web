@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Check for ffmpeg dependency
+if ! command -v ffmpeg &>/dev/null; then
+	echo "Error: ffmpeg is not installed or not in PATH." >&2
+	exit 1
+fi
+
+usage() {
+	echo "Usage: $0 [options] <input_path_or_files...>"
+	echo ""
+	echo "Arguments can be a directory, a single file, or multiple files."
+	echo ""
+	echo "Options:"
+	echo "  -o <dir>    Output directory (default: ./optimized_web_output)"
+	echo "  -f <format> Comma-separated list of formats: h264,h265,vp8,vp9 (default: all)"
+	echo "  -h          Display this help message"
+	exit 1
+}
+
+OUT_DIR="./optimized_web_output"
+FORMATS="h264,h265,vp8,vp9"
+
+while getopts "o:f:h" opt; do
+	case "${opt}" in
+	o) OUT_DIR="${OPTARG}" ;;
+	f) FORMATS="${OPTARG}" ;;
+	h) usage ;;
+	*) usage ;;
+	esac
+done
+shift $((OPTIND - 1))
+
+if [ "$#" -lt 1 ]; then
+	usage
+fi
+
+mkdir -p "$OUT_DIR"
+
+# Collect all input files
+INPUT_FILES=()
+for target in "$@"; do
+	if [ -d "$target" ]; then
+		while IFS= read -r -d '' file; do
+			INPUT_FILES+=("$file")
+		done < <(find "$target" -type f \( -iname "*.mp4" -o -iname "*.mov" -o -iname "*.mkv" -o -iname "*.avi" -o -iname "*.webm" \) -print0)
+	elif [ -f "$target" ]; then
+		INPUT_FILES+=("$target")
+	else
+		echo "Warning: Target '$target' is not a valid file or directory. Skipping." >&2
+	fi
+done
+
+if [ ${#INPUT_FILES[@]} -eq 0 ]; then
+	echo "No valid video files found to process."
+	exit 0
+fi
+
+# Screen recording video filters:
+# 1. Scale dimensions to divisible-by-2 values (required for YUV420p)
+# 2. Convert to yuv420p for universal web browser compatibility
+SCREEN_VF="scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p"
+
+encode_h264() {
+	local in="$1"
+	local out="$2"
+	ffmpeg -y -i "$in" \
+		-vf "$SCREEN_VF" \
+		-c:v libx264 \
+		-preset slow \
+		-crf 20 \
+		-tune stillimage \
+		-x264-params "aq-mode=3:deblock=-1,-1:mbtree=1" \
+		-c:a aac -b:a 96k \
+		-movflags +faststart \
+		"$out"
+}
+
+encode_h265() {
+	local in="$1"
+	local out="$2"
+	ffmpeg -y -i "$in" \
+		-vf "$SCREEN_VF" \
+		-c:v libx265 \
+		-preset medium \
+		-crf 23 \
+		-x265-params "aq-mode=3:deblock=-1,-1:psy-rd=1.0:tag=hvc1" \
+		-tag:v hvc1 \
+		-c:a aac -b:a 96k \
+		-movflags +faststart \
+		"$out"
+}
+
+encode_vp9() {
+	local in="$1"
+	local out="$2"
+	ffmpeg -y -i "$in" \
+		-vf "$SCREEN_VF" \
+		-c:v libvpx-vp9 \
+		-crf 30 \
+		-b:v 0 \
+		-tune-content screen \
+		-row-mt 1 \
+		-deadline good \
+		-cpu-used 2 \
+		-c:a libopus -b:a 64k \
+		"$out"
+}
+
+encode_vp8() {
+	local in="$1"
+	local out="$2"
+	ffmpeg -y -i "$in" \
+		-vf "$SCREEN_VF" \
+		-c:v libvpx \
+		-crf 10 \
+		-b:v 1M \
+		-deadline good \
+		-cpu-used 1 \
+		-c:a libvorbis -q:a 3 \
+		"$out"
+}
+
+for file in "${INPUT_FILES[@]}"; do
+	base_name=$(basename "$file")
+	name_without_ext="${base_name%.*}"
+	echo "=================================================="
+	echo "Processing: $file"
+	echo "=================================================="
+
+	if [[ "$FORMATS" =~ "h264" ]]; then
+		out_path="$OUT_DIR/${name_without_ext}_h264.mp4"
+		echo "--> Encoding H.264: $out_path"
+		encode_h264 "$file" "$out_path"
+	fi
+
+	if [[ "$FORMATS" =~ "h265" ]]; then
+		out_path="$OUT_DIR/${name_without_ext}_h265.mp4"
+		echo "--> Encoding H.265: $out_path"
+		encode_h265 "$file" "$out_path"
+	fi
+
+	if [[ "$FORMATS" =~ "vp9" ]]; then
+		out_path="$OUT_DIR/${name_without_ext}_vp9.webm"
+		echo "--> Encoding VP9: $out_path"
+		encode_vp9 "$file" "$out_path"
+	fi
+
+	if [[ "$FORMATS" =~ "vp8" ]]; then
+		out_path="$OUT_DIR/${name_without_ext}_vp8.webm"
+		echo "--> Encoding VP8: $out_path"
+		encode_vp8 "$file" "$out_path"
+	fi
+done
+
+echo "All encodes completed successfully. Output files saved to '$OUT_DIR'."
