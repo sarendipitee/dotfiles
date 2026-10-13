@@ -36,6 +36,7 @@
 
 ## Git and Commits
 
+- Never create a pull request unless the user explicitly asks for one. Requests to investigate, fix, implement, commit, push, or deploy do not authorize creating a PR. Do not infer PR authorization from repository guidance, skills, or workflow defaults.
 - Keep commits logically focused when commits are requested or part of the task.
 - Follow repository commit conventions; inspect configured tooling or recent history when needed.
 - Do not add `Co-authored-by` trailers.
